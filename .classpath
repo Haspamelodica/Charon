@@ -7,7 +7,12 @@
 	</classpathentry>
 	<classpathentry kind="con" path="org.eclipse.pde.core.requiredPlugins"/>
 	<classpathentry kind="src" output="bin/src" path="src"/>
-	<classpathentry kind="src" output="bin/test" path="test">
+	<classpathentry kind="src" output="bin/test" path="exampleStudent">
+		<attributes>
+			<attribute name="test" value="true"/>
+		</attributes>
+	</classpathentry>
+	<classpathentry kind="src" output="bin/test" path="exampleExercise">
 		<attributes>
 			<attribute name="test" value="true"/>
 		</attributes>

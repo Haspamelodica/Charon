@@ -103,7 +103,7 @@ public class StudentSideImpl<REF> implements StudentSide
 			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side object class: " +
 					"expected " + objectClass + ", but was " + method.getReturnType());
 
-		return (proxy, args) -> createInstance(objectClass, method.getParameterTypes(), args);
+		return (proxy, args) -> createInstance(studentSideClassName, objectClass, method.getParameterTypes(), args);
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
@@ -112,7 +112,7 @@ public class StudentSideImpl<REF> implements StudentSide
 		Class<?> returnType = method.getReturnType();
 		Class<?>[] parameterTypes = method.getParameterTypes();
 
-		return (proxy, args) -> communicator.callStaticMethod(name, returnType, parameterTypes, args);
+		return (proxy, args) -> communicator.callStaticMethod(studentSideClassName, name, returnType, parameterTypes, args);
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
@@ -125,7 +125,7 @@ public class StudentSideImpl<REF> implements StudentSide
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side static field getter had parameters");
 
-		return (proxy, args) -> communicator.getStaticField(name, returnType);
+		return (proxy, args) -> communicator.getStaticField(studentSideClassName, name, returnType);
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
@@ -135,29 +135,31 @@ public class StudentSideImpl<REF> implements StudentSide
 			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method.getReturnType());
 
 		Class<?>[] parameterTypes = method.getParameterTypes();
-		if(parameterTypes.length != 0)
+		if(parameterTypes.length != 1)
 			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + parameterTypes.length);
 
 		Class<?> parameterType = parameterTypes[0];
 
-		return staticFieldSetterHandlerChecked(name, parameterType);
+		return staticFieldSetterHandlerChecked(studentSideClassName, name, parameterType);
 	}
 
 	//extracted to own method so casting to field type is expressible in Java
-	private <F, SP extends StudentSidePrototype<?>> TypedMethodHandler<SP> staticFieldSetterHandlerChecked(String name, Class<F> fieldType)
+	private <F, SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
+			staticFieldSetterHandlerChecked(String studentSideClassName, String name, Class<F> fieldType)
 	{
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			communicator.setStaticField(name, fieldType, argCasted);
+			communicator.setStaticField(studentSideClassName, name, fieldType, argCasted);
 			return null;
 		};
 	}
 
-	private <SO extends StudentSideObject> SO createInstance(Class<SO> objectClass, Class<?>[] constrParamTypes, Object... constrArgs)
+	private <SO extends StudentSideObject> SO
+			createInstance(String studentSideClassName, Class<SO> objectClass, Class<?>[] constrParamTypes, Object... constrArgs)
 	{
-		REF ref = communicator.callConstructor(constrParamTypes, constrArgs);
+		REF ref = communicator.callConstructor(studentSideClassName, constrParamTypes, constrArgs);
 		return createProxyInstance(objectClass, method ->
 		{
 			checkNotAnnotatedWith(method, StudentSideObjectKind.class);
@@ -165,55 +167,59 @@ public class StudentSideImpl<REF> implements StudentSide
 
 			return handlerFor(method, StudentSideObjectMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 			{
-				case INSTANCE_METHOD -> instanceMethodHandler(method, name, ref);
-				case FIELD_GETTER -> fieldGetterHandler(method, name, ref);
-				case FIELD_SETTER -> fieldSetterHandler(method, name, ref);
+				case INSTANCE_METHOD -> instanceMethodHandler(studentSideClassName, method, name, ref);
+				case FIELD_GETTER -> fieldGetterHandler(studentSideClassName, method, name, ref);
+				case FIELD_SETTER -> fieldSetterHandler(studentSideClassName, method, name, ref);
 			});
 		});
 	}
 
-	private <SO extends StudentSideObject> TypedMethodHandler<SO> instanceMethodHandler(Method method, String name, REF ref)
+	private <SO extends StudentSideObject> TypedMethodHandler<SO>
+			instanceMethodHandler(String studentSideClassName, Method method, String name, REF ref)
 	{
 		Class<?> returnType = method.getReturnType();
 		Class<?>[] parameterTypes = method.getParameterTypes();
 
-		return (proxy, args) -> communicator.callInstanceMethod(name, returnType, parameterTypes, ref, args);
+		return (proxy, args) -> communicator.callInstanceMethod(studentSideClassName, name, returnType, parameterTypes, ref, args);
 	}
 
-	private <SO extends StudentSideObject> TypedMethodHandler<SO> fieldGetterHandler(Method method, String name, REF ref)
+	private <SO extends StudentSideObject> TypedMethodHandler<SO>
+			fieldGetterHandler(String studentSideClassName, Method method, String name, REF ref)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
-			throw new InconsistentHierarchyException("Student-side static field getter return type was void");
+			throw new InconsistentHierarchyException("Student-side instance field getter return type was void");
 
 		if(method.getParameterTypes().length != 0)
-			throw new InconsistentHierarchyException("Student-side static field getter had parameters");
+			throw new InconsistentHierarchyException("Student-side instance field getter had parameters");
 
-		return (proxy, args) -> communicator.getField(name, returnType, ref);
+		return (proxy, args) -> communicator.getField(studentSideClassName, name, returnType, ref);
 	}
 
-	private <SO extends StudentSideObject> TypedMethodHandler<SO> fieldSetterHandler(Method method, String name, REF ref)
+	private <SO extends StudentSideObject> TypedMethodHandler<SO>
+			fieldSetterHandler(String studentSideClassName, Method method, String name, REF ref)
 	{
 		if(!method.getReturnType().equals(void.class))
-			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method.getReturnType());
+			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method.getReturnType());
 
 		Class<?>[] parameterTypes = method.getParameterTypes();
-		if(parameterTypes.length != 0)
-			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + parameterTypes.length);
+		if(parameterTypes.length != 1)
+			throw new InconsistentHierarchyException("Student-side instance field setter had not exactly one parameter: " + parameterTypes.length);
 
 		Class<?> parameterType = parameterTypes[0];
 
-		return fieldSetterHandlerChecked(name, parameterType, ref);
+		return fieldSetterHandlerChecked(studentSideClassName, name, parameterType, ref);
 	}
 
 	//extracted to own method so casting to field type is expressible in Java
-	private <F, SO extends StudentSideObject> TypedMethodHandler<SO> fieldSetterHandlerChecked(String name, Class<F> fieldType, REF ref)
+	private <F, SO extends StudentSideObject> TypedMethodHandler<SO>
+			fieldSetterHandlerChecked(String studentSideClassName, String name, Class<F> fieldType, REF ref)
 	{
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			communicator.setField(name, fieldType, ref, argCasted);
+			communicator.setField(studentSideClassName, name, fieldType, ref, argCasted);
 			return null;
 		};
 	}
@@ -228,8 +234,7 @@ public class StudentSideImpl<REF> implements StudentSide
 			if(kind == null)
 				throw new InconsistentHierarchyException(method + " is abstract, but has no special student-side meaning");
 
-			//TODO allow name overriding
-			handler = generateStudentSideHandler.generate(kind, method.getName(), false);
+			handler = generateStudentSideHandler.generate(kind, getName(method), false);
 		} else
 		{
 			if(kind != null)

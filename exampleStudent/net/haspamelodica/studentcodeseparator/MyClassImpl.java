@@ -7,7 +7,8 @@ public class MyClassImpl
 	public static int staticMethod()
 	{
 		int result = myStaticField.length();
-		System.out.println(" STUDENT: staticMethod() called; myStaticField is \"" + myStaticField + "\" (result is " + result + ")");
+		System.out.println(" STUDENT: staticMethod() called; "
+				+ "myStaticField is \"" + myStaticField + "\" (result is " + result + ")");
 
 		myStaticField = "Changed by staticMethod()";
 		return result;

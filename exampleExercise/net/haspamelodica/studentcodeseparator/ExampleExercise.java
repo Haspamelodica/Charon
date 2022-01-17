@@ -9,7 +9,8 @@ public class ExampleExercise
 	{
 		// An instance of StudentSide would be provided by Ares, not created by the tester.
 		// Also, Ares would not use a ReflectiveStudentSideCommunicator in the tester JVM.
-		StudentSide studentSide = new StudentSideImpl<>(ExampleExercise.class.getClassLoader(), new ReflectiveStudentSideCommunicator());
+		StudentSide studentSide = new StudentSideImpl<>(ExampleExercise.class.getClassLoader(),
+				new ReflectiveStudentSideCommunicator());
 
 		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
 		// Prototypes provide access to everything static of a class:
@@ -37,14 +38,14 @@ public class ExampleExercise
 		instance.myField("foobar");
 		instance.method();
 		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
-		
+
 		// The names in the exercise-side prototypes / SSOs don't have to match those in the student classes:
 		// They can be overridden (exercise-side) using an annotation.
 		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
 
 		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
-		// Prototype classes (and SSO classes) can contain methods implemented in the prototype / SSO class itself,
-		// although I'm not sure where this would be useful.
+		// Prototype classes (and SSO classes) can contain methods
+		// implemented in the prototype / SSO class itself, although I'm not sure where this would be useful.
 		System.out.println(MyClassP.test2());
 
 	}

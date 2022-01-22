@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator;
 
-import net.haspamelodica.studentcodeseparator.communicator.impl.ReflectiveStudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMCommunicator;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 
 public class ExampleExercise
@@ -8,9 +8,9 @@ public class ExampleExercise
 	public static void main(String[] args)
 	{
 		// An instance of StudentSide would be provided by Ares, not created by the tester.
-		// Also, Ares would not use a ReflectiveStudentSideCommunicator in the tester JVM.
+		// Also, Ares would not use a SameJVMCommunicator in the tester JVM.
 		StudentSide studentSide = new StudentSideImpl<>(ExampleExercise.class.getClassLoader(),
-				new ReflectiveStudentSideCommunicator());
+				new SameJVMCommunicator());
 
 		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
 		// Prototypes provide access to everything static of a class:

@@ -13,11 +13,14 @@ import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideNam
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
+import net.haspamelodica.studentcodeseparator.serializers.StringSerializer;
 
 @StudentSideObjectKind(CLASS)
 // In a real exercise, it wouldn't be neccessary to use a different name for student-side object and implementation
 // because both classes never get loaded in the same JVM anyway.
 @OverrideStudentSideName("net.haspamelodica.studentcodeseparator.MyClassImpl")
+@UseSerializer(StringSerializer.class)
 public interface MyClass extends StudentSideObject
 {
 	@StudentSideObjectMethodKind(INSTANCE_METHOD)

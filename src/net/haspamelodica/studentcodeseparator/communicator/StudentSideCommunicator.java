@@ -1,14 +1,21 @@
 package net.haspamelodica.studentcodeseparator.communicator;
 
+import java.util.List;
+
+import net.haspamelodica.studentcodeseparator.Serializer;
+
 public interface StudentSideCommunicator<REF>
 {
-	public REF callConstructor(String classname, Class<?>[] paramTypes, Object... args);
+	public <T> REF send(Serializer<T> serializer, REF serializerRef, T obj);
+	public <T> T receive(Serializer<T> serializer, REF serializerRef, REF objRef);
 
-	public <R> R callStaticMethod(String classname, String name, Class<R> returnType, Class<?>[] paramTypes, Object... args);
-	public <F> F getStaticField(String classname, String name, Class<F> fieldType);
-	public <F> void setStaticField(String classname, String name, Class<F> fieldType, F value);
+	public REF callConstructor(String cn, List<String> params, List<REF> argRefs);
 
-	public <R> R callInstanceMethod(String classname, String name, Class<R> returnType, Class<?>[] paramTypes, REF ref, Object... args);
-	public <F> F getField(String classname, String name, Class<F> fieldType, REF ref);
-	public <F> void setField(String classname, String name, Class<F> fieldType, REF ref, F value);
+	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs);
+	public REF getStaticField(String cn, String name, String fieldClassname);
+	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef);
+
+	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs);
+	public REF getField(String cn, String name, String fieldClassname, REF receiverRef);
+	public void setField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
 }

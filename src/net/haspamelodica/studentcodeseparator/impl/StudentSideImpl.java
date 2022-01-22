@@ -1,5 +1,7 @@
 package net.haspamelodica.studentcodeseparator.impl;
 
+import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.c2n;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationHandler;
@@ -8,10 +10,13 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Proxy;
 import java.lang.reflect.Type;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+import net.haspamelodica.studentcodeseparator.Serializer;
 import net.haspamelodica.studentcodeseparator.StudentSide;
 import net.haspamelodica.studentcodeseparator.StudentSideObject;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
@@ -20,6 +25,7 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind.ObjectKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 
@@ -50,19 +56,23 @@ public class StudentSideImpl<REF> implements StudentSide
 	public <SO extends StudentSideObject, SP extends StudentSidePrototype<SO>> SP createPrototype(Class<SP> prototypeClass)
 	{
 		Class<SO> objectClass = checkAndGetObjectClassFromPrototypeClass(prototypeClass);
-		String studentSideClassName = getName(objectClass);
+		SerializationHandler<REF> serializer = new SerializationHandler<>(communicator)
+				.withAdditionalSerializers(getSerializers(prototypeClass))
+				.withAdditionalSerializers(getSerializers(objectClass));
+		String studentSideCN = getName(objectClass);
 
 		return createProxyInstance(prototypeClass, method ->
 		{
 			checkNotAnnotatedWith(method, StudentSideObjectKind.class);
 			checkNotAnnotatedWith(method, StudentSideObjectMethodKind.class);
+			SerializationHandler<REF> serializerMethod = serializer.withAdditionalSerializers(getSerializers(method));
 
 			return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 			{
-				case CONSTRUCTOR -> constructorHandler(objectClass, studentSideClassName, method, nameOverridden);
-				case STATIC_METHOD -> staticMethodHandler(studentSideClassName, method, name);
-				case STATIC_FIELD_GETTER -> staticFieldGetterHandler(studentSideClassName, method, name);
-				case STATIC_FIELD_SETTER -> staticFieldSetterHandler(studentSideClassName, method, name);
+				case CONSTRUCTOR -> constructorHandler(objectClass, serializer, serializerMethod, studentSideCN, method, nameOverridden);
+				case STATIC_METHOD -> staticMethodHandler(studentSideCN, serializerMethod, method, name);
+				case STATIC_FIELD_GETTER -> staticFieldGetterHandler(studentSideCN, serializerMethod, method, name);
+				case STATIC_FIELD_SETTER -> staticFieldSetterHandler(studentSideCN, serializerMethod, method, name);
 			});
 		});
 	}
@@ -112,7 +122,8 @@ public class StudentSideImpl<REF> implements StudentSide
 	}
 
 	private <SO extends StudentSideObject, SP extends StudentSidePrototype<SO>>
-			TypedMethodHandler<SP> constructorHandler(Class<SO> objectClass, String studentSideClassName, Method method, boolean nameOverridden)
+			TypedMethodHandler<SP> constructorHandler(Class<SO> objectClass, SerializationHandler<REF> serializer,
+					SerializationHandler<REF> serializerMethod, String studentSideCN, Method method, boolean nameOverridden)
 	{
 		switch(objectClass.getAnnotation(StudentSideObjectKind.class).value())
 		{
@@ -132,20 +143,26 @@ public class StudentSideImpl<REF> implements StudentSide
 			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side object class: " +
 					"expected " + objectClass + ", but was " + method.getReturnType() + ": " + method);
 
-		return (proxy, args) -> createInstance(studentSideClassName, objectClass, method.getParameterTypes(), args);
+		List<Class<?>> constrParamTypes = Arrays.asList(method.getParameterTypes());
+		List<String> constrParamCNs = c2n(constrParamTypes);
+		return (proxy, args) -> createInstance(objectClass, serializer, serializerMethod, studentSideCN, constrParamTypes, constrParamCNs, args);
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
-			staticMethodHandler(String studentSideClassName, Method method, String name)
+			staticMethodHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
-		Class<?>[] parameterTypes = method.getParameterTypes();
 
-		return (proxy, args) -> communicator.callStaticMethod(studentSideClassName, name, returnType, parameterTypes, args);
+		String returnCN = c2n(returnType);
+		List<Class<?>> paramClasses = Arrays.asList(method.getParameterTypes());
+		List<String> paramCNs = c2n(paramClasses);
+
+		return (proxy, args) -> serializer.receive(returnType, communicator.callStaticMethod(
+				studentSideCN, name, returnCN, paramCNs, serializer.send(paramClasses, argsToList(args))));
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
-			staticFieldGetterHandler(String studentSideClassName, Method method, String name)
+			staticFieldGetterHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -154,66 +171,77 @@ public class StudentSideImpl<REF> implements StudentSide
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side static field getter had parameters: " + method);
 
-		return (proxy, args) -> communicator.getStaticField(studentSideClassName, name, returnType);
+		String returnCN = c2n(returnType);
+
+		return (proxy, args) -> serializer.receive(returnType, communicator.getStaticField(studentSideCN, name, returnCN));
 	}
 
 	private <SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
-			staticFieldSetterHandler(String studentSideClassName, Method method, String name)
+			staticFieldSetterHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method);
 
-		Class<?>[] parameterTypes = method.getParameterTypes();
-		if(parameterTypes.length != 1)
+		Class<?>[] paramTypes = method.getParameterTypes();
+		if(paramTypes.length != 1)
 			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + method);
 
-		Class<?> parameterType = parameterTypes[0];
+		Class<?> paramType = paramTypes[0];
 
-		return staticFieldSetterHandlerChecked(studentSideClassName, name, parameterType);
+		return staticFieldSetterHandlerChecked(studentSideCN, serializer, name, paramType);
 	}
 
 	//extracted to own method so casting to field type is expressible in Java
 	private <F, SP extends StudentSidePrototype<?>> TypedMethodHandler<SP>
-			staticFieldSetterHandlerChecked(String studentSideClassName, String name, Class<F> fieldType)
+			staticFieldSetterHandlerChecked(String studentSideCN, SerializationHandler<REF> serializer, String name, Class<F> fieldType)
 	{
+		String fieldCN = c2n(fieldType);
+
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			communicator.setStaticField(studentSideClassName, name, fieldType, argCasted);
+			communicator.setStaticField(studentSideCN, name, fieldCN, serializer.send(fieldType, argCasted));
 			return null;
 		};
 	}
 
 	private <SO extends StudentSideObject> SO
-			createInstance(String studentSideClassName, Class<SO> objectClass, Class<?>[] constrParamTypes, Object... constrArgs)
+			createInstance(Class<SO> objectClass, SerializationHandler<REF> serializer,
+					SerializationHandler<REF> serializerConstrMethod, String studentSideCN, List<Class<?>> constrParamTypes,
+					List<String> constrParamCNs, Object... constrArgs)
 	{
-		REF ref = communicator.callConstructor(studentSideClassName, constrParamTypes, constrArgs);
+		REF ref = communicator.callConstructor(studentSideCN, constrParamCNs, serializerConstrMethod.send(constrParamTypes, argsToList(constrArgs)));
 		return createProxyInstance(objectClass, method ->
 		{
 			checkNotAnnotatedWith(method, StudentSideObjectKind.class);
 			checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
+			SerializationHandler<REF> serializerMethod = serializer.withAdditionalSerializers(getSerializers(method));
 
 			return handlerFor(method, StudentSideObjectMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 			{
-				case INSTANCE_METHOD -> instanceMethodHandler(studentSideClassName, method, name, ref);
-				case FIELD_GETTER -> fieldGetterHandler(studentSideClassName, method, name, ref);
-				case FIELD_SETTER -> fieldSetterHandler(studentSideClassName, method, name, ref);
+				case INSTANCE_METHOD -> instanceMethodHandler(studentSideCN, serializerMethod, method, name, ref);
+				case FIELD_GETTER -> fieldGetterHandler(studentSideCN, serializerMethod, method, name, ref);
+				case FIELD_SETTER -> fieldSetterHandler(studentSideCN, serializerMethod, method, name, ref);
 			});
 		});
 	}
 
 	private <SO extends StudentSideObject> TypedMethodHandler<SO>
-			instanceMethodHandler(String studentSideClassName, Method method, String name, REF ref)
+			instanceMethodHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name, REF ref)
 	{
 		Class<?> returnType = method.getReturnType();
-		Class<?>[] parameterTypes = method.getParameterTypes();
+		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
 
-		return (proxy, args) -> communicator.callInstanceMethod(studentSideClassName, name, returnType, parameterTypes, ref, args);
+		String returnCN = c2n(returnType);
+		List<String> paramCNs = c2n(paramTypes);
+
+		return (proxy, args) -> serializer.receive(returnType, communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref,
+				serializer.send(paramTypes, argsToList(args))));
 	}
 
 	private <SO extends StudentSideObject> TypedMethodHandler<SO>
-			fieldGetterHandler(String studentSideClassName, Method method, String name, REF ref)
+			fieldGetterHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name, REF ref)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -222,33 +250,37 @@ public class StudentSideImpl<REF> implements StudentSide
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side instance field getter had parameters: " + method);
 
-		return (proxy, args) -> communicator.getField(studentSideClassName, name, returnType, ref);
+		String returnCN = c2n(returnType);
+
+		return (proxy, args) -> serializer.receive(returnType, communicator.getField(studentSideCN, name, returnCN, ref));
 	}
 
 	private <SO extends StudentSideObject> TypedMethodHandler<SO>
-			fieldSetterHandler(String studentSideClassName, Method method, String name, REF ref)
+			fieldSetterHandler(String studentSideCN, SerializationHandler<REF> serializer, Method method, String name, REF ref)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
 
-		Class<?>[] parameterTypes = method.getParameterTypes();
-		if(parameterTypes.length != 1)
+		Class<?>[] paramTypes = method.getParameterTypes();
+		if(paramTypes.length != 1)
 			throw new InconsistentHierarchyException("Student-side instance field setter had not exactly one parameter: " + method);
 
-		Class<?> parameterType = parameterTypes[0];
+		Class<?> paramType = paramTypes[0];
 
-		return fieldSetterHandlerChecked(studentSideClassName, name, parameterType, ref);
+		return fieldSetterHandlerChecked(studentSideCN, serializer, name, paramType, ref);
 	}
 
 	//extracted to own method so casting to field type is expressible in Java
 	private <F, SO extends StudentSideObject> TypedMethodHandler<SO>
-			fieldSetterHandlerChecked(String studentSideClassName, String name, Class<F> fieldType, REF ref)
+			fieldSetterHandlerChecked(String studentSideCN, SerializationHandler<REF> serializer, String name, Class<F> fieldType, REF ref)
 	{
+		String fieldCN = c2n(fieldType);
+
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			communicator.setField(studentSideClassName, name, fieldType, ref, argCasted);
+			communicator.setField(studentSideCN, name, fieldCN, ref, serializer.send(fieldType, argCasted));
 			return null;
 		};
 	}
@@ -291,6 +323,18 @@ public class StudentSideImpl<REF> implements StudentSide
 		P proxyInstance = (P) Proxy.newProxyInstance(classLoader, new Class[] {proxiedClass},
 				(proxy, method, args) -> handler.invoke((P) proxy, method, args));
 		return proxyInstance;
+	}
+
+	private static List<Object> argsToList(Object[] args)
+	{
+		return args == null ? List.of() : Arrays.asList(args);
+	}
+
+	private static List<Class<? extends Serializer<?>>> getSerializers(AnnotatedElement element)
+	{
+		//This also catches uses of UseSerializers
+		return Arrays.stream(element.getAnnotationsByType(UseSerializer.class))
+				.map((Function<UseSerializer, Class<? extends Serializer<?>>>) UseSerializer::value).toList();
 	}
 
 	private static String getName(Class<?> clazz)

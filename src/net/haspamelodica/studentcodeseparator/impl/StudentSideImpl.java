@@ -1,7 +1,6 @@
 package net.haspamelodica.studentcodeseparator.impl;
 
 import java.lang.annotation.Annotation;
-import java.lang.reflect.AccessibleObject;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -18,6 +17,7 @@ import net.haspamelodica.studentcodeseparator.StudentSideObject;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind.ObjectKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
@@ -68,40 +68,69 @@ public class StudentSideImpl<REF> implements StudentSide
 	}
 
 	private static <SO extends StudentSideObject, SP extends StudentSidePrototype<SO>>
-			Class<SO> checkAndGetObjectClassFromPrototypeClass(Class<? extends StudentSidePrototype<SO>> prototypeClass)
+			Class<SO> checkAndGetObjectClassFromPrototypeClass(Class<SP> prototypeClass)
 	{
 		if(!prototypeClass.isInterface())
-			throw new InconsistentHierarchyException("Prototype classes have to be interfaces");
+			throw new InconsistentHierarchyException("Prototype classes have to be interfaces: " + prototypeClass);
+
+		checkNotAnnotatedWith(prototypeClass, StudentSideObjectKind.class);
+		checkNotAnnotatedWith(prototypeClass, StudentSideObjectMethodKind.class);
+		checkNotAnnotatedWith(prototypeClass, StudentSidePrototypeMethodKind.class);
 
 		for(Type genericSuperinterface : prototypeClass.getGenericInterfaces())
 			if(genericSuperinterface.equals(StudentSidePrototype.class))
-				throw new InconsistentHierarchyException("A prototype class has to give a type argument to StudentClassPrototype");
+				throw new InconsistentHierarchyException("A prototype class has to give a type argument to StudentClassPrototype: " + prototypeClass);
 			else if(genericSuperinterface instanceof ParameterizedType parameterizedSuperinterface)
 				if(parameterizedSuperinterface.getRawType() == StudentSidePrototype.class)
 				{
-					Type objectClassUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
-					if(!(objectClassUnchecked instanceof Class))
-						throw new InconsistentHierarchyException("The type argument to StudentClassPrototype has to be an unparameterized or raw class");
+					Type objectTypeUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
+					if(!(objectTypeUnchecked instanceof Class))
+						throw new InconsistentHierarchyException("The type argument to StudentClassPrototype has to be an unparameterized or raw class: " + prototypeClass);
 
-					//TODO check object class
+					//From the method signature, we know the type parameter to StudentSidePrototype is SO.
+					//So, this cast has to succeed.
 					@SuppressWarnings("unchecked")
-					Class<SO> objectClass = (Class<SO>) objectClassUnchecked;
+					Class<SO> objectClass = (Class<SO>) objectTypeUnchecked;
+					checkObjectClass(objectClass);
 					return objectClass;
 				}
-		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly");
+		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
+	}
+
+	private static <SO extends StudentSideObject> void checkObjectClass(Class<SO> objectClass)
+	{
+		checkNotAnnotatedWith(objectClass, StudentSideObjectMethodKind.class);
+		checkNotAnnotatedWith(objectClass, StudentSidePrototypeMethodKind.class);
+
+		StudentSideObjectKind kind = objectClass.getAnnotation(StudentSideObjectKind.class);
+		if(kind == null)
+			throw new InconsistentHierarchyException("A student-side object class has to be annotated with StudentSideObjectKind: " + objectClass);
+		if(kind.value() != ObjectKind.CLASS)
+			throw new IllegalArgumentException("Student-side interfaces aren't implemented yet");
+
+		//TODO verify object class
 	}
 
 	private <SO extends StudentSideObject, SP extends StudentSidePrototype<SO>>
 			TypedMethodHandler<SP> constructorHandler(Class<SO> objectClass, String studentSideClassName, Method method, boolean nameOverridden)
 	{
-		//TODO disallow if StudentSideObjectKind isn't CLASS
+		switch(objectClass.getAnnotation(StudentSideObjectKind.class).value())
+		{
+			case CLASS:
+				break;
+			case INTERFACE:
+				throw new InconsistentHierarchyException("Student-side interfaces can't have constructors");
+			default:
+				throw new IllegalStateException("Unknown student-side object kind: "
+						+ objectClass.getAnnotation(StudentSideObjectKind.class).value());
+		}
 
 		if(nameOverridden)
-			throw new InconsistentHierarchyException("Student-side constructor had name overridden");
+			throw new InconsistentHierarchyException("Student-side constructor had name overridden: " + method);
 
 		if(!method.getReturnType().equals(objectClass))
 			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side object class: " +
-					"expected " + objectClass + ", but was " + method.getReturnType());
+					"expected " + objectClass + ", but was " + method.getReturnType() + ": " + method);
 
 		return (proxy, args) -> createInstance(studentSideClassName, objectClass, method.getParameterTypes(), args);
 	}
@@ -120,10 +149,10 @@ public class StudentSideImpl<REF> implements StudentSide
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
-			throw new InconsistentHierarchyException("Student-side static field getter return type was void");
+			throw new InconsistentHierarchyException("Student-side static field getter return type was void: " + method);
 
 		if(method.getParameterTypes().length != 0)
-			throw new InconsistentHierarchyException("Student-side static field getter had parameters");
+			throw new InconsistentHierarchyException("Student-side static field getter had parameters: " + method);
 
 		return (proxy, args) -> communicator.getStaticField(studentSideClassName, name, returnType);
 	}
@@ -132,11 +161,11 @@ public class StudentSideImpl<REF> implements StudentSide
 			staticFieldSetterHandler(String studentSideClassName, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
-			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method.getReturnType());
+			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method);
 
 		Class<?>[] parameterTypes = method.getParameterTypes();
 		if(parameterTypes.length != 1)
-			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + parameterTypes.length);
+			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + method);
 
 		Class<?> parameterType = parameterTypes[0];
 
@@ -188,10 +217,10 @@ public class StudentSideImpl<REF> implements StudentSide
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
-			throw new InconsistentHierarchyException("Student-side instance field getter return type was void");
+			throw new InconsistentHierarchyException("Student-side instance field getter return type was void: " + method);
 
 		if(method.getParameterTypes().length != 0)
-			throw new InconsistentHierarchyException("Student-side instance field getter had parameters");
+			throw new InconsistentHierarchyException("Student-side instance field getter had parameters: " + method);
 
 		return (proxy, args) -> communicator.getField(studentSideClassName, name, returnType, ref);
 	}
@@ -200,11 +229,11 @@ public class StudentSideImpl<REF> implements StudentSide
 			fieldSetterHandler(String studentSideClassName, Method method, String name, REF ref)
 	{
 		if(!method.getReturnType().equals(void.class))
-			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method.getReturnType());
+			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
 
 		Class<?>[] parameterTypes = method.getParameterTypes();
 		if(parameterTypes.length != 1)
-			throw new InconsistentHierarchyException("Student-side instance field setter had not exactly one parameter: " + parameterTypes.length);
+			throw new InconsistentHierarchyException("Student-side instance field setter had not exactly one parameter: " + method);
 
 		Class<?> parameterType = parameterTypes[0];
 
@@ -232,13 +261,13 @@ public class StudentSideImpl<REF> implements StudentSide
 		if(Modifier.isAbstract(method.getModifiers()))
 		{
 			if(kind == null)
-				throw new InconsistentHierarchyException(method + " is abstract, but has no special student-side meaning");
+				throw new InconsistentHierarchyException("Method is abstract, but has no special student-side meaning: " + method);
 
 			handler = generateStudentSideHandler.generate(kind, getName(method), false);
 		} else
 		{
 			if(kind != null)
-				throw new InconsistentHierarchyException(method + " is not abstract, but has a special student-side meaning");
+				throw new InconsistentHierarchyException("Method is not abstract, but has a special student-side meaning: " + method);
 
 			handler = (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 		}
@@ -281,7 +310,7 @@ public class StudentSideImpl<REF> implements StudentSide
 		return getName.apply(element);
 	}
 
-	private static void checkNotAnnotatedWith(AccessibleObject annotatedObject, Class<? extends Annotation> annotationClass)
+	private static void checkNotAnnotatedWith(AnnotatedElement annotatedObject, Class<? extends Annotation> annotationClass)
 	{
 		if(annotatedObject.isAnnotationPresent(annotationClass))
 			throw new InconsistentHierarchyException(annotatedObject + " is unexpectedly annotated with " + annotationClass);

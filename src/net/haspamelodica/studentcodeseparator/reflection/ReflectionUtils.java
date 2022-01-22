@@ -93,19 +93,19 @@ public class ReflectionUtils
 		return method;
 	}
 
-	public static Runnable wrap(ThrowingRunnable body)
+	public static Runnable wrap(ReflectiveRunnable body)
 	{
 		return () -> doChecked(body);
 	}
-	public static <R> Supplier<R> wrap(ThrowingSupplier<R> body)
+	public static <R> Supplier<R> wrap(ReflectiveSupplier<R> body)
 	{
 		return () -> doChecked(body);
 	}
-	public static <A, R> Function<A, R> wrap(ThrowingFunction<A, R> body)
+	public static <A, R> Function<A, R> wrap(ReflectiveFunction<A, R> body)
 	{
 		return a -> doChecked(body, a);
 	}
-	public static void doChecked(ThrowingRunnable body)
+	public static void doChecked(ReflectiveRunnable body)
 	{
 		doChecked(() ->
 		{
@@ -113,11 +113,11 @@ public class ReflectionUtils
 			return null;
 		});
 	}
-	public static <R> R doChecked(ThrowingSupplier<R> body)
+	public static <R> R doChecked(ReflectiveSupplier<R> body)
 	{
 		return doChecked(a -> body.get(), null);
 	}
-	public static <A, R> R doChecked(ThrowingFunction<A, R> body, A a)
+	public static <A, R> R doChecked(ReflectiveFunction<A, R> body, A a)
 	{
 		try
 		{

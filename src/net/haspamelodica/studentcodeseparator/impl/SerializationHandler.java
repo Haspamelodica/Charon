@@ -43,6 +43,9 @@ public class SerializationHandler<REF>
 	public SerializationHandler<REF> withAdditionalSerializers(List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		List<Class<? extends Serializer<?>>> mergedSerializerClasses = new ArrayList<>(serializerClasses);
+		if(mergedSerializerClasses.isEmpty())
+			return this;
+		//insert these after new classes to let new serializer classes override old ones
 		mergedSerializerClasses.addAll(this.serializerClasses);
 		return new SerializationHandler<>(communicator, mergedSerializerClasses, this.initializedSerializersBySerializerClass);
 	}

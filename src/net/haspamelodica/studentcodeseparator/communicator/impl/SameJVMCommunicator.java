@@ -1,5 +1,7 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl;
 
+import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.pack;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.unpack;
 import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.n2c;
 
 import java.util.List;
@@ -9,27 +11,27 @@ import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 {
 	@Override
-	public Object callConstructor(String cn, List<String> params, List<Object> argRefs)
+	public SameJVMRef callConstructor(String cn, List<String> params, List<SameJVMRef> argRefs)
 	{
-		return ReflectionUtils.callConstructor(n2c(cn), n2c(params), argRefs);
+		return pack(ReflectionUtils.callConstructor(n2c(cn), n2c(params), unpack(argRefs)));
 	}
 
 	@Override
-	public Object callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<Object> argRefs)
+	public SameJVMRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<SameJVMRef> argRefs)
 	{
-		return ReflectionUtils.callStaticMethod(n2c(cn), name, n2c(returnClassname), n2c(params), argRefs);
+		return pack(ReflectionUtils.callStaticMethod(n2c(cn), name, n2c(returnClassname), n2c(params), unpack(argRefs)));
 	}
 
 	@Override
-	public Object getStaticField(String cn, String name, String fieldClassname)
+	public SameJVMRef getStaticField(String cn, String name, String fieldClassname)
 	{
-		return ReflectionUtils.getStaticField(n2c(cn), name, n2c(fieldClassname));
+		return pack(ReflectionUtils.getStaticField(n2c(cn), name, n2c(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, Object valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, SameJVMRef valueRef)
 	{
-		setStaticField_(n2c(cn), name, n2c(fieldClassname), valueRef);
+		setStaticField_(n2c(cn), name, n2c(fieldClassname), unpack(valueRef));
 	}
 	// extracted to method so the cast is expressible in Java
 	private <F> void setStaticField_(Class<?> clazz, String name, Class<F> fieldClass, Object value)
@@ -40,9 +42,9 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public Object callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiverRef, List<Object> argRefs)
+	public SameJVMRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, SameJVMRef receiverRef, List<SameJVMRef> argRefs)
 	{
-		return callInstanceMethod_(n2c(cn), name, n2c(returnClassname), n2c(params), receiverRef, argRefs);
+		return pack(callInstanceMethod_(n2c(cn), name, n2c(returnClassname), n2c(params), unpack(receiverRef), unpack(argRefs)));
 	}
 	// extracted to method so the cast is expressible in Java
 	private <T> Object callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params, Object receiver, List<Object> args)
@@ -53,9 +55,9 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public Object getField(String cn, String name, String fieldClassname, Object receiverRef)
+	public SameJVMRef getField(String cn, String name, String fieldClassname, SameJVMRef receiverRef)
 	{
-		return getField_(n2c(cn), name, n2c(fieldClassname), receiverRef);
+		return pack(getField_(n2c(cn), name, n2c(fieldClassname), unpack(receiverRef)));
 	}
 	// extracted to method so the cast is expressible in Java
 	private <T> Object getField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
@@ -66,9 +68,9 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public void setField(String cn, String name, String fieldClassname, Object receiverRef, Object valueRef)
+	public void setField(String cn, String name, String fieldClassname, SameJVMRef receiverRef, SameJVMRef valueRef)
 	{
-		setField_(n2c(cn), name, n2c(fieldClassname), receiverRef, valueRef);
+		setField_(n2c(cn), name, n2c(fieldClassname), unpack(receiverRef), unpack(valueRef));
 	}
 	// extracted to method so the casts are expressible in Java
 	private <T, F> void setField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)

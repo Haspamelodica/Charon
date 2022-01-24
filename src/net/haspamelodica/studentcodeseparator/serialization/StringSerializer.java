@@ -1,10 +1,8 @@
-package net.haspamelodica.studentcodeseparator.serializers;
+package net.haspamelodica.studentcodeseparator.serialization;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-
-import net.haspamelodica.studentcodeseparator.Serializer;
 
 public class StringSerializer implements Serializer<String>
 {

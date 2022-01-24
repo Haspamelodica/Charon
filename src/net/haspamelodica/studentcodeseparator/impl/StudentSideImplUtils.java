@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
 import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public class StudentSideImplUtils
 {

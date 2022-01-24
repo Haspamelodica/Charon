@@ -2,7 +2,7 @@ package net.haspamelodica.studentcodeseparator.communicator;
 
 import java.util.List;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public interface StudentSideCommunicator<REF>
 {

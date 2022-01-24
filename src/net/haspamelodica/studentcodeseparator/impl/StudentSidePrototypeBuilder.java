@@ -23,6 +23,7 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMetho
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
 public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject, SP extends StudentSidePrototype<SO>>
 {

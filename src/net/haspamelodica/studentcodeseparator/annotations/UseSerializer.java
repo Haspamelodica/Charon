@@ -8,7 +8,7 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 @Retention(RUNTIME)
 @Target({TYPE, METHOD})

@@ -3,8 +3,8 @@ package net.haspamelodica.studentcodeseparator.communicator.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public class LoggingCommunicator<REF> implements StudentSideCommunicator<REF>
 {

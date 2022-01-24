@@ -14,7 +14,7 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
-import net.haspamelodica.studentcodeseparator.serializers.StringSerializer;
+import net.haspamelodica.studentcodeseparator.serialization.StringSerializer;
 
 @StudentSideObjectKind(CLASS)
 // In a real exercise, it wouldn't be neccessary to use a different name for student-side object and implementation

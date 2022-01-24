@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.impl;
+package net.haspamelodica.studentcodeseparator.serialization;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -7,11 +7,9 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.SerializationException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
-import net.haspamelodica.studentcodeseparator.serializers.PrimitiveSerializer;
 
 public class SerializationHandler<REF>
 {

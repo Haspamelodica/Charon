@@ -1,11 +1,9 @@
-package net.haspamelodica.studentcodeseparator.serializers;
+package net.haspamelodica.studentcodeseparator.serialization;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
-
-import net.haspamelodica.studentcodeseparator.Serializer;
 
 public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 {

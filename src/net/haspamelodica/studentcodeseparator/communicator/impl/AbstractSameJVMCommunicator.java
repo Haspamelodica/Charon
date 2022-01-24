@@ -12,8 +12,8 @@ import java.io.UncheckedIOException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
-import net.haspamelodica.studentcodeseparator.Serializer;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 // We can pass objects around directly, but if we wrap each object in a SameJVMRef, we catch some errors when forgetting to
 // send/receive somewhere

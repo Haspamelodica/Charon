@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator;
+package net.haspamelodica.studentcodeseparator.serialization;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;

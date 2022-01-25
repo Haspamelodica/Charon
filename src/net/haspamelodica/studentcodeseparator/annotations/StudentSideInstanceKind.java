@@ -7,12 +7,13 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)
-public @interface StudentSideObjectKind
+public @interface StudentSideInstanceKind
 {
-	public enum ObjectKind
+	public enum Kind
 	{
-		CLASS, INTERFACE;
+		CLASS,
+		INTERFACE;
 	}
 
-	ObjectKind value();
+	Kind value();
 }

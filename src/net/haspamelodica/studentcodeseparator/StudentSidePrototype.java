@@ -7,5 +7,5 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMe
  * This includes calling static methods, reading static fields, writing static fields, and calling constructors.
  * The operations are specified by annotating each method of a subinterface with {@link StudentSidePrototypeMethodKind}.
  */
-public interface StudentSidePrototype<SO extends StudentSideObject>
+public interface StudentSidePrototype<SI extends StudentSideInstance>
 {}

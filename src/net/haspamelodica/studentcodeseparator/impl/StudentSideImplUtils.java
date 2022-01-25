@@ -8,7 +8,6 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
@@ -48,14 +47,14 @@ public class StudentSideImplUtils
 		return (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}
 
+	public static <REF> InstanceMethodHandler<REF> defaultInstanceHandler(Method method)
+	{
+		return (ref, proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
+	}
+
 	public interface StudentSideHandlerGenerator<R, K>
 	{
 		public R generate(K kind, String name, boolean nameOverridden);
-	}
-
-	public static <P> P createProxyInstance(Class<P> proxiedClass, Map<Method, MethodHandler> methodHandlers)
-	{
-		return createProxyInstance(proxiedClass, (proxy, method, args) -> methodHandlers.get(method).invoke(proxy, args));
 	}
 
 	public static <P> P createProxyInstance(Class<P> proxiedClass, InvocationHandler handler)

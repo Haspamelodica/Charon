@@ -7,26 +7,27 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.SerializationException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 
-public class SerializationHandler<REF>
+public class SerializationHandler<REF extends Ref>
 {
 	private final StudentSideCommunicator<REF>			communicator;
 	private final List<Class<? extends Serializer<?>>>	serializerClasses;
 
 	private final ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<REF, ?>> initializedSerializersBySerializerClass;
 
-	private final Map<Class<?>, InitializedSerializer<REF, ?>> initializedSerializersByObjectClass;
+	private final Map<Class<?>, InitializedSerializer<REF, ?>> initializedSerializersByInstanceClass;
 
-	public SerializationHandler(StudentSideCommunicator<REF> communicator)
+	public SerializationHandler(StudentSideCommunicator<REF> communicator, List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		this.communicator = communicator;
-		this.serializerClasses = PrimitiveSerializer.PRIMITIVE_SERIALIZERS;
+		this.serializerClasses = List.copyOf(serializerClasses);
 
 		this.initializedSerializersBySerializerClass = new ConcurrentHashMap<>();
-		this.initializedSerializersByObjectClass = new HashMap<>();
+		this.initializedSerializersByInstanceClass = new HashMap<>();
 	}
 	private SerializationHandler(StudentSideCommunicator<REF> communicator, List<Class<? extends Serializer<?>>> serializerClasses,
 			ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<REF, ?>> initializedSerializersBySerializerClass)
@@ -35,7 +36,7 @@ public class SerializationHandler<REF>
 		this.serializerClasses = List.copyOf(serializerClasses);
 
 		this.initializedSerializersBySerializerClass = initializedSerializersBySerializerClass;
-		this.initializedSerializersByObjectClass = new HashMap<>();
+		this.initializedSerializersByInstanceClass = new HashMap<>();
 	}
 
 	public SerializationHandler<REF> withAdditionalSerializers(List<Class<? extends Serializer<?>>> serializerClasses)
@@ -84,7 +85,7 @@ public class SerializationHandler<REF>
 
 	private <T> InitializedSerializer<REF, T> getSerializerForObjectClass(Class<T> clazz)
 	{
-		InitializedSerializer<REF, ?> result = initializedSerializersByObjectClass.computeIfAbsent(clazz, c ->
+		InitializedSerializer<REF, ?> result = initializedSerializersByInstanceClass.computeIfAbsent(clazz, c ->
 		{
 			for(Class<? extends Serializer<?>> serializerClass : serializerClasses)
 			{
@@ -109,6 +110,7 @@ public class SerializationHandler<REF>
 		});
 	}
 
-	private static record InitializedSerializer<REF, T> (Serializer<T> serializer, REF studentSideSerializerRef)
+	private static record InitializedSerializer<REF, T> (
+			Serializer<T> serializer, REF studentSideSerializerRef)
 	{}
 }

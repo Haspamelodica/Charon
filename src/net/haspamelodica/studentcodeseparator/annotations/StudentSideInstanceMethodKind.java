@@ -7,14 +7,14 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.METHOD)
-public @interface StudentSideObjectMethodKind
+public @interface StudentSideInstanceMethodKind
 {
-	public enum ObjectMethodKind
+	public enum Kind
 	{
 		INSTANCE_METHOD,
 		FIELD_GETTER,
 		FIELD_SETTER;
 	}
 
-	public ObjectMethodKind value();
+	public Kind value();
 }

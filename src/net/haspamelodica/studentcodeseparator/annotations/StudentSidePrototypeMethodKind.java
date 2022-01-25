@@ -9,7 +9,7 @@ import java.lang.annotation.Target;
 @Target(ElementType.METHOD)
 public @interface StudentSidePrototypeMethodKind
 {
-	public enum PrototypeMethodKind
+	public enum Kind
 	{
 		CONSTRUCTOR,
 		STATIC_METHOD,
@@ -17,5 +17,5 @@ public @interface StudentSidePrototypeMethodKind
 		STATIC_FIELD_SETTER;
 	}
 
-	public PrototypeMethodKind value();
+	public Kind value();
 }

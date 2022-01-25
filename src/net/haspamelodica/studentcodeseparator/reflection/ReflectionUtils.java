@@ -170,28 +170,6 @@ public class ReflectionUtils
 		return clazz.getName();
 	}
 
-	/*
-	public static Class<?> replacePrimitiveWithWrapper(Class<?> clazz)
-	{
-		if(clazz.isPrimitive())
-		{
-			// @formatter:off
-			if(clazz == Boolean  .TYPE) return Boolean  .class;
-			if(clazz == Character.TYPE) return Character.class;
-			if(clazz == Byte     .TYPE) return Byte     .class;
-			if(clazz == Short    .TYPE) return Short    .class;
-			if(clazz == Integer  .TYPE) return Integer  .class;
-			if(clazz == Long     .TYPE) return Long     .class;
-			if(clazz == Float    .TYPE) return Float    .class;
-			if(clazz == Double   .TYPE) return Double   .class;
-			if(clazz == Void     .TYPE) return Void     .class;
-			// @formatter:on
-			throw new IllegalArgumentException("Unknown primitive type: " + clazz);
-		}
-		return clazz;
-	}
-	*/
-
 	private ReflectionUtils()
 	{}
 }

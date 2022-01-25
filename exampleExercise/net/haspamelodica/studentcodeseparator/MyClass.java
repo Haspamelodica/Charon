@@ -1,39 +1,39 @@
 package net.haspamelodica.studentcodeseparator;
 
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind.ObjectKind.CLASS;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind.ObjectMethodKind.FIELD_GETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind.ObjectMethodKind.FIELD_SETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind.ObjectMethodKind.INSTANCE_METHOD;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.PrototypeMethodKind.CONSTRUCTOR;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.PrototypeMethodKind.STATIC_FIELD_GETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.PrototypeMethodKind.STATIC_FIELD_SETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.PrototypeMethodKind.STATIC_METHOD;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind.Kind.CLASS;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.FIELD_GETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.FIELD_SETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_METHOD;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.CONSTRUCTOR;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_FIELD_GETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_FIELD_SETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_METHOD;
 
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
 import net.haspamelodica.studentcodeseparator.serialization.StringSerializer;
 
-@StudentSideObjectKind(CLASS)
-// In a real exercise, it wouldn't be neccessary to use a different name for student-side object and implementation
+@StudentSideInstanceKind(CLASS)
+// In a real exercise, it wouldn't be neccessary to use a different name for student-side instance and implementation
 // because both classes never get loaded in the same JVM anyway.
 @OverrideStudentSideName("net.haspamelodica.studentcodeseparator.MyClassImpl")
 @UseSerializer(StringSerializer.class)
-public interface MyClass extends StudentSideObject
+public interface MyClass extends StudentSideInstance
 {
-	@StudentSideObjectMethodKind(INSTANCE_METHOD)
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	public void method();
 
-	@StudentSideObjectMethodKind(INSTANCE_METHOD)
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	@OverrideStudentSideName("otherThirdMethod")
 	public int thirdMethod(String param);
 
-	@StudentSideObjectMethodKind(FIELD_GETTER)
+	@StudentSideInstanceMethodKind(FIELD_GETTER)
 	public String myField();
 
-	@StudentSideObjectMethodKind(FIELD_SETTER)
+	@StudentSideInstanceMethodKind(FIELD_SETTER)
 	public void myField(String value);
 
 	public static interface Prototype extends StudentSidePrototype<MyClass>

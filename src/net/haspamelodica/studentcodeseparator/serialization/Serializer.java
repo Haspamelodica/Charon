@@ -5,8 +5,10 @@ import java.io.DataOutputStream;
 import java.io.IOException;
 
 /**
+ * Each subclass of {@link Serializer} has to have a public constructor with no parameters.
+ * <br>
  * {@link Serializer#serialize(DataOutputStream, Object)} transmits a snapshot of the object it is passed.
- * Further changes to the object won't update the object received on the other end. <br>
+ * Further changes to the original object won't update the object received on the other end. <br>
  * {@link Serializer#deserialize(DataInputStream)} is recommended to, but not required to, return an immutable object
  * to avoid bugs.
  */

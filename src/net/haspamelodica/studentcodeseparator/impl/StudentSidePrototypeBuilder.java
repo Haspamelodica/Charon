@@ -16,56 +16,70 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import net.haspamelodica.studentcodeseparator.StudentSideObject;
+import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectKind;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideObjectMethodKind;
+import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject, SP extends StudentSidePrototype<SO>>
+public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final StudentSideCommunicator<REF>	communicator;
+	public final SerializationHandler<REF>		globalSerializer;
 	public final Class<SP>						prototypeClass;
 
-	public final Class<SO>					objectClass;
+	public final Class<SI>					instanceClass;
 	public final String						studentSideCN;
 	public final SerializationHandler<REF>	prototypeWideSerializer;
 
-	public final StudentSideObjectBuilder<REF, SO, SP> objectBuilder;
+	public final StudentSideInstanceBuilder<REF, SI, SP> instanceBuilder;
 
 	private final Map<Method, MethodHandler> methodHandlers;
 
-	public StudentSidePrototypeBuilder(StudentSideCommunicator<REF> communicator, Class<SP> prototypeClass)
+	private final SP prototype;
+
+	public StudentSidePrototypeBuilder(StudentSideCommunicator<REF> communicator, SerializationHandler<REF> globalSerializer,
+			Class<SP> prototypeClass)
 	{
 		this.communicator = communicator;
+		this.globalSerializer = globalSerializer;
 		this.prototypeClass = prototypeClass;
 
 		//The order of the following operations is important: each step depends on the last
 
-		this.objectClass = checkPrototypeClassAndGetObjectClass();
-		this.studentSideCN = getName(objectClass);
+		this.instanceClass = checkPrototypeClassAndGetInstsanceClass();
+		this.studentSideCN = getName(instanceClass);
 		this.prototypeWideSerializer = createPrototypeWideSerializer();
 
-		this.objectBuilder = new StudentSideObjectBuilder<>(this);
+		this.instanceBuilder = new StudentSideInstanceBuilder<>(this);
 
 		this.methodHandlers = createMethodHandlers();
+
+		this.prototype = createPrototype();
 	}
 
-	public SP createPrototype()
+	/**
+	 * The guarantees in {@link StudentSideInstanceBuilder#createInstance(Object)} apply to all objects returned by student-side construcors
+	 * of the returned prototype.
+	 */
+	public SP getPrototype()
 	{
-		return createProxyInstance(prototypeClass, methodHandlers);
+		return prototype;
 	}
 
-	private Class<SO> checkPrototypeClassAndGetObjectClass()
+	private Class<SI> checkPrototypeClassAndGetInstsanceClass()
 	{
 		if(!prototypeClass.isInterface())
 			throw new InconsistentHierarchyException("Prototype classes have to be interfaces: " + prototypeClass);
 
-		checkNotAnnotatedWith(prototypeClass, StudentSideObjectKind.class);
-		checkNotAnnotatedWith(prototypeClass, StudentSideObjectMethodKind.class);
+		checkNotAnnotatedWith(prototypeClass, OverrideStudentSideName.class);
+		checkNotAnnotatedWith(prototypeClass, StudentSideInstanceKind.class);
+		checkNotAnnotatedWith(prototypeClass, StudentSideInstanceMethodKind.class);
 		checkNotAnnotatedWith(prototypeClass, StudentSidePrototypeMethodKind.class);
 
 		for(Type genericSuperinterface : prototypeClass.getGenericInterfaces())
@@ -74,24 +88,24 @@ public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject
 			else if(genericSuperinterface instanceof ParameterizedType parameterizedSuperinterface)
 				if(parameterizedSuperinterface.getRawType() == StudentSidePrototype.class)
 				{
-					Type objectTypeUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
-					if(!(objectTypeUnchecked instanceof Class))
+					Type instanceTypeUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
+					if(!(instanceTypeUnchecked instanceof Class))
 						throw new InconsistentHierarchyException("The type argument to StudentClassPrototype has to be an unparameterized or raw class: " + prototypeClass);
 
-					//From the class type signature, we know SP's type parameter to StudentSidePrototype is SO.
+					//From the class type signature, we know SP's type parameter to StudentSidePrototype is SI.
 					//So, this cast has to succeed.
 					@SuppressWarnings("unchecked")
-					Class<SO> objectClass = (Class<SO>) objectTypeUnchecked;
-					return objectClass;
+					Class<SI> instanceClass = (Class<SI>) instanceTypeUnchecked;
+					return instanceClass;
 				}
 		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
 	}
 
 	private SerializationHandler<REF> createPrototypeWideSerializer()
 	{
-		return new SerializationHandler<>(communicator)
+		return globalSerializer
 				.withAdditionalSerializers(getSerializers(prototypeClass))
-				.withAdditionalSerializers(getSerializers(objectClass));
+				.withAdditionalSerializers(getSerializers(instanceClass));
 	}
 
 	private Map<Method, MethodHandler> createMethodHandlers()
@@ -101,10 +115,15 @@ public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject
 				.collect(Collectors.toUnmodifiableMap(m -> m, this::methodHandlerFor));
 	}
 
+	private SP createPrototype()
+	{
+		return createProxyInstance(prototypeClass, (proxy, method, args) -> methodHandlers.get(method).invoke(proxy, args));
+	}
+
 	private MethodHandler methodHandlerFor(Method method)
 	{
-		checkNotAnnotatedWith(method, StudentSideObjectKind.class);
-		checkNotAnnotatedWith(method, StudentSideObjectMethodKind.class);
+		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
+		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
 		SerializationHandler<REF> methodWideSerializer = prototypeWideSerializer.withAdditionalSerializers(getSerializers(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
@@ -118,23 +137,23 @@ public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject
 
 	private MethodHandler constructorHandler(Method method, SerializationHandler<REF> methodWideSerializer, boolean nameOverridden)
 	{
-		switch(objectClass.getAnnotation(StudentSideObjectKind.class).value())
+		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
 		{
 			case CLASS:
 				break;
 			case INTERFACE:
 				throw new InconsistentHierarchyException("Student-side interfaces can't have constructors");
 			default:
-				throw new IllegalStateException("Unknown student-side object kind: "
-						+ objectClass.getAnnotation(StudentSideObjectKind.class).value());
+				throw new IllegalStateException("Unknown student-side instance kind: "
+						+ instanceClass.getAnnotation(StudentSideInstanceKind.class).value());
 		}
 
 		if(nameOverridden)
 			throw new InconsistentHierarchyException("Student-side constructor had name overridden: " + method);
 
-		if(!method.getReturnType().equals(objectClass))
-			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side object class: " +
-					"expected " + objectClass + ", but was " + method.getReturnType() + ": " + method);
+		if(!method.getReturnType().equals(instanceClass))
+			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side instance class: " +
+					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
 
 		List<Class<?>> constrParamTypes = Arrays.asList(method.getParameterTypes());
 		List<String> constrParamCNs = c2n(constrParamTypes);
@@ -142,7 +161,7 @@ public final class StudentSidePrototypeBuilder<REF, SO extends StudentSideObject
 		{
 			List<REF> argRefs = methodWideSerializer.send(constrParamTypes, argsToList(args));
 			REF instanceRef = communicator.callConstructor(studentSideCN, constrParamCNs, argRefs);
-			return objectBuilder.createInstance(instanceRef);
+			return instanceBuilder.createInstance(instanceRef);
 		};
 	}
 

@@ -1,0 +1,167 @@
+package net.haspamelodica.studentcodeseparator.impl;
+
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.argsToList;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.checkNotAnnotatedWith;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.createProxyInstance;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.defaultInstanceHandler;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.getSerializers;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.handlerFor;
+import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.c2n;
+
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import net.haspamelodica.studentcodeseparator.StudentSideInstance;
+import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind.Kind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
+import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.studentcodeseparator.communicator.Ref;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
+
+public final class StudentSideInstanceBuilder<REF extends Ref, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+{
+	public final StudentSideCommunicator<REF>	communicator;
+	public final Class<SI>						instanceClass;
+	public final String							studentSideCN;
+
+	public final SerializationHandler<REF> instanceWideSerializer;
+
+	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
+
+	public StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
+	{
+		this.communicator = prototypeBuilder.communicator;
+		this.instanceClass = prototypeBuilder.instanceClass;
+		this.studentSideCN = prototypeBuilder.studentSideCN;
+
+		this.instanceWideSerializer = prototypeBuilder.prototypeWideSerializer;
+
+		checkInstanceClass();
+		this.methodHandlers = createMethodHandlers();
+	}
+
+	/**
+	 * The returned object is guaranteed to be a proxy class (see {@link Proxy})
+	 * whose invocation handler is a {@link StudentSideInstanceInvocationHandler}.
+	 */
+	public SI createInstance(REF ref)
+	{
+		Object studentSideInstance = ref.getStudentSideInstance();
+		if(studentSideInstance != null)
+		{
+			@SuppressWarnings("unchecked") //assume nobody sets the student-side instance except
+			SI studentSideInstanceCasted = (SI) studentSideInstance;
+			return studentSideInstanceCasted;
+		}
+
+		SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
+		ref.setStudentSideInstance(newStudentSideInstance);
+		return newStudentSideInstance;
+	}
+
+	private void checkInstanceClass()
+	{
+		checkNotAnnotatedWith(instanceClass, StudentSideInstanceMethodKind.class);
+		checkNotAnnotatedWith(instanceClass, StudentSidePrototypeMethodKind.class);
+
+		StudentSideInstanceKind kind = instanceClass.getAnnotation(StudentSideInstanceKind.class);
+		if(kind == null)
+			throw new InconsistentHierarchyException("A student-side instance class has to be annotated with StudentSideInstanceKind: " + instanceClass);
+		if(kind.value() != Kind.CLASS)
+			throw new IllegalArgumentException("Student-side interfaces aren't implemented yet");
+	}
+
+	private Map<Method, InstanceMethodHandler<REF>> createMethodHandlers()
+	{
+		// We are guaranteed to catch all (relevant) methods this way: abstract interface methods have to be public
+		return Arrays.stream(instanceClass.getMethods())
+				.collect(Collectors.toUnmodifiableMap(m -> m, this::methodHandlerFor));
+	}
+
+	private InstanceMethodHandler<REF> methodHandlerFor(Method method)
+	{
+		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
+		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
+		SerializationHandler<REF> serializerMethod = instanceWideSerializer.withAdditionalSerializers(getSerializers(method));
+
+		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
+		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
+				(kind, name, nameOverridden) -> switch(kind.value())
+				{
+				case INSTANCE_METHOD -> instanceMethodHandler(serializerMethod, method, name);
+				case FIELD_GETTER -> fieldGetterHandler(serializerMethod, method, name);
+				case FIELD_SETTER -> fieldSetterHandler(serializerMethod, method, name);
+				});
+	}
+
+	private InstanceMethodHandler<REF> instanceMethodHandler(SerializationHandler<REF> serializer, Method method, String name)
+	{
+		Class<?> returnType = method.getReturnType();
+		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
+
+		String returnCN = c2n(returnType);
+		List<String> paramCNs = c2n(paramTypes);
+
+		return (ref, proxy, args) ->
+		{
+			List<REF> argRefs = serializer.send(paramTypes, argsToList(args));
+			REF resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
+			return serializer.receive(returnType, resultRef);
+		};
+	}
+
+	private InstanceMethodHandler<REF> fieldGetterHandler(SerializationHandler<REF> serializer, Method method, String name)
+	{
+		Class<?> returnType = method.getReturnType();
+		if(returnType.equals(void.class))
+			throw new InconsistentHierarchyException("Student-side instance field getter return type was void: " + method);
+
+		if(method.getParameterTypes().length != 0)
+			throw new InconsistentHierarchyException("Student-side instance field getter had parameters: " + method);
+
+		String returnCN = c2n(returnType);
+
+		return (ref, proxy, args) ->
+		{
+			REF resultRef = communicator.getField(studentSideCN, name, returnCN, ref);
+			return serializer.receive(returnType, resultRef);
+		};
+	}
+
+	private InstanceMethodHandler<REF> fieldSetterHandler(SerializationHandler<REF> serializer, Method method, String name)
+	{
+		if(!method.getReturnType().equals(void.class))
+			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
+
+		Class<?>[] paramTypes = method.getParameterTypes();
+		if(paramTypes.length != 1)
+			throw new InconsistentHierarchyException("Student-side instance field setter had not exactly one parameter: " + method);
+
+		Class<?> paramType = paramTypes[0];
+
+		return fieldSetterHandlerChecked(serializer, name, paramType);
+	}
+
+	//extracted to own method so casting to field type is expressible in Java
+	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(SerializationHandler<REF> serializer, String name, Class<F> fieldType)
+	{
+		String fieldCN = c2n(fieldType);
+
+		return (ref, proxy, args) ->
+		{
+			@SuppressWarnings("unchecked")
+			F argCasted = (F) args[0];
+			REF valRef = serializer.send(fieldType, argCasted);
+			communicator.setField(studentSideCN, name, fieldCN, ref, valRef);
+			return null;
+		};
+	}
+}

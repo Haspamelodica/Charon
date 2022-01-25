@@ -14,7 +14,7 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 @Target({TYPE, METHOD})
 @Repeatable(UseSerializers.class)
 /**
- * Used serializers are shared between a student-side object and its prototype:
+ * Used serializers are shared between a student-side instance and its prototype:
  * Adding {@link UseSerializer} (or {@link UseSerializers}) to either makes that serializer usable from the other as well.
  */
 public @interface UseSerializer

@@ -28,24 +28,24 @@ public class ExampleExercise
 		System.out.println("EXERCISE: myStaticField has value \"" + MyClassP.myStaticField() + "\"");
 
 		System.out.println("\nEXERCISE: --- Testing student-side non-static things");
-		// A prototype can also be used to create instances of student-side objects (SSOs).
+		// A prototype can also be used to create instances of student-side instances (SSIs).
 		System.out.println("EXERCISE: Creating instance with \"Hello World\"");
 		MyClass instance = MyClassP.new_("Hello World");
 
-		// A SSO can be used to call instance methods, to set instance fields, and to read instance fields.
+		// A SSI can be used to call instance methods, to set instance fields, and to read instance fields.
 		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
 		System.out.println("EXERCISE: Setting myField to \"foobar\"");
 		instance.myField("foobar");
 		instance.method();
 		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
 
-		// The names in the exercise-side prototypes / SSOs don't have to match those in the student classes:
+		// The names in the exercise-side prototypes / SSIs don't have to match those in the student classes:
 		// They can be overridden (exercise-side) using an annotation.
 		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
 
 		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
-		// Prototype classes (and SSO classes) can contain methods
-		// implemented in the prototype / SSO class itself, although I'm not sure where this would be useful.
+		// Prototype classes (and SSI classes) can contain methods
+		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.
 		System.out.println(MyClassP.test2());
 
 	}

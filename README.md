@@ -37,4 +37,4 @@ An exercise creator only needs to provide two classes to use this library:
 An interface defining the structure of a class expected to be written by the student ([`MyClass.java`](exampleExercise/net/haspamelodica/studentcodeseparator/MyClass.java)),
 and a class containing test code ([`ExampleExercise.java`](exampleExercise/net/haspamelodica/studentcodeseparator/ExampleExercise.java)).
 
-The student only needs to provide the class defined by the exercise: [`MyClassImpl.java`](exampleStudent/net/haspamelodica/studentcodeseparator/MyClassImpl.java).
+Students only need to provide the class required by the exercise: [`MyClassImpl.java`](exampleStudent/net/haspamelodica/studentcodeseparator/MyClassImpl.java).

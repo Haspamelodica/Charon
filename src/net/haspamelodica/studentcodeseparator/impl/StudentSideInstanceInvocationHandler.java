@@ -4,10 +4,13 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
 
-public class StudentSideInstanceInvocationHandler<REF> implements InvocationHandler
+import net.haspamelodica.studentcodeseparator.communicator.Ref;
+
+public class StudentSideInstanceInvocationHandler<REF extends Ref> implements InvocationHandler
 {
-	private final Map<Method, InstanceMethodHandler<REF>>	methodHandlers;
-	private final REF										ref;
+	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
+
+	private final REF ref;
 
 	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler<REF>> methodHandlers, REF ref)
 	{

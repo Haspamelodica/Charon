@@ -16,6 +16,7 @@ import java.util.stream.Stream;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
 import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
+import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
@@ -51,7 +52,7 @@ public class StudentSideImplUtils
 		return (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}
 
-	public static <REF> InstanceMethodHandler<REF> defaultInstanceHandler(Method method)
+	public static <REF extends Ref> InstanceMethodHandler<REF> defaultInstanceHandler(Method method)
 	{
 		return (ref, proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}

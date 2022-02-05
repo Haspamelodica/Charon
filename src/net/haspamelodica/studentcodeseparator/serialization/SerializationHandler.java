@@ -139,7 +139,7 @@ public class SerializationHandler<REF extends Ref>
 		});
 	}
 
-	private static record InitializedSerializer<REF, T> (
+	private static record InitializedSerializer<REF extends Ref, T> (
 			Serializer<T> serializer, REF studentSideSerializerRef)
 	{}
 }

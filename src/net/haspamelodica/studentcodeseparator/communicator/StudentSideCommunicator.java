@@ -8,7 +8,7 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * There must not be a REF referring to a null value.
  * If null occurs student-side, the exercise-side REF must also be null.
  */
-public interface StudentSideCommunicator<REF>
+public interface StudentSideCommunicator<REF extends Ref>
 {
 	public String getStudentSideClassname(REF ref);
 

@@ -3,10 +3,10 @@ package net.haspamelodica.studentcodeseparator.impl;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.argsToList;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.checkNotAnnotatedWith;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.createProxyInstance;
-import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.getName;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.getSerializers;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.getStudentSideName;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.handlerFor;
-import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.c2n;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.mapToStudentSide;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -37,7 +37,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 	public final String						studentSideCN;
 	public final SerializationHandler<REF>	prototypeWideSerializer;
 
-	public final StudentSideInstanceBuilder<REF, SI, SP> instanceBuilder;
+	public final StudentSideInstanceBuilder<REF, SI> instanceBuilder;
 
 	private final Map<Method, MethodHandler> methodHandlers;
 
@@ -53,7 +53,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		//The order of the following operations is important: each step depends on the last
 
 		this.instanceClass = checkPrototypeClassAndGetInstsanceClass();
-		this.studentSideCN = getName(instanceClass);
+		this.studentSideCN = getStudentSideName(instanceClass);
 		this.prototypeWideSerializer = createPrototypeWideSerializer();
 
 		this.instanceBuilder = new StudentSideInstanceBuilder<>(this);
@@ -156,7 +156,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
 
 		List<Class<?>> constrParamTypes = Arrays.asList(method.getParameterTypes());
-		List<String> constrParamCNs = c2n(constrParamTypes);
+		List<String> constrParamCNs = mapToStudentSide(constrParamTypes);
 		return (proxy, args) ->
 		{
 			List<REF> argRefs = methodWideSerializer.send(constrParamTypes, argsToList(args));
@@ -169,9 +169,9 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 	{
 		Class<?> returnType = method.getReturnType();
 
-		String returnCN = c2n(returnType);
+		String returnCN = mapToStudentSide(returnType);
 		List<Class<?>> paramClasses = Arrays.asList(method.getParameterTypes());
-		List<String> paramCNs = c2n(paramClasses);
+		List<String> paramCNs = mapToStudentSide(paramClasses);
 
 		return (proxy, args) ->
 		{
@@ -190,7 +190,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side static field getter had parameters: " + method);
 
-		String returnCN = c2n(returnType);
+		String returnCN = mapToStudentSide(returnType);
 
 		return (proxy, args) ->
 		{
@@ -216,7 +216,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 	//extracted to own method so casting to field type is expressible in Java
 	private <F> MethodHandler staticFieldSetterHandlerChecked(SerializationHandler<REF> methodWideSerializer, String name, Class<F> fieldType)
 	{
-		String fieldCN = c2n(fieldType);
+		String fieldCN = mapToStudentSide(fieldType);
 
 		return (proxy, args) ->
 		{

@@ -43,10 +43,16 @@ public class SameJVMRef implements Ref
 
 	public static Object unpack(SameJVMRef ref)
 	{
-		return ref.obj();
+		return ref == null ? null : ref.obj();
 	}
 	public static SameJVMRef pack(Object obj)
 	{
-		return new SameJVMRef(obj);
+		return obj == null ? null : new SameJVMRef(obj);
+	}
+
+	@Override
+	public String toString()
+	{
+		return "Ref[" + obj.toString() + "]";
 	}
 }

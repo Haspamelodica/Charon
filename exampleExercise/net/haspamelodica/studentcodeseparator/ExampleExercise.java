@@ -16,6 +16,7 @@ public class ExampleExercise
 		// Prototypes provide access to everything static of a class:
 		// constructors, static fields, static methods.
 		MyClass.Prototype MyClassP = studentSide.createPrototype(MyClass.Prototype.class);
+		ReferencingClass.Prototype ReferencingClassP = studentSide.createPrototype(ReferencingClass.Prototype.class);
 
 		System.out.println("EXERCISE: --- Testing student-side static things");
 		// A prototype can be used to call static methods, ...
@@ -43,10 +44,15 @@ public class ExampleExercise
 		// They can be overridden (exercise-side) using an annotation.
 		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
 
+		//TODO description
+		MyClass instanceFromStudent = ReferencingClassP.createImpl();
+		System.out.println("EXERCISE: createImpl().myField is \"" + instanceFromStudent.myField() + "\"");
+		System.out.println("EXERCISE: myClassImplToString(instance) is \"" + ReferencingClassP.myClassImplToString(instance) + "\"");
+		System.out.println("EXERCISE: myClassImplToString(instanceFromStudent) is \"" + ReferencingClassP.myClassImplToString(instanceFromStudent) + "\"");
+
 		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
 		// Prototype classes (and SSI classes) can contain methods
 		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.
 		System.out.println(MyClassP.test2());
-
 	}
 }

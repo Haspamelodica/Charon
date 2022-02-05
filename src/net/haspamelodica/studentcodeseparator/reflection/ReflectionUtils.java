@@ -3,14 +3,30 @@ package net.haspamelodica.studentcodeseparator.reflection;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.stream.Stream;
+import java.util.stream.Collectors;
 
 public class ReflectionUtils
 {
+	private static final Map<Class<?>, Class<?>> PRIMITIVE_CLASS_WRAPPERS = Map.of(
+			boolean.class, Boolean.class,
+			char.class, Character.class,
+			byte.class, Byte.class,
+			short.class, Short.class,
+			int.class, Integer.class,
+			long.class, Long.class,
+			float.class, Float.class,
+			double.class, Double.class,
+			void.class, Void.class);
+
+	private static final Set<Class<?>>			PRIMITIVE_CLASSES			= PRIMITIVE_CLASS_WRAPPERS.keySet();
+	private static final Map<String, Class<?>>	PRIMITIVE_CLASSES_BY_NAME	= PRIMITIVE_CLASSES.stream()
+			.collect(Collectors.toUnmodifiableMap(Class::getName, c -> c));
+
 	public static <T> T callConstructor(Class<T> clazz, List<Class<?>> paramTypes, List<Object> args)
 	{
 		return doChecked(() -> clazz.getConstructor(paramTypes.toArray(Class[]::new)).newInstance(args.toArray()));
@@ -130,42 +146,33 @@ public class ReflectionUtils
 		}
 	}
 
-	public static List<Class<?>> n2c(List<String> classnames)
+	public static <T> T castOrPrimitive(Class<T> clazz, Object obj)
 	{
-		return classnames.stream().map((Function<String, Class<?>>) ReflectionUtils::n2c).toList();
+		if(!clazz.isPrimitive())
+			return clazz.cast(obj);
+
+		Class<?> wrapper = PRIMITIVE_CLASS_WRAPPERS.get(clazz);
+		// For primitives, primivite.class has type Class<PrimitiveWrapper>.
+		// So, if we get passed primitive.class, T is PrimitiveWrapper.
+		@SuppressWarnings("unchecked")
+		Class<T> wrapperCasted = (Class<T>) wrapper;
+		return wrapperCasted.cast(obj);
 	}
-	public static Class<?> n2c(String classname)
+
+	public static List<Class<?>> nameToClass(List<String> classnames)
+	{
+		return classnames.stream().map((Function<String, Class<?>>) ReflectionUtils::nameToClass).toList();
+	}
+	public static Class<?> nameToClass(String classname)
 	{
 		return doChecked(n ->
 		{
-			// @formatter:off
-			if(n.equals(Boolean  .TYPE.getName())) return boolean.class;
-			if(n.equals(Character.TYPE.getName())) return char   .class;
-			if(n.equals(Byte     .TYPE.getName())) return byte   .class;
-			if(n.equals(Short    .TYPE.getName())) return short  .class;
-			if(n.equals(Integer  .TYPE.getName())) return int    .class;
-			if(n.equals(Long     .TYPE.getName())) return long   .class;
-			if(n.equals(Float    .TYPE.getName())) return float  .class;
-			if(n.equals(Double   .TYPE.getName())) return double .class;
-			if(n.equals(Void     .TYPE.getName())) return void   .class;
-			// @formatter:on
-			return Class.forName(n);
+			Class<?> primitiveClass = PRIMITIVE_CLASSES_BY_NAME.get(n);
+			return primitiveClass != null ? primitiveClass : Class.forName(n);
 		}, classname);
 	}
 
-	public static List<String> c2n(Class<?>[] classes)
-	{
-		return c2n(Arrays.stream(classes)).toList();
-	}
-	public static List<String> c2n(List<Class<?>> classes)
-	{
-		return c2n(classes.stream()).toList();
-	}
-	private static Stream<String> c2n(Stream<Class<?>> classes)
-	{
-		return classes.map(ReflectionUtils::c2n);
-	}
-	public static String c2n(Class<?> clazz)
+	public static String classToName(Class<?> clazz)
 	{
 		return clazz.getName();
 	}

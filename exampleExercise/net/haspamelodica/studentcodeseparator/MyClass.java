@@ -57,12 +57,11 @@ public interface MyClass extends StudentSideInstance
 		{}
 		public default String test2()
 		{
-			System.out.println("test2");
 			return test3();
 		}
 		private String test3()
 		{
-			return "hallo";
+			return "test3";
 		}
 	}
 }

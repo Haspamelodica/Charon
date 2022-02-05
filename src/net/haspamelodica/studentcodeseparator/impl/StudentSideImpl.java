@@ -1,10 +1,16 @@
 package net.haspamelodica.studentcodeseparator.impl;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Proxy;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import net.haspamelodica.studentcodeseparator.StudentSide;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.PrimitiveSerializer;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
@@ -25,15 +31,86 @@ public class StudentSideImpl<REF extends Ref> implements StudentSide
 	private final StudentSideCommunicator<REF>	communicator;
 	private final SerializationHandler<REF>		globalSerializer;
 
+	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
+
+	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
+
 	public StudentSideImpl(StudentSideCommunicator<REF> communicator)
 	{
 		this.communicator = communicator;
-		this.globalSerializer = new SerializationHandler<>(communicator, PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
+		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::studentSideInstanceForRef, PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
+		this.prototypes = new ConcurrentHashMap<>();
+		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
 	}
 
 	@Override
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP createPrototype(Class<SP> prototypeClass)
 	{
-		return new StudentSidePrototypeBuilder<>(communicator, globalSerializer, prototypeClass).getPrototype();
+		// computeIfAbsent would be nicer algorithmically, but results in very ugly generic casts
+
+		// fast path. Not neccessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
+		SP prototype = tryGetPrototype(prototypeClass);
+		if(prototype != null)
+			return prototype;
+
+		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalSerializer, prototypeClass);
+
+		synchronized(prototypes)
+		{
+			// re-get to see if some other thread was faster
+			prototype = tryGetPrototype(prototypeClass);
+			if(prototype != null)
+				return prototype;
+
+			String studentSideCN = prototypeBuilder.instanceBuilder.studentSideCN;
+
+			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
+			{
+				StudentSidePrototypeBuilder<REF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				if(otherPrototypeBuilder.instanceClass.equals(prototypeBuilder.instanceClass))
+					throw new InconsistentHierarchyException("Two prototype classes for " + prototypeBuilder.instanceClass + ": " +
+							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
+				else
+					throw new InconsistentHierarchyException("Two student-side instance classes for " + studentSideCN + ": " +
+							prototypeBuilder.instanceClass + " and " + otherPrototypeBuilder.instanceClass);
+			}
+
+			prototype = prototypeBuilder.getPrototype();
+			prototypeBuildersByStudentSideClassname.put(studentSideCN, prototypeBuilder);
+			prototypes.put(prototypeClass, prototype);
+			return prototype;
+		}
+	}
+
+	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP tryGetPrototype(Class<SP> prototypeClass)
+	{
+		StudentSidePrototype<?> prototypeGeneric = prototypes.get(prototypeClass);
+		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into availablePrototypes
+		SP prototype = (SP) prototypeGeneric;
+		return prototype;
+	}
+
+	private REF refForStudentSideInstance(StudentSideInstance studentSideInstance)
+	{
+		// Guaranteed by StudentSidePrototypeBuilder#getPrototype
+		InvocationHandler invocationHandler = Proxy.getInvocationHandler(studentSideInstance);
+		@SuppressWarnings("unchecked") // Guaranteed by StudentSidePrototypeBuilder#getPrototype
+		StudentSideInstanceInvocationHandler<REF> invocationHandlerCasted = (StudentSideInstanceInvocationHandler<REF>) invocationHandler;
+		return invocationHandlerCasted.getRef();
+	}
+
+	private StudentSideInstance studentSideInstanceForRef(REF ref)
+	{
+		StudentSideInstance studentSideInstance = ref.getStudentSideInstance();
+		if(studentSideInstance != null)
+			return studentSideInstance;
+
+		//TODO if we support inheritance, we need to check super-class-names too
+		String studentSideCN = communicator.getStudentSideClassname(ref);
+		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+		if(prototypeBuilder == null)
+			return null;
+
+		return prototypeBuilder.instanceBuilder.createInstance(ref);
 	}
 }

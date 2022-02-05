@@ -21,6 +21,11 @@ public class MyClassImpl
 		this.myField = myField + " with changes by student-side constructor";
 	}
 
+	public String getMyField()
+	{
+		return myField;
+	}
+
 	public void method()
 	{
 		System.out.println(" STUDENT: method() called. myField has value \"" + myField + "\"");

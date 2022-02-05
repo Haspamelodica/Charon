@@ -16,6 +16,13 @@ public class LoggingCommunicator<REF> implements StudentSideCommunicator<REF>
 	}
 
 	@Override
+	public String getStudentSideClassname(REF ref)
+	{
+		System.err.println("classname " + ref);
+		return communicator.getStudentSideClassname(ref);
+	}
+
+	@Override
 	public <T> REF send(Serializer<T> serializer, REF serializerRef, T obj)
 	{
 		System.err.println("send " + serializer.getHandledClass() + ": " + serializer + ", " + serializerRef + ", " + obj);

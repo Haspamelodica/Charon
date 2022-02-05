@@ -1,5 +1,7 @@
 package net.haspamelodica.studentcodeseparator.impl;
 
+import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.classToName;
+
 import java.lang.annotation.Annotation;
 import java.lang.reflect.AnnotatedElement;
 import java.lang.reflect.InvocationHandler;
@@ -9,7 +11,9 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
+import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideName;
 import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
@@ -32,7 +36,7 @@ public class StudentSideImplUtils
 			if(kind == null)
 				throw new InconsistentHierarchyException("Method is abstract, but has no special student-side meaning: " + method);
 
-			return generateStudentSideHandler.generate(kind, getName(method), false);
+			return generateStudentSideHandler.generate(kind, getStudentSideName(method), false);
 		} else
 		{
 			if(kind != null)
@@ -59,8 +63,7 @@ public class StudentSideImplUtils
 
 	public static <P> P createProxyInstance(Class<P> proxiedClass, InvocationHandler handler)
 	{
-		Object proxyInstance = Proxy.newProxyInstance(proxiedClass.getClassLoader(), new Class[] {proxiedClass},
-				(proxy, method, args) -> handler.invoke(proxy, method, args));
+		Object proxyInstance = Proxy.newProxyInstance(proxiedClass.getClassLoader(), new Class[] {proxiedClass}, handler);
 		@SuppressWarnings("unchecked")
 		P proxyInstanceCasted = (P) proxyInstance;
 		return proxyInstanceCasted;
@@ -78,15 +81,35 @@ public class StudentSideImplUtils
 				.map((Function<UseSerializer, Class<? extends Serializer<?>>>) UseSerializer::value).toList();
 	}
 
-	public static String getName(Class<?> clazz)
+	public static List<String> mapToStudentSide(Class<?>[] classes)
 	{
-		return getName(clazz, Class::getName);
+		return mapToStudentSide(Arrays.stream(classes)).toList();
 	}
-	public static String getName(Method method)
+	public static List<String> mapToStudentSide(List<Class<?>> classes)
 	{
-		return getName(method, Method::getName);
+		return mapToStudentSide(classes.stream()).toList();
 	}
-	public static <E extends AnnotatedElement> String getName(E element, Function<E, String> getName)
+	public static Stream<String> mapToStudentSide(Stream<Class<?>> classes)
+	{
+		return classes.map(StudentSideImplUtils::mapToStudentSide);
+	}
+	public static String mapToStudentSide(Class<?> clazz)
+	{
+		//TODO not pretty
+		if(StudentSideInstance.class.isAssignableFrom(clazz))
+			return getStudentSideName(clazz);
+		return classToName(clazz);
+	}
+
+	public static String getStudentSideName(Class<?> clazz)
+	{
+		return getStudentSideName(clazz, Class::getName);
+	}
+	public static String getStudentSideName(Method method)
+	{
+		return getStudentSideName(method, Method::getName);
+	}
+	public static <E extends AnnotatedElement> String getStudentSideName(E element, Function<E, String> getName)
 	{
 		OverrideStudentSideName overrideStudentSideName = element.getAnnotation(OverrideStudentSideName.class);
 		if(overrideStudentSideName != null)

@@ -6,7 +6,7 @@ import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.c
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.defaultInstanceHandler;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.getSerializers;
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.handlerFor;
-import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.c2n;
+import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.mapToStudentSide;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -26,7 +26,7 @@ import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicat
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-public final class StudentSideInstanceBuilder<REF extends Ref, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+public final class StudentSideInstanceBuilder<REF extends Ref, SI extends StudentSideInstance>
 {
 	public final StudentSideCommunicator<REF>	communicator;
 	public final Class<SI>						instanceClass;
@@ -36,7 +36,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 
 	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
-	public StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
+	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
 	{
 		this.communicator = prototypeBuilder.communicator;
 		this.instanceClass = prototypeBuilder.instanceClass;
@@ -56,11 +56,9 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 	{
 		Object studentSideInstance = ref.getStudentSideInstance();
 		if(studentSideInstance != null)
-		{
-			@SuppressWarnings("unchecked") //assume nobody sets the student-side instance except
-			SI studentSideInstanceCasted = (SI) studentSideInstance;
-			return studentSideInstanceCasted;
-		}
+			// Don't use a static cast to fail-fast
+			// No need to use castOrPrimitive: StudentSideInstance is never primitive
+			return instanceClass.cast(studentSideInstance);
 
 		SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
 		ref.setStudentSideInstance(newStudentSideInstance);
@@ -107,8 +105,8 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
 
-		String returnCN = c2n(returnType);
-		List<String> paramCNs = c2n(paramTypes);
+		String returnCN = mapToStudentSide(returnType);
+		List<String> paramCNs = mapToStudentSide(paramTypes);
 
 		return (ref, proxy, args) ->
 		{
@@ -127,7 +125,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side instance field getter had parameters: " + method);
 
-		String returnCN = c2n(returnType);
+		String returnCN = mapToStudentSide(returnType);
 
 		return (ref, proxy, args) ->
 		{
@@ -153,11 +151,11 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 	//extracted to own method so casting to field type is expressible in Java
 	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(SerializationHandler<REF> serializer, String name, Class<F> fieldType)
 	{
-		String fieldCN = c2n(fieldType);
+		String fieldCN = mapToStudentSide(fieldType);
 
 		return (ref, proxy, args) ->
 		{
-			@SuppressWarnings("unchecked")
+			@SuppressWarnings("unchecked") // We could
 			F argCasted = (F) args[0];
 			REF valRef = serializer.send(fieldType, argCasted);
 			communicator.setField(studentSideCN, name, fieldCN, ref, valRef);

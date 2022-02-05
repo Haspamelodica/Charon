@@ -2,6 +2,7 @@ package net.haspamelodica.studentcodeseparator.communicator.impl;
 
 import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.pack;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.unpack;
+import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.classToName;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
@@ -17,6 +18,12 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public abstract class AbstractSameJVMCommunicator implements StudentSideCommunicator<SameJVMRef>
 {
+	@Override
+	public String getStudentSideClassname(SameJVMRef ref)
+	{
+		return classToName(unpack(ref).getClass());
+	}
+
 	@Override
 	public <T> SameJVMRef send(Serializer<T> serializer, SameJVMRef serializerRef, T obj)
 	{

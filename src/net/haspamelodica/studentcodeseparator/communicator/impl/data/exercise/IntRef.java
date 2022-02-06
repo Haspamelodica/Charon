@@ -2,7 +2,7 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise;
 
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 
-public class IntRef extends Ref
+public class IntRef<ATTACHMENT> extends Ref<ATTACHMENT>
 {
 	private final int ref;
 

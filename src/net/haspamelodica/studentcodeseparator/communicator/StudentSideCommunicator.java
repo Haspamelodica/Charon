@@ -12,7 +12,7 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * In other words, <code>refA == refB</code> is <code>true</code> exactly
  * if <code>refA</code> and <code>refB</code> refer to the same student-side object.
  */
-public interface StudentSideCommunicator<REF extends Ref>
+public interface StudentSideCommunicator<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 {
 	public String getStudentSideClassname(REF ref);
 

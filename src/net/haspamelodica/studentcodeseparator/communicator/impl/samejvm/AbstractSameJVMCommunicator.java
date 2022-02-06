@@ -16,23 +16,23 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public abstract class AbstractSameJVMCommunicator implements StudentSideCommunicator<SameJVMRef>
+public abstract class AbstractSameJVMCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, SameJVMRef<ATTACHMENT>>
 {
 	@Override
-	public String getStudentSideClassname(SameJVMRef ref)
+	public String getStudentSideClassname(SameJVMRef<ATTACHMENT> ref)
 	{
 		return classToName(unpack(ref).getClass());
 	}
 
 	@Override
-	public <T> SameJVMRef send(Serializer<T> serializer, SameJVMRef serializerRef, T obj)
+	public <T> SameJVMRef<ATTACHMENT> send(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) unpack(serializerRef);
 		return pack(sendAndReceive(serializer, studentSideSerializer, obj));
 	}
 	@Override
-	public <T> T receive(Serializer<T> serializer, SameJVMRef serializerRef, SameJVMRef objRef)
+	public <T> T receive(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, SameJVMRef<ATTACHMENT> objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) unpack(serializerRef);

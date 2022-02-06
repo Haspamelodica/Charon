@@ -9,9 +9,9 @@ import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 
-public class IntRefManager
+public class IntRefManager<ATTACHMENT>
 {
-	private final Object			lock;
+	private final Object						lock;
 	/**
 	 * We need to guarantee only one Ref exists for every student-side object, for comparing SSIs with '=='.
 	 * But once no SSI exists anymore (tester-side) referencing a student-side object, that object can be deleted.
@@ -39,24 +39,25 @@ public class IntRefManager
 	 * and neither <code>refA</code> or <code>refB</code> can refer to an IntRef for which WeakReferences have been cleared
 	 * as long as {@link IntRef} does not have a finalizer making it reachable again.
 	 */
-	private WeakReference<IntRef>[]	refs;
-	private int						allocatedRefs;
+	private WeakReference<IntRef<ATTACHMENT>>[]	refs;
+
+	private int allocatedRefs;
 
 	public IntRefManager()
 	{
 		this.lock = new Object();
 		@SuppressWarnings("unchecked")
-		WeakReference<IntRef>[] refs = new WeakReference[10];
+		WeakReference<IntRef<ATTACHMENT>>[] refs = new WeakReference[10];
 		this.refs = refs;
 		this.allocatedRefs = 0;
 	}
 
-	public void writeRef(DataOutput out, IntRef objRef) throws IOException
+	public void writeRef(DataOutput out, IntRef<ATTACHMENT> objRef) throws IOException
 	{
 		out.writeInt(objRef != null ? objRef.ref() : 0);
 	}
 
-	public IntRef readRef(DataInput in, DataOutput out) throws IOException
+	public IntRef<ATTACHMENT> readRef(DataInput in, DataOutput out) throws IOException
 	{
 		int refID = in.readInt();
 		if(refID == 0)
@@ -65,10 +66,10 @@ public class IntRefManager
 		// fast path
 		if(refID < allocatedRefs)
 		{
-			WeakReference<IntRef> weakRef = refs[refID];
+			WeakReference<IntRef<ATTACHMENT>> weakRef = refs[refID];
 			if(weakRef != null)
 			{
-				IntRef ref = weakRef.get();
+				IntRef<ATTACHMENT> ref = weakRef.get();
 				if(ref != null)
 					return ref;
 				// We mustn't change refs here: we aren't synchronized.
@@ -81,10 +82,10 @@ public class IntRefManager
 		{
 			if(refID < allocatedRefs)
 			{
-				WeakReference<IntRef> weakRef = refs[refID];
+				WeakReference<IntRef<ATTACHMENT>> weakRef = refs[refID];
 				if(weakRef != null)
 				{
-					IntRef ref = weakRef.get();
+					IntRef<ATTACHMENT> ref = weakRef.get();
 					if(ref != null)
 						return ref;
 					// No need to explicitly delete the weak reference: we'll have to create a new one anyway.
@@ -107,7 +108,7 @@ public class IntRefManager
 				}
 			}
 			// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
-			IntRef ref = new IntRef(refID);
+			IntRef<ATTACHMENT> ref = new IntRef<ATTACHMENT>(refID);
 			refs[refID] = new WeakReference<>(ref);
 			return ref;
 		}

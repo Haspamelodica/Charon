@@ -7,11 +7,11 @@ import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class LoggingCommunicator<REF extends Ref> implements StudentSideCommunicator<REF>
+public class LoggingCommunicator<ATTACHMENT, REF extends Ref<ATTACHMENT>> implements StudentSideCommunicator<ATTACHMENT, REF>
 {
-	private final StudentSideCommunicator<REF> communicator;
+	private final StudentSideCommunicator<ATTACHMENT, REF> communicator;
 
-	public LoggingCommunicator(StudentSideCommunicator<REF> communicator)
+	public LoggingCommunicator(StudentSideCommunicator<ATTACHMENT, REF> communicator)
 	{
 		this.communicator = communicator;
 	}

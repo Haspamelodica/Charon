@@ -26,16 +26,16 @@ import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler
 // ..Problem: what about non-immutable datastructures?
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
-public class StudentSideImpl<REF extends Ref> implements StudentSide
+public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements StudentSide
 {
-	private final StudentSideCommunicator<REF>	communicator;
-	private final SerializationHandler<REF>		globalSerializer;
+	private final StudentSideCommunicator<StudentSideInstance, REF>	communicator;
+	private final SerializationHandler<StudentSideInstance, REF>	globalSerializer;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
 	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(StudentSideCommunicator<REF> communicator)
+	public StudentSideImpl(StudentSideCommunicator<StudentSideInstance, REF> communicator)
 	{
 		this.communicator = communicator;
 		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::studentSideInstanceForRef, PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
@@ -102,7 +102,7 @@ public class StudentSideImpl<REF extends Ref> implements StudentSide
 	private StudentSideInstance studentSideInstanceForRef(REF ref)
 	{
 		// fast path
-		StudentSideInstance studentSideInstance = ref.getStudentSideInstance();
+		StudentSideInstance studentSideInstance = ref.getAttachment();
 		if(studentSideInstance != null)
 			return studentSideInstance;
 

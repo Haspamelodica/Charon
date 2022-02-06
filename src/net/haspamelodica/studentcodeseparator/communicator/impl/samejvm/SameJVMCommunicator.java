@@ -8,28 +8,28 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 
-public class SameJVMCommunicator extends AbstractSameJVMCommunicator
+public class SameJVMCommunicator<ATTACHMENT> extends AbstractSameJVMCommunicator<ATTACHMENT>
 {
 	@Override
-	public SameJVMRef callConstructor(String cn, List<String> params, List<SameJVMRef> argRefs)
+	public SameJVMRef<ATTACHMENT> callConstructor(String cn, List<String> params, List<SameJVMRef<ATTACHMENT>> argRefs)
 	{
 		return pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), unpack(argRefs)));
 	}
 
 	@Override
-	public SameJVMRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<SameJVMRef> argRefs)
+	public SameJVMRef<ATTACHMENT> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<SameJVMRef<ATTACHMENT>> argRefs)
 	{
 		return pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params), unpack(argRefs)));
 	}
 
 	@Override
-	public SameJVMRef getStaticField(String cn, String name, String fieldClassname)
+	public SameJVMRef<ATTACHMENT> getStaticField(String cn, String name, String fieldClassname)
 	{
 		return pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, SameJVMRef valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, SameJVMRef<ATTACHMENT> valueRef)
 	{
 		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(valueRef));
 	}
@@ -42,7 +42,7 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public SameJVMRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, SameJVMRef receiverRef, List<SameJVMRef> argRefs)
+	public SameJVMRef<ATTACHMENT> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, SameJVMRef<ATTACHMENT> receiverRef, List<SameJVMRef<ATTACHMENT>> argRefs)
 	{
 		return pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params), unpack(receiverRef), unpack(argRefs)));
 	}
@@ -55,7 +55,7 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public SameJVMRef getInstanceField(String cn, String name, String fieldClassname, SameJVMRef receiverRef)
+	public SameJVMRef<ATTACHMENT> getInstanceField(String cn, String name, String fieldClassname, SameJVMRef<ATTACHMENT> receiverRef)
 	{
 		return pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef)));
 	}
@@ -68,7 +68,7 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, SameJVMRef receiverRef, SameJVMRef valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, SameJVMRef<ATTACHMENT> receiverRef, SameJVMRef<ATTACHMENT> valueRef)
 	{
 		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef), unpack(valueRef));
 	}

@@ -10,7 +10,7 @@ public class ExampleExercise
 	{
 		// An instance of StudentSide would be provided by Ares, not created by the tester.
 		// Also, Ares would not use a SameJVMCommunicator in the tester JVM.
-		StudentSide studentSide = new StudentSideImpl<>(new LoggingCommunicator<>(new SameJVMCommunicator()));
+		StudentSide studentSide = new StudentSideImpl<>(new LoggingCommunicator<>(new SameJVMCommunicator<>()));
 
 		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
 		// Prototypes provide access to everything static of a class:

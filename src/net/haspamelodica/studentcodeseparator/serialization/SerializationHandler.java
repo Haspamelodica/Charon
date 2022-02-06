@@ -17,18 +17,18 @@ import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicat
 import net.haspamelodica.studentcodeseparator.exceptions.SerializationException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 
-public class SerializationHandler<REF extends Ref>
+public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 {
-	private final StudentSideCommunicator<REF>			communicator;
-	private final Function<StudentSideInstance, REF>	refForStudentSideInstance;
-	private final Function<REF, StudentSideInstance>	studentSideInstanceForRef;
-	private final List<Class<? extends Serializer<?>>>	serializerClasses;
+	private final StudentSideCommunicator<ATTACHMENT, REF>	communicator;
+	private final Function<StudentSideInstance, REF>		refForStudentSideInstance;
+	private final Function<REF, StudentSideInstance>		studentSideInstanceForRef;
+	private final List<Class<? extends Serializer<?>>>		serializerClasses;
 
-	private final ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<REF, ?>> initializedSerializersBySerializerClass;
+	private final ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<ATTACHMENT, REF, ?>> initializedSerializersBySerializerClass;
 
-	private final Map<Class<?>, InitializedSerializer<REF, ?>> initializedSerializersByInstanceClass;
+	private final Map<Class<?>, InitializedSerializer<ATTACHMENT, REF, ?>> initializedSerializersByInstanceClass;
 
-	public SerializationHandler(StudentSideCommunicator<REF> communicator, Function<StudentSideInstance, REF> refForStudentSideInstance,
+	public SerializationHandler(StudentSideCommunicator<ATTACHMENT, REF> communicator, Function<StudentSideInstance, REF> refForStudentSideInstance,
 			Function<REF, StudentSideInstance> studentSideInstanceForRef, List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		this.communicator = communicator;
@@ -39,7 +39,7 @@ public class SerializationHandler<REF extends Ref>
 		this.initializedSerializersBySerializerClass = new ConcurrentHashMap<>();
 		this.initializedSerializersByInstanceClass = new HashMap<>();
 	}
-	private SerializationHandler(SerializationHandler<REF> base, List<Class<? extends Serializer<?>>> serializerClasses)
+	private SerializationHandler(SerializationHandler<ATTACHMENT, REF> base, List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		this.communicator = base.communicator;
 		this.refForStudentSideInstance = base.refForStudentSideInstance;
@@ -50,7 +50,7 @@ public class SerializationHandler<REF extends Ref>
 		this.initializedSerializersByInstanceClass = new HashMap<>();
 	}
 
-	public SerializationHandler<REF> withAdditionalSerializers(List<Class<? extends Serializer<?>>> serializerClasses)
+	public SerializationHandler<ATTACHMENT, REF> withAdditionalSerializers(List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		List<Class<? extends Serializer<?>>> mergedSerializerClasses = new ArrayList<>(serializerClasses);
 		if(mergedSerializerClasses.isEmpty())
@@ -90,7 +90,7 @@ public class SerializationHandler<REF extends Ref>
 			return refForStudentSideInstance.apply((StudentSideInstance) obj);
 
 		//TODO maybe choose serializer based on dynamic class instead?
-		InitializedSerializer<REF, T> serializer = getSerializerForObjectClass(clazz);
+		InitializedSerializer<ATTACHMENT, REF, T> serializer = getSerializerForObjectClass(clazz);
 		return communicator.send(serializer.serializer(), serializer.studentSideSerializerRef(), obj);
 	}
 
@@ -108,28 +108,28 @@ public class SerializationHandler<REF extends Ref>
 			return studentSideInstanceForRef.apply(objRef);
 
 		//TODO maybe choose serializer based on dynamic class instead?
-		InitializedSerializer<REF, T> serializer = getSerializerForObjectClass(clazz);
+		InitializedSerializer<ATTACHMENT, REF, T> serializer = getSerializerForObjectClass(clazz);
 		return communicator.receive(serializer.serializer(), serializer.studentSideSerializerRef(), objRef);
 	}
 
-	private <T> InitializedSerializer<REF, T> getSerializerForObjectClass(Class<T> clazz)
+	private <T> InitializedSerializer<ATTACHMENT, REF, T> getSerializerForObjectClass(Class<T> clazz)
 	{
-		InitializedSerializer<REF, ?> result = initializedSerializersByInstanceClass.computeIfAbsent(clazz, c ->
+		InitializedSerializer<ATTACHMENT, REF, ?> result = initializedSerializersByInstanceClass.computeIfAbsent(clazz, c ->
 		{
 			for(Class<? extends Serializer<?>> serializerClass : serializerClasses)
 			{
-				InitializedSerializer<REF, ?> serializer = getSerializerFromSerializerClass(serializerClass);
+				InitializedSerializer<ATTACHMENT, REF, ?> serializer = getSerializerFromSerializerClass(serializerClass);
 				if(serializer.serializer().getHandledClass().isAssignableFrom(clazz))
 					return serializer;
 			}
 			throw new SerializationException("No serializer for class " + clazz);
 		});
 		@SuppressWarnings("unchecked") // this is guaranteed because we only put key-value pairs with matching T
-		InitializedSerializer<REF, T> resultCasted = (InitializedSerializer<REF, T>) result;
+		InitializedSerializer<ATTACHMENT, REF, T> resultCasted = (InitializedSerializer<ATTACHMENT, REF, T>) result;
 		return resultCasted;
 	}
 
-	private InitializedSerializer<REF, ?> getSerializerFromSerializerClass(Class<? extends Serializer<?>> serializerClass)
+	private InitializedSerializer<ATTACHMENT, REF, ?> getSerializerFromSerializerClass(Class<? extends Serializer<?>> serializerClass)
 	{
 		return initializedSerializersBySerializerClass.computeIfAbsent(serializerClass, c ->
 		{
@@ -139,7 +139,7 @@ public class SerializationHandler<REF extends Ref>
 		});
 	}
 
-	private static record InitializedSerializer<REF extends Ref, T> (
+	private static record InitializedSerializer<ATTACHMENT, REF extends Ref<ATTACHMENT>, T> (
 			Serializer<T> serializer, REF studentSideSerializerRef)
 	{}
 }

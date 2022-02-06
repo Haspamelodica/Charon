@@ -23,29 +23,29 @@ import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
 import net.haspamelodica.studentcodeseparator.exceptions.StudentCodeSeparatorException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DataCommunicator implements StudentSideCommunicator<IntRef>
+public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
 {
 	private final DataInputStream	rawIn;
 	private final DataOutputStream	rawOut;
 
-	private final IntRefManager refManager;
+	private final IntRefManager<ATTACHMENT> refManager;
 
 	public DataCommunicator(DataInputStream rawIn, DataOutputStream rawOut)
 	{
 		this.rawIn = rawIn;
 		this.rawOut = rawOut;
 
-		this.refManager = new IntRefManager();
+		this.refManager = new IntRefManager<>();
 	}
 
 	@Override
-	public String getStudentSideClassname(IntRef ref)
+	public String getStudentSideClassname(IntRef<ATTACHMENT> ref)
 	{
 		return executeCommand(GET_CLASSNAME, out -> out.writeInt(ref.ref()), DataInput::readUTF);
 	}
 
 	@Override
-	public <T> IntRef send(Serializer<T> serializer, IntRef serializerRef, T obj)
+	public <T> IntRef<ATTACHMENT> send(Serializer<T> serializer, IntRef<ATTACHMENT> serializerRef, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
@@ -55,7 +55,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 	}
 
 	@Override
-	public <T> T receive(Serializer<T> serializer, IntRef serializerRef, IntRef objRef)
+	public <T> T receive(Serializer<T> serializer, IntRef<ATTACHMENT> serializerRef, IntRef<ATTACHMENT> objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
@@ -65,7 +65,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 	}
 
 	@Override
-	public IntRef callConstructor(String cn, List<String> params, List<IntRef> argRefs)
+	public IntRef<ATTACHMENT> callConstructor(String cn, List<String> params, List<IntRef<ATTACHMENT>> argRefs)
 	{
 		return executeRefCommand(CALL_CONSTRUCTOR, out ->
 		{
@@ -75,7 +75,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 	}
 
 	@Override
-	public IntRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<IntRef> argRefs)
+	public IntRef<ATTACHMENT> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<IntRef<ATTACHMENT>> argRefs)
 	{
 		return executeRefCommand(CALL_STATIC_METHOD, out ->
 		{
@@ -86,7 +86,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		});
 	}
 	@Override
-	public IntRef getStaticField(String cn, String name, String fieldClassname)
+	public IntRef<ATTACHMENT> getStaticField(String cn, String name, String fieldClassname)
 	{
 		return executeRefCommand(GET_STATIC_FIELD, out ->
 		{
@@ -96,7 +96,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		});
 	}
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, IntRef valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, IntRef<ATTACHMENT> valueRef)
 	{
 		executeVoidCommand(SET_STATIC_FIELD, out ->
 		{
@@ -108,7 +108,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 	}
 
 	@Override
-	public IntRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, IntRef receiverRef, List<IntRef> argRefs)
+	public IntRef<ATTACHMENT> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, IntRef<ATTACHMENT> receiverRef, List<IntRef<ATTACHMENT>> argRefs)
 	{
 		return executeRefCommand(CALL_INSTANCE_METHOD, out ->
 		{
@@ -120,7 +120,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		});
 	}
 	@Override
-	public IntRef getInstanceField(String cn, String name, String fieldClassname, IntRef receiverRef)
+	public IntRef<ATTACHMENT> getInstanceField(String cn, String name, String fieldClassname, IntRef<ATTACHMENT> receiverRef)
 	{
 		return executeRefCommand(GET_INSTANCE_FIELD, out ->
 		{
@@ -131,7 +131,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		});
 	}
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, IntRef receiverRef, IntRef valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, IntRef<ATTACHMENT> receiverRef, IntRef<ATTACHMENT> valueRef)
 	{
 		executeVoidCommand(SET_INSTANCE_FIELD, out ->
 		{
@@ -147,7 +147,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private IntRef executeRefCommand(Command command, IOConsumer<DataOutput> sendParams)
+	private IntRef<ATTACHMENT> executeRefCommand(Command command, IOConsumer<DataOutput> sendParams)
 	{
 		return executeCommand(command, sendParams, refManager::readRef);
 	}
@@ -173,7 +173,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		}
 	}
 
-	private void writeArgs(DataOutput out, List<String> params, List<IntRef> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<String> params, List<IntRef<ATTACHMENT>> argRefs) throws IOException
 	{
 		int paramCount = params.size();
 		if(paramCount != argRefs.size())
@@ -182,7 +182,7 @@ public class DataCommunicator implements StudentSideCommunicator<IntRef>
 		out.writeInt(paramCount);
 		for(String param : params)
 			out.writeUTF(param);
-		for(IntRef argRef : argRefs)
+		for(IntRef<ATTACHMENT> argRef : argRefs)
 			refManager.writeRef(out, argRef);
 	}
 }

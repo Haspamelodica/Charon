@@ -1,17 +1,15 @@
 package net.haspamelodica.studentcodeseparator.communicator;
 
-import net.haspamelodica.studentcodeseparator.StudentSideInstance;
-
-public abstract class Ref
+public abstract class Ref<ATTACHMENT>
 {
-	private StudentSideInstance studentSideInstance;
+	private ATTACHMENT attachment;
 
-	public final StudentSideInstance getStudentSideInstance()
+	public final ATTACHMENT getAttachment()
 	{
-		return studentSideInstance;
+		return attachment;
 	}
-	public final void setStudentSideInstance(StudentSideInstance studentSideInstance)
+	public final void setAttachment(ATTACHMENT attachment)
 	{
-		this.studentSideInstance = studentSideInstance;
+		this.attachment = attachment;
 	}
 }

@@ -27,15 +27,15 @@ import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicat
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstance>, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
-	public final StudentSideCommunicator<REF>	communicator;
-	public final SerializationHandler<REF>		globalSerializer;
-	public final Class<SP>						prototypeClass;
+	public final StudentSideCommunicator<StudentSideInstance, REF>	communicator;
+	public final SerializationHandler<StudentSideInstance, REF>		globalSerializer;
+	public final Class<SP>											prototypeClass;
 
-	public final Class<SI>					instanceClass;
-	public final String						studentSideCN;
-	public final SerializationHandler<REF>	prototypeWideSerializer;
+	public final Class<SI>										instanceClass;
+	public final String											studentSideCN;
+	public final SerializationHandler<StudentSideInstance, REF>	prototypeWideSerializer;
 
 	public final StudentSideInstanceBuilder<REF, SI> instanceBuilder;
 
@@ -43,7 +43,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 
 	private final SP prototype;
 
-	public StudentSidePrototypeBuilder(StudentSideCommunicator<REF> communicator, SerializationHandler<REF> globalSerializer,
+	public StudentSidePrototypeBuilder(StudentSideCommunicator<StudentSideInstance, REF> communicator, SerializationHandler<StudentSideInstance, REF> globalSerializer,
 			Class<SP> prototypeClass)
 	{
 		this.communicator = communicator;
@@ -101,7 +101,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
 	}
 
-	private SerializationHandler<REF> createPrototypeWideSerializer()
+	private SerializationHandler<StudentSideInstance, REF> createPrototypeWideSerializer()
 	{
 		return globalSerializer
 				.withAdditionalSerializers(getSerializers(prototypeClass))
@@ -124,7 +124,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
-		SerializationHandler<REF> methodWideSerializer = prototypeWideSerializer.withAdditionalSerializers(getSerializers(method));
+		SerializationHandler<StudentSideInstance, REF> methodWideSerializer = prototypeWideSerializer.withAdditionalSerializers(getSerializers(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 		{
@@ -135,7 +135,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		});
 	}
 
-	private MethodHandler constructorHandler(Method method, SerializationHandler<REF> methodWideSerializer, boolean nameOverridden)
+	private MethodHandler constructorHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer, boolean nameOverridden)
 	{
 		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
 		{
@@ -165,7 +165,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		};
 	}
 
-	private MethodHandler staticMethodHandler(Method method, SerializationHandler<REF> methodWideSerializer, String name)
+	private MethodHandler staticMethodHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 
@@ -181,7 +181,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		};
 	}
 
-	private MethodHandler staticFieldGetterHandler(Method method, SerializationHandler<REF> methodWideSerializer, String name)
+	private MethodHandler staticFieldGetterHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -199,7 +199,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 		};
 	}
 
-	private MethodHandler staticFieldSetterHandler(Method method, SerializationHandler<REF> methodWideSerializer, String name)
+	private MethodHandler staticFieldSetterHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method);
@@ -214,7 +214,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref, SI extends Stude
 	}
 
 	//extracted to own method so casting to field type is expressible in Java
-	private <F> MethodHandler staticFieldSetterHandlerChecked(SerializationHandler<REF> methodWideSerializer, String name, Class<F> fieldType)
+	private <F> MethodHandler staticFieldSetterHandlerChecked(SerializationHandler<StudentSideInstance, REF> methodWideSerializer, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 

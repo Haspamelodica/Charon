@@ -1,10 +1,11 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
 import java.util.List;
+import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 
-public class SameJVMRef extends Ref
+public class SameJVMRef<ATTACHMENT> extends Ref<ATTACHMENT>
 {
 	//	private static final IdentityHashMap<Object, WeakReference<SameJVMRef>> cachedRefs;
 
@@ -20,23 +21,23 @@ public class SameJVMRef extends Ref
 		return obj;
 	}
 
-	public static List<Object> unpack(List<SameJVMRef> refs)
+	public static <ATTACHMENT> List<Object> unpack(List<SameJVMRef<ATTACHMENT>> refs)
 	{
 		return refs.stream().map(SameJVMRef::unpack).toList();
 	}
-	public static List<SameJVMRef> pack(List<?> objs)
+	public static <ATTACHMENT> List<SameJVMRef<ATTACHMENT>> pack(List<?> objs)
 	{
-		return objs.stream().map(SameJVMRef::pack).toList();
+		return objs.stream().map((Function<Object, SameJVMRef<ATTACHMENT>>) SameJVMRef::pack).toList();
 	}
 
-	public static Object unpack(SameJVMRef ref)
+	public static <ATTACHMENT> Object unpack(SameJVMRef<ATTACHMENT> ref)
 	{
 		return ref == null ? null : ref.obj();
 	}
-	public static SameJVMRef pack(Object obj)
+	public static <ATTACHMENT> SameJVMRef<ATTACHMENT> pack(Object obj)
 	{
 		//TODO only create one SameJVMRef per object
-		return obj == null ? null : new SameJVMRef(obj);
+		return obj == null ? null : new SameJVMRef<>(obj);
 	}
 
 	@Override

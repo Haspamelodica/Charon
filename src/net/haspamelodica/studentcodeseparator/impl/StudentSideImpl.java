@@ -101,6 +101,7 @@ public class StudentSideImpl<REF extends Ref> implements StudentSide
 
 	private StudentSideInstance studentSideInstanceForRef(REF ref)
 	{
+		// fast path
 		StudentSideInstance studentSideInstance = ref.getStudentSideInstance();
 		if(studentSideInstance != null)
 			return studentSideInstance;

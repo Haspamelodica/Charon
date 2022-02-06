@@ -71,7 +71,7 @@ public class ReflectionUtils
 		});
 	}
 
-	public static <T, F> F getField(Class<T> clazz, String name, Class<F> fieldType, T receiver)
+	public static <T, F> F getInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver)
 	{
 		return doChecked(() ->
 		{
@@ -83,7 +83,7 @@ public class ReflectionUtils
 		});
 	}
 
-	public static <T, F> void setField(Class<T> clazz, String name, Class<F> fieldType, T receiver, F value)
+	public static <T, F> void setInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver, F value)
 	{
 		//TODO check if is instance field
 		doChecked(() -> lookupField(clazz, name, fieldType).set(receiver, value));

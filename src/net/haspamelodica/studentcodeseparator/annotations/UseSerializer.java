@@ -14,6 +14,8 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 @Target({TYPE, METHOD})
 @Repeatable(UseSerializers.class)
 /**
+ * TODO mention == won't work on deserialized objects
+ * <p>
  * Used serializers are shared between a student-side instance and its prototype:
  * Adding {@link UseSerializer} (or {@link UseSerializers}) to either makes that serializer usable from the other as well.
  */

@@ -1,7 +1,7 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl;
+package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.pack;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.unpack;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.pack;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.unpack;
 import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.nameToClass;
 
 import java.util.List;
@@ -55,30 +55,30 @@ public class SameJVMCommunicator extends AbstractSameJVMCommunicator
 	}
 
 	@Override
-	public SameJVMRef getField(String cn, String name, String fieldClassname, SameJVMRef receiverRef)
+	public SameJVMRef getInstanceField(String cn, String name, String fieldClassname, SameJVMRef receiverRef)
 	{
-		return pack(getField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef)));
+		return pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef)));
 	}
 	// extracted to method so the cast is expressible in Java
-	private <T> Object getField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
+	private <T> Object getInstanceField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
-		return ReflectionUtils.getField(clazz, name, fieldClass, receiverCasted);
+		return ReflectionUtils.getInstanceField(clazz, name, fieldClass, receiverCasted);
 	}
 
 	@Override
-	public void setField(String cn, String name, String fieldClassname, SameJVMRef receiverRef, SameJVMRef valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, SameJVMRef receiverRef, SameJVMRef valueRef)
 	{
-		setField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef), unpack(valueRef));
+		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), unpack(receiverRef), unpack(valueRef));
 	}
 	// extracted to method so the casts are expressible in Java
-	private <T, F> void setField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)
+	private <T, F> void setInstanceField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
 		@SuppressWarnings("unchecked") // responsibility of caller
 		F valueCasted = (F) value;
-		ReflectionUtils.setField(clazz, name, fieldClass, receiverCasted, valueCasted);
+		ReflectionUtils.setInstanceField(clazz, name, fieldClass, receiverCasted, valueCasted);
 	}
 }

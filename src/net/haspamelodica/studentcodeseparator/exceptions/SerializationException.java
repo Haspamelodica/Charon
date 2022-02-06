@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator.exceptions;
 
-public class SerializationException extends RuntimeException
+public class SerializationException extends StudentCodeSeparatorException
 {
 	public SerializationException()
 	{}

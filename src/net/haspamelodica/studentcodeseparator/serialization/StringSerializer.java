@@ -1,7 +1,7 @@
 package net.haspamelodica.studentcodeseparator.serialization;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 
 public class StringSerializer implements Serializer<String>
@@ -12,12 +12,12 @@ public class StringSerializer implements Serializer<String>
 		return String.class;
 	}
 	@Override
-	public void serialize(DataOutputStream out, String obj) throws IOException
+	public void serialize(DataOutput out, String obj) throws IOException
 	{
 		out.writeUTF(obj);
 	}
 	@Override
-	public String deserialize(DataInputStream in) throws IOException
+	public String deserialize(DataInput in) throws IOException
 	{
 		return in.readUTF();
 	}

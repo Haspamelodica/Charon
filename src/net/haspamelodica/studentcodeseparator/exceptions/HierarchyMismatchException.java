@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator.exceptions;
 
-public class HierarchyMismatchException extends StudentSideException
+public class HierarchyMismatchException extends StudentSideCausedException
 {
 	public HierarchyMismatchException()
 	{}

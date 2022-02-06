@@ -1,7 +1,7 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl;
+package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.pack;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMRef.unpack;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.pack;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.unpack;
 import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.classToName;
 
 import java.io.DataInputStream;

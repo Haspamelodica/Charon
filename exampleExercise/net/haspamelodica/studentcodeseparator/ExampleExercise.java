@@ -1,7 +1,7 @@
 package net.haspamelodica.studentcodeseparator;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator;
-import net.haspamelodica.studentcodeseparator.communicator.impl.SameJVMCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMCommunicator;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 
 public class ExampleExercise
@@ -45,6 +45,7 @@ public class ExampleExercise
 		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
 
 		//TODO description
+		System.out.println("\nEXERCISE: --- Testing passing SSIs");
 		MyClass instanceFromStudent = ReferencingClassP.createImpl();
 		System.out.println("EXERCISE: createImpl().myField is \"" + instanceFromStudent.myField() + "\"");
 		System.out.println("EXERCISE: myClassImplToString(instance) is \"" + ReferencingClassP.myClassImplToString(instance) + "\"");

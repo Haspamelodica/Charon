@@ -1,30 +1,18 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl;
+package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
 import java.util.List;
 
-import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 
-public class SameJVMRef implements Ref
+public class SameJVMRef extends Ref
 {
+	//	private static final IdentityHashMap<Object, WeakReference<SameJVMRef>> cachedRefs;
+
 	private final Object obj;
 
-	private StudentSideInstance studentSideInstance;
-
-	public SameJVMRef(Object obj)
+	private SameJVMRef(Object obj)
 	{
 		this.obj = obj;
-	}
-
-	@Override
-	public StudentSideInstance getStudentSideInstance()
-	{
-		return studentSideInstance;
-	}
-	@Override
-	public void setStudentSideInstance(StudentSideInstance studentSideInstance)
-	{
-		this.studentSideInstance = studentSideInstance;
 	}
 
 	public Object obj()
@@ -47,6 +35,7 @@ public class SameJVMRef implements Ref
 	}
 	public static SameJVMRef pack(Object obj)
 	{
+		//TODO only create one SameJVMRef per object
 		return obj == null ? null : new SameJVMRef(obj);
 	}
 

@@ -12,8 +12,8 @@ public @interface StudentSideInstanceMethodKind
 	public enum Kind
 	{
 		INSTANCE_METHOD,
-		FIELD_GETTER,
-		FIELD_SETTER;
+		INSTANCE_FIELD_GETTER,
+		INSTANCE_FIELD_SETTER;
 	}
 
 	public Kind value();

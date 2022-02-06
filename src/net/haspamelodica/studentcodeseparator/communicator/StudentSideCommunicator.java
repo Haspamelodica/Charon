@@ -7,6 +7,10 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 /**
  * There must not be a REF referring to a null value.
  * If null occurs student-side, the exercise-side REF must also be null.
+ * <p>
+ * Comparing REFs with <code>==</code> is equivalent to checking for student-side object identity.
+ * In other words, <code>refA == refB</code> is <code>true</code> exactly
+ * if <code>refA</code> and <code>refB</code> refer to the same student-side object.
  */
 public interface StudentSideCommunicator<REF extends Ref>
 {
@@ -22,6 +26,6 @@ public interface StudentSideCommunicator<REF extends Ref>
 	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef);
 
 	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs);
-	public REF getField(String cn, String name, String fieldClassname, REF receiverRef);
-	public void setField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
+	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
+	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
 }

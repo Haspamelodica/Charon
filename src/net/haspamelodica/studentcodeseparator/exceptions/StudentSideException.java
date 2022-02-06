@@ -1,23 +1,30 @@
 package net.haspamelodica.studentcodeseparator.exceptions;
 
-public class StudentSideException extends RuntimeException
+import java.io.PrintStream;
+import java.io.PrintWriter;
+
+public class StudentSideException extends StudentSideCausedException
 {
-	public StudentSideException()
-	{}
-	public StudentSideException(String message)
+	private final String studentSideTrace;
+
+	public StudentSideException(String studentSideMessage, String studentSideTrace)
 	{
-		super(message);
+		super(studentSideMessage);
+		this.studentSideTrace = studentSideTrace;
 	}
-	public StudentSideException(String message, Throwable cause)
+
+	@Override
+	public void printStackTrace(PrintStream s)
 	{
-		super(message, cause);
+		super.printStackTrace(s);
+		s.println("Student-side trace:");
+		s.println(studentSideTrace);
 	}
-	public StudentSideException(Throwable cause)
+	@Override
+	public void printStackTrace(PrintWriter s)
 	{
-		super(cause);
-	}
-	protected StudentSideException(String message, Throwable cause, boolean enableSuppression, boolean writableStackTrace)
-	{
-		super(message, cause, enableSuppression, writableStackTrace);
+		super.printStackTrace(s);
+		s.println("Student-side trace:");
+		s.println(studentSideTrace);
 	}
 }

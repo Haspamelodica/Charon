@@ -1,8 +1,8 @@
 package net.haspamelodica.studentcodeseparator;
 
 import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind.Kind.CLASS;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.FIELD_GETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.FIELD_SETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_FIELD_GETTER;
+import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_FIELD_SETTER;
 import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_METHOD;
 import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.CONSTRUCTOR;
 import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_FIELD_GETTER;
@@ -30,10 +30,10 @@ public interface MyClass extends StudentSideInstance
 	@OverrideStudentSideName("otherThirdMethod")
 	public int thirdMethod(String param);
 
-	@StudentSideInstanceMethodKind(FIELD_GETTER)
+	@StudentSideInstanceMethodKind(INSTANCE_FIELD_GETTER)
 	public String myField();
 
-	@StudentSideInstanceMethodKind(FIELD_SETTER)
+	@StudentSideInstanceMethodKind(INSTANCE_FIELD_SETTER)
 	public void myField(String value);
 
 	public static interface Prototype extends StudentSidePrototype<MyClass>

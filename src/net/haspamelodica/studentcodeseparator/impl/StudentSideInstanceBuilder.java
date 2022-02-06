@@ -94,13 +94,13 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
-				case INSTANCE_METHOD -> instanceMethodHandler(serializerMethod, method, name);
-				case FIELD_GETTER -> fieldGetterHandler(serializerMethod, method, name);
-				case FIELD_SETTER -> fieldSetterHandler(serializerMethod, method, name);
+				case INSTANCE_METHOD -> methodHandler(serializerMethod, method, name);
+				case INSTANCE_FIELD_GETTER -> fieldGetterHandler(serializerMethod, method, name);
+				case INSTANCE_FIELD_SETTER -> fieldSetterHandler(serializerMethod, method, name);
 				});
 	}
 
-	private InstanceMethodHandler<REF> instanceMethodHandler(SerializationHandler<REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> methodHandler(SerializationHandler<REF> serializer, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -129,7 +129,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 
 		return (ref, proxy, args) ->
 		{
-			REF resultRef = communicator.getField(studentSideCN, name, returnCN, ref);
+			REF resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
 			return serializer.receive(returnType, resultRef);
 		};
 	}
@@ -158,7 +158,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref, SI extends Studen
 			@SuppressWarnings("unchecked") // We could
 			F argCasted = (F) args[0];
 			REF valRef = serializer.send(fieldType, argCasted);
-			communicator.setField(studentSideCN, name, fieldCN, ref, valRef);
+			communicator.setInstanceField(studentSideCN, name, fieldCN, ref, valRef);
 			return null;
 		};
 	}

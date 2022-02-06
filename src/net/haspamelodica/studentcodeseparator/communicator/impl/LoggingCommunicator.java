@@ -72,16 +72,16 @@ public class LoggingCommunicator<REF extends Ref> implements StudentSideCommunic
 	}
 
 	@Override
-	public REF getField(String cn, String name, String fieldClassname, REF receiverRef)
+	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
 	{
 		System.err.println(fieldClassname + " " + cn + "." + name + ": " + receiverRef);
-		return communicator.getField(cn, name, fieldClassname, receiverRef);
+		return communicator.getInstanceField(cn, name, fieldClassname, receiverRef);
 	}
 
 	@Override
-	public void setField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef)
 	{
 		System.err.println(fieldClassname + " " + cn + "." + name + ": " + receiverRef + " = " + valueRef);
-		communicator.setField(cn, name, fieldClassname, receiverRef, valueRef);
+		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
 	}
 }

@@ -1,7 +1,7 @@
 package net.haspamelodica.studentcodeseparator.serialization;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
+import java.io.DataInput;
+import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
@@ -19,12 +19,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return boolean.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Boolean obj) throws IOException
+		public void serialize(DataOutput out, Boolean obj) throws IOException
 		{
 			out.writeBoolean(obj);
 		}
 		@Override
-		public Boolean deserialize(DataInputStream in) throws IOException
+		public Boolean deserialize(DataInput in) throws IOException
 		{
 			return in.readBoolean();
 		}
@@ -37,12 +37,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return char.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Character obj) throws IOException
+		public void serialize(DataOutput out, Character obj) throws IOException
 		{
 			out.writeChar(obj);
 		}
 		@Override
-		public Character deserialize(DataInputStream in) throws IOException
+		public Character deserialize(DataInput in) throws IOException
 		{
 			return in.readChar();
 		}
@@ -55,12 +55,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return byte.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Byte obj) throws IOException
+		public void serialize(DataOutput out, Byte obj) throws IOException
 		{
 			out.writeByte(obj);
 		}
 		@Override
-		public Byte deserialize(DataInputStream in) throws IOException
+		public Byte deserialize(DataInput in) throws IOException
 		{
 			return in.readByte();
 		}
@@ -73,12 +73,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return short.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Short obj) throws IOException
+		public void serialize(DataOutput out, Short obj) throws IOException
 		{
 			out.writeShort(obj);
 		}
 		@Override
-		public Short deserialize(DataInputStream in) throws IOException
+		public Short deserialize(DataInput in) throws IOException
 		{
 			return in.readShort();
 		}
@@ -91,12 +91,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return int.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Integer obj) throws IOException
+		public void serialize(DataOutput out, Integer obj) throws IOException
 		{
 			out.writeInt(obj);
 		}
 		@Override
-		public Integer deserialize(DataInputStream in) throws IOException
+		public Integer deserialize(DataInput in) throws IOException
 		{
 			return in.readInt();
 		}
@@ -109,12 +109,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return long.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Long obj) throws IOException
+		public void serialize(DataOutput out, Long obj) throws IOException
 		{
 			out.writeLong(obj);
 		}
 		@Override
-		public Long deserialize(DataInputStream in) throws IOException
+		public Long deserialize(DataInput in) throws IOException
 		{
 			return in.readLong();
 		}
@@ -127,12 +127,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return float.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Float obj) throws IOException
+		public void serialize(DataOutput out, Float obj) throws IOException
 		{
 			out.writeFloat(obj);
 		}
 		@Override
-		public Float deserialize(DataInputStream in) throws IOException
+		public Float deserialize(DataInput in) throws IOException
 		{
 			return in.readFloat();
 		}
@@ -145,12 +145,12 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return double.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Double obj) throws IOException
+		public void serialize(DataOutput out, Double obj) throws IOException
 		{
 			out.writeDouble(obj);
 		}
 		@Override
-		public Double deserialize(DataInputStream in) throws IOException
+		public Double deserialize(DataInput in) throws IOException
 		{
 			return in.readDouble();
 		}
@@ -163,14 +163,14 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return void.class;
 		}
 		@Override
-		public void serialize(DataOutputStream out, Void obj) throws IOException
+		public void serialize(DataOutput out, Void obj) throws IOException
 		{
 			//do nothing: obj can only be null
 			if(obj != null)
 				throw new IllegalStateException("Got an instance of Void");
 		}
 		@Override
-		public Void deserialize(DataInputStream in) throws IOException
+		public Void deserialize(DataInput in) throws IOException
 		{
 			//null is the only possible void value
 			return null;

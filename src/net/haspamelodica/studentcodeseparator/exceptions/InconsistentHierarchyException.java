@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator.exceptions;
 
-public class InconsistentHierarchyException extends RuntimeException
+public class InconsistentHierarchyException extends ExerciseCausedException
 {
 	public InconsistentHierarchyException()
 	{}

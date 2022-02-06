@@ -2,7 +2,7 @@ package net.haspamelodica.studentcodeseparator;
 
 /**
  * Test code has access to one instance of {@link StudentSide}. TODO how?
- * <br>
+ * <p>
  * This interface is not intended to be subclassed by test code.
  */
 public interface StudentSide

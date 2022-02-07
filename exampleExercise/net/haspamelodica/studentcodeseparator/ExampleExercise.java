@@ -25,19 +25,70 @@ public class ExampleExercise
 	 * If you use {@link Mode#DATA_OTHER_JVM}, start {@link ExampleExerciseServer} first.
 	 */
 	private static final Mode MODE = Mode.DATA_OTHER_JVM;
-
-	// HOST and PORT only matter for mode DATA_OTHER_JVM
-	private static final String	HOST	= "localhost";
-	private static final int	PORT	= ExampleExerciseServer.PORT;
 	private enum Mode
 	{
 		DIRECT, DATA_SAME_JVM, DATA_OTHER_JVM;
 	}
 
+	// HOST and PORT only matter for mode DATA_OTHER_JVM
+	private static final String	HOST	= "localhost";
+	private static final int	PORT	= ExampleExerciseServer.PORT;
+
+	public static void run(StudentSide studentSide)
+	{
+		// The framework provides an instance of StudentSide.
+		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
+		// Prototypes provide access to everything static of a class:
+		// constructors, static fields, static methods.
+		MyClass.Prototype MyClassP = studentSide.createPrototype(MyClass.Prototype.class);
+		ReferencingClass.Prototype ReferencingClassP = studentSide.createPrototype(ReferencingClass.Prototype.class);
+
+		System.out.println("EXERCISE: --- Testing student-side static things");
+		// A prototype can be used to call static methods, ...
+		System.out.println("EXERCISE: staticMethod() returned " + MyClassP.staticMethod());
+		// ...to set static fields, ...
+		System.out.println("EXERCISE: Setting myStaticField to \"hello\"");
+		MyClassP.myStaticField("hello");
+		System.out.println("EXERCISE: staticMethod() returned " + MyClassP.staticMethod());
+		// ... and to read static fields.
+		System.out.println("EXERCISE: myStaticField has value \"" + MyClassP.myStaticField() + "\"");
+
+		System.out.println("\nEXERCISE: --- Testing student-side non-static things");
+		// A prototype can also be used to create instances of student-side instances (SSIs).
+		System.out.println("EXERCISE: Creating instance with \"Hello World\"");
+		MyClass instance = MyClassP.new_("Hello World");
+
+		// A SSI can be used to call instance methods, to set instance fields, and to read instance fields.
+		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
+		System.out.println("EXERCISE: Setting myField to \"foobar\"");
+		instance.myField("foobar");
+		instance.method();
+		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
+
+		// The names in the exercise-side prototypes / SSIs don't have to match those in the student classes:
+		// They can be overridden (exercise-side) using an annotation.
+		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
+
+		// Apart from primitive types and types for which a serializer has been specified explicitly,
+		// only SSIs can be passed directly to and returned from methods, since they represent student-side objects.
+		// If you try to define a method with a parameter or return type which doesn't fall into these categories,
+		// you will get a runtime exception.
+		System.out.println("\nEXERCISE: --- Testing passing SSIs");
+		MyClass instanceFromStudent = ReferencingClassP.createImpl();
+		System.out.println("EXERCISE: createImpl().myField is \"" + instanceFromStudent.myField() + "\"");
+		System.out.println("EXERCISE: myClassImplToString(instance) is \"" + ReferencingClassP.myClassImplToString(instance) + "\"");
+		System.out.println("EXERCISE: myClassImplToString(instanceFromStudent) is \"" + ReferencingClassP.myClassImplToString(instanceFromStudent) + "\"");
+
+		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
+		// Prototype classes (and SSI classes) can contain methods
+		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.
+		System.out.println(MyClassP.test2());
+	}
+
 	public static void main(String[] args) throws IOException, InterruptedException
 	{
-		// An instance of StudentSide would be provided by Ares, not created by the tester.
-		// Also, Ares would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the tester JVM.
+		// An instance of StudentSide will at some point be provided by the framework, not created by the exercise.
+		// Also, Ares would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the exercise JVM.
 		switch(MODE)
 		{
 			case DIRECT -> runDirect();
@@ -45,6 +96,8 @@ public class ExampleExercise
 			case DATA_OTHER_JVM -> runDataOtherJVM();
 		}
 	}
+
+	// --- Code below here will be moved to the framework.
 
 	private static void runDirect()
 	{
@@ -91,52 +144,5 @@ public class ExampleExercise
 			run(new StudentSideImpl<>(maybeWrapLogging(client)));
 			client.shutdown();
 		}
-	}
-
-	private static void run(StudentSide studentSide)
-	{
-		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
-		// Prototypes provide access to everything static of a class:
-		// constructors, static fields, static methods.
-		MyClass.Prototype MyClassP = studentSide.createPrototype(MyClass.Prototype.class);
-		ReferencingClass.Prototype ReferencingClassP = studentSide.createPrototype(ReferencingClass.Prototype.class);
-
-		System.out.println("EXERCISE: --- Testing student-side static things");
-		// A prototype can be used to call static methods, ...
-		System.out.println("EXERCISE: staticMethod() returned " + MyClassP.staticMethod());
-		// ...to set static fields, ...
-		System.out.println("EXERCISE: Setting myStaticField to \"hello\"");
-		MyClassP.myStaticField("hello");
-		System.out.println("EXERCISE: staticMethod() returned " + MyClassP.staticMethod());
-		// ... and to read static fields.
-		System.out.println("EXERCISE: myStaticField has value \"" + MyClassP.myStaticField() + "\"");
-
-		System.out.println("\nEXERCISE: --- Testing student-side non-static things");
-		// A prototype can also be used to create instances of student-side instances (SSIs).
-		System.out.println("EXERCISE: Creating instance with \"Hello World\"");
-		MyClass instance = MyClassP.new_("Hello World");
-
-		// A SSI can be used to call instance methods, to set instance fields, and to read instance fields.
-		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
-		System.out.println("EXERCISE: Setting myField to \"foobar\"");
-		instance.myField("foobar");
-		instance.method();
-		System.out.println("EXERCISE: myField has value \"" + instance.myField() + "\"");
-
-		// The names in the exercise-side prototypes / SSIs don't have to match those in the student classes:
-		// They can be overridden (exercise-side) using an annotation.
-		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
-
-		//TODO description
-		System.out.println("\nEXERCISE: --- Testing passing SSIs");
-		MyClass instanceFromStudent = ReferencingClassP.createImpl();
-		System.out.println("EXERCISE: createImpl().myField is \"" + instanceFromStudent.myField() + "\"");
-		System.out.println("EXERCISE: myClassImplToString(instance) is \"" + ReferencingClassP.myClassImplToString(instance) + "\"");
-		System.out.println("EXERCISE: myClassImplToString(instanceFromStudent) is \"" + ReferencingClassP.myClassImplToString(instanceFromStudent) + "\"");
-
-		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
-		// Prototype classes (and SSI classes) can contain methods
-		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.
-		System.out.println(MyClassP.test2());
 	}
 }

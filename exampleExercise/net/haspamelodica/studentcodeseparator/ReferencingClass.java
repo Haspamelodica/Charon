@@ -11,7 +11,6 @@ import net.haspamelodica.studentcodeseparator.serialization.StringSerializer;
 
 @StudentSideInstanceKind(CLASS)
 @OverrideStudentSideName("net.haspamelodica.studentcodeseparator.ReferencingClassImpl")
-@UseSerializer(StringSerializer.class)
 public interface ReferencingClass extends StudentSideInstance
 {
 	public static interface Prototype extends StudentSidePrototype<ReferencingClass>
@@ -20,6 +19,7 @@ public interface ReferencingClass extends StudentSideInstance
 		public MyClass createImpl();
 
 		@StudentSidePrototypeMethodKind(STATIC_METHOD)
+		@UseSerializer(StringSerializer.class)
 		public String myClassImplToString(MyClass impl);
 	}
 }

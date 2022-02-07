@@ -165,14 +165,14 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 		@Override
 		public void serialize(DataOutput out, Void obj) throws IOException
 		{
-			//do nothing: obj can only be null
+			// do nothing: obj can only be null
 			if(obj != null)
 				throw new IllegalStateException("Got an instance of Void");
 		}
 		@Override
 		public Void deserialize(DataInput in) throws IOException
 		{
-			//null is the only possible void value
+			// null is the only possible void value
 			return null;
 		}
 	}

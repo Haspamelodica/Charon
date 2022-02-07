@@ -50,7 +50,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstan
 		this.globalSerializer = globalSerializer;
 		this.prototypeClass = prototypeClass;
 
-		//The order of the following operations is important: each step depends on the last
+		// The order of the following operations is important: each step depends on the last
 
 		this.instanceClass = checkPrototypeClassAndGetInstsanceClass();
 		this.studentSideCN = getStudentSideName(instanceClass);
@@ -92,8 +92,8 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstan
 					if(!(instanceTypeUnchecked instanceof Class))
 						throw new InconsistentHierarchyException("The type argument to StudentClassPrototype has to be an unparameterized or raw class: " + prototypeClass);
 
-					//From the class type signature, we know SP's type parameter to StudentSidePrototype is SI.
-					//So, this cast has to succeed.
+					// From the class type signature, we know SP's type parameter to StudentSidePrototype is SI.
+					// So, this cast has to succeed.
 					@SuppressWarnings("unchecked")
 					Class<SI> instanceClass = (Class<SI>) instanceTypeUnchecked;
 					return instanceClass;
@@ -213,7 +213,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstan
 		return staticFieldSetterHandlerChecked(methodWideSerializer, name, paramType);
 	}
 
-	//extracted to own method so casting to field type is expressible in Java
+	// extracted to own method so casting to field type is expressible in Java
 	private <F> MethodHandler staticFieldSetterHandlerChecked(SerializationHandler<StudentSideInstance, REF> methodWideSerializer, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);

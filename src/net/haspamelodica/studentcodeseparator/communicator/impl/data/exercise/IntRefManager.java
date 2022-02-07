@@ -1,13 +1,11 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
 
 public class IntRefManager<ATTACHMENT>
 {
@@ -52,14 +50,13 @@ public class IntRefManager<ATTACHMENT>
 		this.allocatedRefs = 0;
 	}
 
-	public void writeRef(DataOutput out, IntRef<ATTACHMENT> objRef) throws IOException
+	public int getID(IntRef<ATTACHMENT> objRef)
 	{
-		out.writeInt(objRef != null ? objRef.ref() : 0);
+		return objRef != null ? objRef.id() : 0;
 	}
 
-	public IntRef<ATTACHMENT> readRef(DataInput in, DataOutput out) throws IOException
+	public IntRef<ATTACHMENT> getRef(int refID) throws IllegalBehaviourException
 	{
-		int refID = in.readInt();
 		if(refID == 0)
 			return null;
 
@@ -77,7 +74,7 @@ public class IntRefManager<ATTACHMENT>
 			}
 		}
 
-		//slow path
+		// slow path
 		synchronized(lock)
 		{
 			if(refID < allocatedRefs)
@@ -96,13 +93,20 @@ public class IntRefManager<ATTACHMENT>
 				// We might want to prevent that.
 				// However, we can't just compare with '==': Multiple threads may try to return new RefIDs at the same time.
 				// If we knew the running thread count, we could maybe compare with '<= allocatedRefs + threadCount'.
+
+				// This addition might overflow. This results in the student being able to force creation of multiple IntRefs
+				// for the same ID. While this doesn't seem very bad, we still prevent it because it might lead to unexpected side effects.
+				if(refID == Integer.MAX_VALUE)
+					throw new IllegalBehaviourException("Student returned maximal integer as ID: " + Integer.MAX_VALUE);
 				allocatedRefs = refID + 1;
 				if(allocatedRefs > refs.length)
 				{
 					int newLength = allocatedRefs * 2;
 					// Overflow handling: We do '*2'. This is equivalent to a lshift by one bit.
+					// Also, we know allocatedRefs to be positive => sign bit is 0.
 					// So, we can simply check the sign bit => compare '<0'.
 					if(newLength < 0)
+						// Allow such arrays, don't call a IllegalBehaviourException: The exercise side caused the overflow.
 						newLength = Integer.MAX_VALUE;
 					refs = Arrays.copyOf(refs, newLength);
 				}

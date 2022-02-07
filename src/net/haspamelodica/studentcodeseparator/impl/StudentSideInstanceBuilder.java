@@ -148,7 +148,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<StudentSideInstanc
 		return fieldSetterHandlerChecked(serializer, name, paramType);
 	}
 
-	//extracted to own method so casting to field type is expressible in Java
+	// extracted to own method so casting to field type is expressible in Java
 	private <F> InstanceMethodHandler<StudentSideInstance, REF> fieldSetterHandlerChecked(SerializationHandler<StudentSideInstance, REF> serializer, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);

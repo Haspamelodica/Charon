@@ -77,7 +77,7 @@ public class StudentSideImplUtils
 
 	public static List<Class<? extends Serializer<?>>> getSerializers(AnnotatedElement element)
 	{
-		//This also catches uses of UseSerializers
+		// This also catches uses of UseSerializers
 		return Arrays.stream(element.getAnnotationsByType(UseSerializer.class))
 				.map((Function<UseSerializer, Class<? extends Serializer<?>>>) UseSerializer::value).toList();
 	}

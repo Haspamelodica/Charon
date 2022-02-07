@@ -10,6 +10,7 @@ import static net.haspamelodica.studentcodeseparator.communicator.impl.data.exer
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.Command.SEND;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.Command.SET_INSTANCE_FIELD;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.Command.SET_STATIC_FIELD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.Command.SHUTDOWN;
 
 import java.io.DataInput;
 import java.io.DataInputStream;
@@ -20,17 +21,18 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
+import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
 import net.haspamelodica.studentcodeseparator.exceptions.StudentCodeSeparatorException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
+public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
 {
 	private final DataInputStream	rawIn;
 	private final DataOutputStream	rawOut;
 
 	private final IntRefManager<ATTACHMENT> refManager;
 
-	public DataCommunicator(DataInputStream rawIn, DataOutputStream rawOut)
+	public DataCommunicatorClient(DataInputStream rawIn, DataOutputStream rawOut)
 	{
 		this.rawIn = rawIn;
 		this.rawOut = rawOut;
@@ -41,7 +43,7 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 	@Override
 	public String getStudentSideClassname(IntRef<ATTACHMENT> ref)
 	{
-		return executeCommand(GET_CLASSNAME, out -> out.writeInt(ref.ref()), DataInput::readUTF);
+		return executeCommand(GET_CLASSNAME, out -> writeRef(out, ref), DataInput::readUTF);
 	}
 
 	@Override
@@ -49,7 +51,7 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 	{
 		return executeRefCommand(SEND, out ->
 		{
-			refManager.writeRef(out, serializerRef);
+			writeRef(out, serializerRef);
 			serializer.serialize(out, obj);
 		});
 	}
@@ -59,8 +61,8 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 	{
 		return executeCommand(RECEIVE, out ->
 		{
-			refManager.writeRef(out, serializerRef);
-			refManager.writeRef(out, objRef);
+			writeRef(out, serializerRef);
+			writeRef(out, objRef);
 		}, serializer::deserialize);
 	}
 
@@ -103,7 +105,7 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 			out.writeUTF(cn);
 			out.writeUTF(name);
 			out.writeUTF(fieldClassname);
-			refManager.writeRef(out, valueRef);
+			writeRef(out, valueRef);
 		});
 	}
 
@@ -115,7 +117,7 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 			out.writeUTF(cn);
 			out.writeUTF(name);
 			out.writeUTF(returnClassname);
-			refManager.writeRef(out, receiverRef);
+			writeRef(out, receiverRef);
 			writeArgs(out, params, argRefs);
 		});
 	}
@@ -127,7 +129,7 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 			out.writeUTF(cn);
 			out.writeUTF(name);
 			out.writeUTF(fieldClassname);
-			refManager.writeRef(out, receiverRef);
+			writeRef(out, receiverRef);
 		});
 	}
 	@Override
@@ -138,9 +140,15 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 			out.writeUTF(cn);
 			out.writeUTF(name);
 			out.writeUTF(fieldClassname);
-			refManager.writeRef(out, receiverRef);
-			refManager.writeRef(out, valueRef);
+			writeRef(out, receiverRef);
+			writeRef(out, valueRef);
 		});
+	}
+
+	public void shutdown()
+	{
+		executeVoidCommand(SHUTDOWN, out ->
+		{});
 	}
 
 	private void executeVoidCommand(Command command, IOConsumer<DataOutput> sendParams)
@@ -149,27 +157,19 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 	}
 	private IntRef<ATTACHMENT> executeRefCommand(Command command, IOConsumer<DataOutput> sendParams)
 	{
-		return executeCommand(command, sendParams, refManager::readRef);
+		return executeCommand(command, sendParams, this::readRef);
 	}
 	private <R> R executeCommand(Command command, IOConsumer<DataOutput> sendParams, IOFunction<DataInput, R> parseResponse)
-	{
-		return executeCommand(command, sendParams, (in, out) -> parseResponse.apply(in));
-	}
-	private <R> R executeCommand(Command command, IOConsumer<DataOutput> sendParams, IOBiFunction<DataInput, DataOutput, R> parseResponse)
-	{
-		return executeCommand(command, (in, out) -> sendParams.accept(out), parseResponse);
-	}
-	private <R> R executeCommand(Command command, IOBiConsumer<DataInput, DataOutput> sendParams, IOBiFunction<DataInput, DataOutput, R> parseResponse)
 	{
 		try
 		{
 			rawOut.writeByte(command.encode());
+			sendParams.accept(rawOut);
 			rawOut.flush();
-			sendParams.accept(rawIn, rawOut);
-			return parseResponse.apply(rawIn, rawOut);
+			return parseResponse.apply(rawIn);
 		} catch(IOException e)
 		{
-			throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0)", e);
+			throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
 		}
 	}
 
@@ -183,6 +183,16 @@ public class DataCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATT
 		for(String param : params)
 			out.writeUTF(param);
 		for(IntRef<ATTACHMENT> argRef : argRefs)
-			refManager.writeRef(out, argRef);
+			writeRef(out, argRef);
+	}
+
+	private IntRef<ATTACHMENT> readRef(DataInput in) throws IOException, IllegalBehaviourException
+	{
+		return refManager.getRef(in.readInt());
+	}
+
+	private void writeRef(DataOutput out, IntRef<ATTACHMENT> ref) throws IOException
+	{
+		out.writeInt(refManager.getID(ref));
 	}
 }

@@ -1,9 +1,5 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.pack;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef.unpack;
-import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.classToName;
-
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -14,30 +10,42 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServerWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public abstract class AbstractSameJVMCommunicator<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, SameJVMRef<ATTACHMENT>>
+/**
+ * <b>Using this class in the tester JVM to create a {@link StudentSideImpl} is not safe
+ * as it gives student code full access to the system the tester JVM is running on.</b>
+ * Use a {@link DataCommunicatorClient} instead.
+ * <p>
+ * Commands are executed in the same JVM and same thread as they are called in; they also aren't serialized and deserialized.
+ * This makes debugging a little bit easier and speeds up execution
+ * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServerWithoutSerialization} in the same JVM.
+ */
+public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
+		implements StudentSideCommunicator<ATTACHMENT, SameJVMRef<ATTACHMENT>>
 {
-	@Override
-	public String getStudentSideClassname(SameJVMRef<ATTACHMENT> ref)
+	public DirectSameJVMCommunicator(SameJVMRefManager<ATTACHMENT> refManager)
 	{
-		return classToName(unpack(ref).getClass());
+		super(refManager);
 	}
 
 	@Override
 	public <T> SameJVMRef<ATTACHMENT> send(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		Serializer<T> studentSideSerializer = (Serializer<T>) unpack(serializerRef);
-		return pack(sendAndReceive(serializer, studentSideSerializer, obj));
+		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
+		return refManager.pack(sendAndReceive(serializer, studentSideSerializer, obj));
 	}
 	@Override
 	public <T> T receive(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, SameJVMRef<ATTACHMENT> objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		Serializer<T> studentSideSerializer = (Serializer<T>) unpack(serializerRef);
+		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		T obj = (T) unpack(objRef);
+		T obj = (T) refManager.unpack(objRef);
 		return sendAndReceive(studentSideSerializer, serializer, obj);
 	}
 	private <T> T sendAndReceive(Serializer<T> serializer, Serializer<T> deserializer, T obj)
@@ -50,7 +58,7 @@ public abstract class AbstractSameJVMCommunicator<ATTACHMENT> implements Student
 		try(PipedInputStream pipeIn = new PipedInputStream(); DataInputStream in = new DataInputStream(pipeIn))
 		{
 			Semaphore pipeOutCreated = new Semaphore(0);
-			//serialize in other thread to avoid deadlock
+			// serialize in other thread to avoid blocking indefinitely if pipeOut buffer run out
 			serializerThread = new Thread(() ->
 			{
 				try(PipedOutputStream pipeOut = new PipedOutputStream(pipeIn); DataOutputStream out = new DataOutputStream(pipeOut))
@@ -65,7 +73,7 @@ public abstract class AbstractSameJVMCommunicator<ATTACHMENT> implements Student
 					serializationExceptionA.set(e);
 				} finally
 				{
-					//maybe releases twice. That doesn't matter.
+					// maybe releases twice. That doesn't matter.
 					pipeOutCreated.release();
 				}
 			});

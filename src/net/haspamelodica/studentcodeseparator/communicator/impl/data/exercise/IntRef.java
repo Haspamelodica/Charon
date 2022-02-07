@@ -4,21 +4,21 @@ import net.haspamelodica.studentcodeseparator.communicator.Ref;
 
 public class IntRef<ATTACHMENT> extends Ref<ATTACHMENT>
 {
-	private final int ref;
+	private final int id;
 
-	public IntRef(int ref)
+	public IntRef(int id)
 	{
-		this.ref = ref;
+		this.id = id;
 	}
 
-	public int ref()
+	public int id()
 	{
-		return ref;
+		return id;
 	}
 
 	@Override
 	public String toString()
 	{
-		return "Ref#" + ref;
+		return "Ref#" + id;
 	}
 }

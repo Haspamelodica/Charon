@@ -5,6 +5,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
+
 public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 {
 	public final static List<Class<? extends Serializer<?>>> PRIMITIVE_SERIALIZERS = List.of(BooleanSerializer.class,
@@ -167,7 +169,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 		{
 			// do nothing: obj can only be null
 			if(obj != null)
-				throw new IllegalStateException("Got an instance of Void");
+				throw new FrameworkCausedException("Got an instance of Void");
 		}
 		@Override
 		public Void deserialize(DataInput in) throws IOException

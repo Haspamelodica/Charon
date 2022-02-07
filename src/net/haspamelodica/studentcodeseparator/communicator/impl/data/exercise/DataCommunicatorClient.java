@@ -21,8 +21,7 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
-import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
-import net.haspamelodica.studentcodeseparator.exceptions.StudentCodeSeparatorException;
+import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
@@ -177,7 +176,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	{
 		int paramCount = params.size();
 		if(paramCount != argRefs.size())
-			throw new StudentCodeSeparatorException("Parameter and argument count mismatched: " + paramCount + ", " + argRefs.size());
+			throw new FrameworkCausedException("Parameter and argument count mismatched: " + paramCount + ", " + argRefs.size());
 
 		out.writeInt(paramCount);
 		for(String param : params)
@@ -186,7 +185,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 			writeRef(out, argRef);
 	}
 
-	private IntRef<ATTACHMENT> readRef(DataInput in) throws IOException, IllegalBehaviourException
+	private IntRef<ATTACHMENT> readRef(DataInput in) throws IOException
 	{
 		return refManager.getRef(in.readInt());
 	}

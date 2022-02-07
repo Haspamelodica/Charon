@@ -135,17 +135,14 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstan
 		});
 	}
 
-	private MethodHandler constructorHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer, boolean nameOverridden)
+	private MethodHandler constructorHandler(Method method, SerializationHandler<StudentSideInstance, REF> methodWideSerializer,
+			boolean nameOverridden)
 	{
 		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
 		{
-			case CLASS:
-				break;
-			case INTERFACE:
-				throw new InconsistentHierarchyException("Student-side interfaces can't have constructors");
-			default:
-				throw new IllegalStateException("Unknown student-side instance kind: "
-						+ instanceClass.getAnnotation(StudentSideInstanceKind.class).value());
+			case CLASS ->
+			{}
+			case INTERFACE -> throw new InconsistentHierarchyException("Student-side interfaces can't have constructors");
 		}
 
 		if(nameOverridden)

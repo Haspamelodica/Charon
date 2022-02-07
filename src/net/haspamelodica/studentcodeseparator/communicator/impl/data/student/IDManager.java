@@ -3,6 +3,7 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
 import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
+import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 
 public class IDManager<REF extends Ref<Integer>>
 {
@@ -40,7 +41,7 @@ public class IDManager<REF extends Ref<Integer>>
 			// Create a new ID
 			int id = nextFreeID ++;
 			if(id == Integer.MAX_VALUE)
-				throw new IllegalStateException("Too many objects");
+				throw new FrameworkCausedException("Too many objects");
 
 			// First add to refs array, then set attachment to prevent race conditions.
 			// TODO does the JVM guarantee this happens in this order? I don't think so

@@ -55,7 +55,7 @@ public class IntRefManager<ATTACHMENT>
 		return objRef != null ? objRef.id() : 0;
 	}
 
-	public IntRef<ATTACHMENT> getRef(int refID) throws IllegalBehaviourException
+	public IntRef<ATTACHMENT> getRef(int refID)
 	{
 		if(refID == 0)
 			return null;

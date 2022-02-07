@@ -32,7 +32,9 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 		this.idManager = new IDManager<>();
 	}
 
-	public void run()
+	// Don't even try to catch IOExceptions; just crash.
+	// Exercise has to handle this correctly as this behaviour could also created maliciously.
+	public void run() throws IOException
 	{
 		try
 		{
@@ -57,10 +59,10 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 				}
 				rawOut.flush();
 			}
-		} catch(Exception e)
+		} catch(RuntimeException e)
 		{
-			//TODO log to rawOut
-			throw new RuntimeException(e);
+			//TODO log to rawOut instead of rethrowing
+			throw e;
 		}
 	}
 

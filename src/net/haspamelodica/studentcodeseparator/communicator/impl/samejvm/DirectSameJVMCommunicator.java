@@ -24,6 +24,7 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * This makes debugging a little bit easier and speeds up execution
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServerWithoutSerialization} in the same JVM.
  */
+//TODO better exception handling. Use StudentSideException
 public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
 		implements StudentSideCommunicator<ATTACHMENT, SameJVMRef<ATTACHMENT>>
 {

@@ -14,7 +14,7 @@ import java.util.function.Function;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
-import net.haspamelodica.studentcodeseparator.exceptions.SerializationException;
+import net.haspamelodica.studentcodeseparator.exceptions.MissingSerializerException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 
 public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
@@ -122,7 +122,9 @@ public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 				if(serializer.serializer().getHandledClass().isAssignableFrom(clazz))
 					return serializer;
 			}
-			throw new SerializationException("No serializer for class " + clazz);
+			//TODO check if there is a fitting serializer at prototype creation time
+			//TODO make exception easier to understand: this happens if some exercise creator tries to pass any object into a method.
+			throw new MissingSerializerException("No serializer for class " + clazz);
 		});
 		@SuppressWarnings("unchecked") // this is guaranteed because we only put key-value pairs with matching T
 		InitializedSerializer<ATTACHMENT, REF, T> resultCasted = (InitializedSerializer<ATTACHMENT, REF, T>) result;

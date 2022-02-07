@@ -23,6 +23,7 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMet
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
@@ -74,7 +75,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<StudentSideInstanc
 		if(kind == null)
 			throw new InconsistentHierarchyException("A student-side instance class has to be annotated with StudentSideInstanceKind: " + instanceClass);
 		if(kind.value() != Kind.CLASS)
-			throw new IllegalArgumentException("Student-side interfaces aren't implemented yet");
+			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
 	private Map<Method, InstanceMethodHandler<StudentSideInstance, REF>> createMethodHandlers()

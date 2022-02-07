@@ -1,7 +1,0 @@
-Manifest-Version: 1.0
-Bundle-ManifestVersion: 2
-Bundle-Name: Studentcodeseparator
-Bundle-SymbolicName: net.haspamelodica.studentcodeseparator
-Bundle-Version: 1.0.0.qualifier
-Automatic-Module-Name: net.haspamelodica.studentcodeseparator
-Bundle-RequiredExecutionEnvironment: JavaSE-17

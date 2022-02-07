@@ -1,0 +1,10 @@
+Manifest-Version: 1.0
+Bundle-ManifestVersion: 2
+Bundle-Name: Studentrunner
+Bundle-SymbolicName: net.haspamelodica.studentcodeseparator.example.runner
+Bundle-Version: 1.0.0.qualifier
+Automatic-Module-Name: net.haspamelodica.studentcodeseparator.example.studentrunner
+Bundle-RequiredExecutionEnvironment: JavaSE-17
+Require-Bundle: net.haspamelodica.studentcodeseparator.example.student;bundle-version="1.0.0",
+ net.haspamelodica.studentcodeseparator.example.exercise;bundle-version="1.0.0",
+ net.haspamelodica.studentcodeseparator.samejvm;bundle-version="1.0.0"

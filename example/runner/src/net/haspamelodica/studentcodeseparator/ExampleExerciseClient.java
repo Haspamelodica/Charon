@@ -1,0 +1,98 @@
+package net.haspamelodica.studentcodeseparator;
+
+import static net.haspamelodica.studentcodeseparator.ExampleExercise.run;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator.maybeWrapLogging;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
+
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
+import java.io.UncheckedIOException;
+import java.net.Socket;
+import java.net.UnknownHostException;
+import java.util.concurrent.Semaphore;
+
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.WeakSameJVMRefManager;
+import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
+
+public class ExampleExerciseClient
+{
+	private static final boolean LOGGING = true;
+	// If you use DATA_OTHER_JVM, start ExampleExerciseServer first.
+	private static final Mode MODE = Mode.DATA_OTHER_JVM;
+	// HOST and PORT only matter for mode DATA_OTHER_JVM
+	private static final String	HOST	= "localhost";
+	private static final int	PORT	= ExampleExerciseServer.PORT;
+
+	private enum Mode
+	{
+		DIRECT, DATA_SAME_JVM, DATA_OTHER_JVM;
+	}
+
+	public static void main(String[] args) throws IOException, InterruptedException
+	{
+		// An instance of StudentSide will at some point be provided by the framework, not created by the exercise.
+		// Also, Ares would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the exercise JVM.
+		switch(MODE)
+		{
+			case DIRECT -> runDirect();
+			case DATA_SAME_JVM -> runDataSameJVM();
+			case DATA_OTHER_JVM -> runDataOtherJVM();
+		}
+	}
+
+	// --- Code below here will be moved to the framework.
+
+	private static void runDirect()
+	{
+		run(new StudentSideImpl<>(maybeWrapLogging(new DirectSameJVMCommunicator<>(new WeakSameJVMRefManager<>()), LOGGING)));
+	}
+
+	private static void runDataSameJVM() throws InterruptedException, IOException
+	{
+		try(PipedInputStream clientIn = new PipedInputStream(); PipedOutputStream clientOut = new PipedOutputStream())
+		{
+			Semaphore serverConnected = new Semaphore(0);
+			new Thread(() ->
+			{
+				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
+				{
+					serverConnected.release();
+					DataCommunicatorServer server = new DataCommunicatorServer(new DataInputStream(serverIn), new DataOutputStream(serverOut),
+							refManager -> maybeWrapLoggingW(new DirectSameJVMCommunicatorWithoutSerialization<>(refManager), "SERVER: ", LOGGING));
+					server.run();
+				} catch(IOException e)
+				{
+					throw new UncheckedIOException(e);
+				} finally
+				{
+					// Might release twice; doesn't matter
+					serverConnected.release();
+				}
+			}).start();
+			// wait for the server to create PipedOutputStreams
+			serverConnected.acquire();
+			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(new DataInputStream(clientIn), new DataOutputStream(clientOut));
+			run(new StudentSideImpl<>(maybeWrapLogging(client, "CLIENT: ", LOGGING)));
+			client.shutdown();
+		}
+	}
+
+	private static void runDataOtherJVM() throws IOException, UnknownHostException
+	{
+		try(Socket sock = new Socket(HOST, PORT);
+				DataInputStream in = new DataInputStream(sock.getInputStream());
+				DataOutputStream out = new DataOutputStream(sock.getOutputStream()))
+		{
+			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(in, out);
+			run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));
+			client.shutdown();
+		}
+	}
+}

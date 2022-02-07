@@ -5,8 +5,7 @@ Bundle-SymbolicName: net.haspamelodica.studentcodeseparator.common
 Bundle-Version: 1.0.0.qualifier
 Automatic-Module-Name: net.haspamelodica.studentcodeseparator.common
 Bundle-RequiredExecutionEnvironment: JavaSE-17
-Export-Package: net.haspamelodica.studentcodeseparator,
- net.haspamelodica.studentcodeseparator.communicator,
+Export-Package: net.haspamelodica.studentcodeseparator.communicator,
  net.haspamelodica.studentcodeseparator.communicator.impl,
  net.haspamelodica.studentcodeseparator.communicator.impl.data,
  net.haspamelodica.studentcodeseparator.reflection,

@@ -5,3 +5,4 @@ Bundle-SymbolicName: net.haspamelodica.studentcodeseparator.example.student
 Bundle-Version: 1.0.0.qualifier
 Automatic-Module-Name: net.haspamelodica.studentcodeseparator.example.student
 Bundle-RequiredExecutionEnvironment: JavaSE-17
+Export-Package: net.haspamelodica.studentcodeseparator

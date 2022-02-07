@@ -8,3 +8,4 @@ Bundle-RequiredExecutionEnvironment: JavaSE-17
 Require-Bundle: net.haspamelodica.studentcodeseparator.example.student;bundle-version="1.0.0",
  net.haspamelodica.studentcodeseparator.example.exercise;bundle-version="1.0.0",
  net.haspamelodica.studentcodeseparator.samejvm;bundle-version="1.0.0"
+Export-Package: net.haspamelodica.studentcodeseparator

@@ -1,5 +1,7 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise;
 
+import java.lang.ref.Cleaner;
+import java.lang.ref.PhantomReference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.Arrays;
@@ -15,7 +17,8 @@ public class IntRefManager<ATTACHMENT>
 	 * But once no SSI exists anymore (tester-side) referencing a student-side object, that object can be deleted.
 	 * (If we didn't do this optimization, student-side object would live forever as the student side would have to keep them reachable
 	 * as the tester might at any time use any student-side object.)
-	 * (TODO actually do this. {@link ReferenceQueue} seems useful.)
+	 * (TODO actually do this. {@link ReferenceQueue} seems useful.
+	 * Or use {@link Cleaner}, but it uses {@link PhantomReference}s instead of {@link WeakReference}s.)
 	 * (TODO there might be a race condition: a student-side thread sends a RefID, say, 42;
 	 * at the same time the exercise side GC deletes the corresponding IntRef, so the student side gets sent the command to delete ID 42.
 	 * The exercise side now receives ID 42 as a "new" object, which wouldn't be a problem by itself,

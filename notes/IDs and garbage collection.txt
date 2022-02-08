@@ -1,0 +1,33 @@
+Every student-side object is identified by an integer ID.
+This means the student side needs to keep a mapping from int to seen Objects.
+This becomes a problem if memory gets low, because the garbage collector won't be able to reclaim any objects an ID has been assigned for.
+The solution is to detect if the exercise side doesn't need a student-side object anymore.
+This can be done by detecting when an IntRef becomes unreachable by exercise code.
+
+This ID is wrapped into an IntRef, which is in turn wrapped in an StudentSideInstanceInvocationHandler underlying a StudentSideInstance.
+(IntRefs created in the course of serialization aren't stored anywhere and so are only reachable during the method call which caused serialization.)
+Apart from this, there are no strong references to an IntRef; additionally, the library doesn't keep references to created StudentSideInstances.
+This means that if exercise code doesn't have a reference to a given SSI anymore, its IntRef will also be unreachable.
+So, the exercise-side garbage collector will be able to reclaim an IntRef exactly if exercise has no reference to the corresponding SSI anymore.
+To detect if an IntRef is actually reclaimed, we use WeakReferences and reference queues.
+We don't use PhantomReferences since they are triggered later, and don't use finalizers because they are deprecated.
+There is Cleaner, but it doesn't seem useful as well because it uses PhantomReferences, doesn't give us access to the raw reference objects,
+and its documentation states it should only used for simple actions. ("Typically the cleaning actions should be very quick to executeand not block.")
+
+TODO mention IDs and IntRefs are unique
+TODO mention race condition
+TODO mention why dropping requirement of unique IDs won't solve race condition
+TODO it might, though, if the student side _never_ reuses IDs. Would also make SameJVMRefManager unneccessary, including its map of objects to IDs.
+  We definitely have enough IDs if we switch to long:
+  An experiment with AtomicInteger showed that incrementing one from 0 to Integer.MAX_VALUE took about 10 seconds.
+  If we assume that a fast computer makes this in 1 second, despite all the overhead of communicating back and forth,
+  allocating objects, dispatch through Proxy (exercise-side) and Reflection (student-side), method handler lookup in a HashMap, and doing actual work,
+  using longs will still give us 68 years (Integer.MAX_VALUE * 1d / 60 / 60 / 24 / 365) of runtime before IDs start running out.
+  Also, we could optimize: if the exercise side tells us an ID just got freed, we probably can reuse that ID.
+  This would save space on the array of allocated objects implementing the ID->object mapping.
+  On the other hand, dropping unique IDs goes a bit against the spirit of this library of being as transparent as possible (by making == not work on SSIs).
+  Also, could sending an ID again be exploited somehow? This could probably be detected very easily.
+  Compromise: use complicated approach with unique IDs by default, and switch to this approach when given a certain flag at creation
+TODO mention idea about counting received refs
+TODO other idea: delete in multiple phases. Probably very hard to synchronize, but still maybe easier than counting refs
+TODO manually trigger GC if student-side JVM starts running out of memory. Maybe detect with a SoftReference

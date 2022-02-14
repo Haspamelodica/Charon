@@ -12,6 +12,7 @@ public enum Command
 	CALL_INSTANCE_METHOD,
 	GET_INSTANCE_FIELD,
 	SET_INSTANCE_FIELD,
+	REF_DELETED,
 	SHUTDOWN;
 
 	public byte encode()

@@ -9,11 +9,13 @@ import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.h
 import static net.haspamelodica.studentcodeseparator.impl.StudentSideImplUtils.mapToStudentSide;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
@@ -55,15 +57,28 @@ public final class StudentSideInstanceBuilder<REF extends Ref<StudentSideInstanc
 	 */
 	public SI createInstance(REF ref)
 	{
+		// The access to attachment isn't synchronized here.
+		// However, the attachment field is volatile, so if we get a non-null value back,
+		// we are guaranteed it is fully initialized even when considering code reorderings
+		// (since every volatile write happens-before any subsequent volatile read, according to JLS).
 		Object studentSideInstance = ref.getAttachment();
 		if(studentSideInstance != null)
 			// Don't use a static cast to fail-fast
 			// No need to use castOrPrimitive: StudentSideInstance is never primitive
 			return instanceClass.cast(studentSideInstance);
 
-		SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
-		ref.setAttachment(newStudentSideInstance);
-		return newStudentSideInstance;
+		synchronized(ref)
+		{
+			studentSideInstance = ref.getAttachment();
+			if(studentSideInstance != null)
+				// Don't use a static cast to fail-fast
+				// No need to use castOrPrimitive: StudentSideInstance is never primitive
+				return instanceClass.cast(studentSideInstance);
+
+			SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
+			ref.setAttachment(newStudentSideInstance);
+			return newStudentSideInstance;
+		}
 	}
 
 	private void checkInstanceClass()
@@ -78,11 +93,42 @@ public final class StudentSideInstanceBuilder<REF extends Ref<StudentSideInstanc
 			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
+	private record MethodWithHandler<REF extends Ref<StudentSideInstance>> (Method method, InstanceMethodHandler<StudentSideInstance, REF> handler)
+	{}
 	private Map<Method, InstanceMethodHandler<StudentSideInstance, REF>> createMethodHandlers()
 	{
-		// We are guaranteed to catch all (relevant) methods this way: abstract interface methods have to be public
-		return Arrays.stream(instanceClass.getMethods())
-				.collect(Collectors.toUnmodifiableMap(m -> m, this::methodHandlerFor));
+		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
+		return Stream.concat(
+				Arrays.stream(instanceClass.getMethods())
+						.map(m -> new MethodWithHandler<>(m, methodHandlerFor(m))),
+				objectMethodHandlers())
+				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
+	}
+	private Stream<MethodWithHandler<REF>> objectMethodHandlers()
+	{
+		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
+		// So, throwing an exception (via checkReturnAndParameterTypes) is appropriate.
+		return Arrays.stream(Object.class.getMethods())
+				.filter(method -> !Modifier.isFinal(method.getModifiers()))
+				.map(method -> switch(method.getName())
+				{
+				case "toString" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, String.class),
+						(ref, proxy, args) -> "StudentSideInstance[" + ref + "]");
+				case "hashCode" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, int.class),
+						(ref, proxy, args) -> System.identityHashCode(proxy));
+				case "equals" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, boolean.class, Object.class),
+						(ref, proxy, args) -> proxy == args[0]);
+				default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
+				});
+	}
+
+	private Method checkReturnAndParameterTypes(Method method, Class<?> expectedReturnType, Class<?>... expectedParameterTypes)
+	{
+		if(!Arrays.equals(method.getParameterTypes(), expectedParameterTypes))
+			throw new FrameworkCausedException("Unexpected parameter types: expected " + expectedParameterTypes + " for " + method);
+		if(!method.getReturnType().equals(expectedReturnType))
+			throw new FrameworkCausedException("Unknown method of Object: " + method);
+		return method;
 	}
 
 	private InstanceMethodHandler<StudentSideInstance, REF> methodHandlerFor(Method method)

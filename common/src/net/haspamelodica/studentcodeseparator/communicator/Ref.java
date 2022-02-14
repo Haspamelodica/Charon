@@ -14,7 +14,7 @@ package net.haspamelodica.studentcodeseparator.communicator;
  */
 public abstract class Ref<ATTACHMENT>
 {
-	private ATTACHMENT attachment;
+	private volatile ATTACHMENT attachment;
 
 	public final ATTACHMENT getAttachment()
 	{

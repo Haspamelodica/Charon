@@ -9,15 +9,15 @@ import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.ManualSameJVMRefManager;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRef;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMRefManager;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.WeakSameJVMRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DataCommunicatorServer extends DataCommunicatorServerWithoutSerialization<SameJVMRef<Integer>>
+public class DataCommunicatorServer extends DataCommunicatorServerWithoutSerialization<SameJVMRef<DataCommunicatorAttachment>>
 {
-	private final ManualSameJVMRefManager<Integer> refManager;
+	private final SameJVMRefManager<DataCommunicatorAttachment> refManager;
 
 	public DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut)
 	{
@@ -27,14 +27,16 @@ public class DataCommunicatorServer extends DataCommunicatorServerWithoutSeriali
 	 * This constructor exists so {@link LoggingCommunicatorWithoutSerialization} can be used server-side.
 	 */
 	public DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut,
-			Function<SameJVMRefManager<Integer>, StudentSideCommunicatorWithoutSerialization<Integer, SameJVMRef<Integer>>> createCommunicator)
+			Function<SameJVMRefManager<DataCommunicatorAttachment>, StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment,
+					SameJVMRef<DataCommunicatorAttachment>>> createCommunicator)
 	{
-		this(rawIn, rawOut, createCommunicator, new ManualSameJVMRefManager<>());
+		this(rawIn, rawOut, createCommunicator, new WeakSameJVMRefManager<>());
 	}
 	// extracted into own constructor so we can use refManager in super constructor call and store it as a final field
 	private DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut,
-			Function<SameJVMRefManager<Integer>, StudentSideCommunicatorWithoutSerialization<Integer, SameJVMRef<Integer>>> createCommunicator,
-			ManualSameJVMRefManager<Integer> refManager)
+			Function<SameJVMRefManager<DataCommunicatorAttachment>, StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment,
+					SameJVMRef<DataCommunicatorAttachment>>> createCommunicator,
+			SameJVMRefManager<DataCommunicatorAttachment> refManager)
 	{
 		super(rawIn, rawOut, createCommunicator.apply(refManager));
 		this.refManager = refManager;

@@ -12,17 +12,17 @@ import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.Command;
 
-public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref<Integer>>
+public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref<DataCommunicatorAttachment>>
 {
 	private final DataInputStream	rawIn;
 	private final DataOutputStream	rawOut;
 
-	private final StudentSideCommunicatorWithoutSerialization<Integer, REF> communicator;
+	private final StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment, REF> communicator;
 
 	private final IDManager<REF> idManager;
 
 	public DataCommunicatorServerWithoutSerialization(DataInputStream rawIn, DataOutputStream rawOut,
-			StudentSideCommunicatorWithoutSerialization<Integer, REF> communicator)
+			StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment, REF> communicator)
 	{
 		this.rawIn = rawIn;
 		this.rawOut = rawOut;
@@ -48,10 +48,11 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 					case CALL_CONSTRUCTOR -> respondCallConstructor(rawIn, rawOut);
 					case CALL_STATIC_METHOD -> respondCallStaticMethod(rawIn, rawOut);
 					case GET_STATIC_FIELD -> respondGetStaticField(rawIn, rawOut);
-					case SET_INSTANCE_FIELD -> respondSetInstanceField(rawIn, rawOut);
+					case SET_STATIC_FIELD -> respondSetStaticField(rawIn, rawOut);
 					case CALL_INSTANCE_METHOD -> respondCallInstanceMethod(rawIn, rawOut);
 					case GET_INSTANCE_FIELD -> respondGetInstanceField(rawIn, rawOut);
-					case SET_STATIC_FIELD -> respondSetStaticField(rawIn, rawOut);
+					case SET_INSTANCE_FIELD -> respondSetInstanceField(rawIn, rawOut);
+					case REF_DELETED -> respondRefDeleted(rawIn, rawOut);
 					case SHUTDOWN ->
 					{
 						break loop;
@@ -141,6 +142,14 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
 	}
 
+	private void respondRefDeleted(DataInput in, DataOutput out) throws IOException
+	{
+		REF deletedRef = readRef(in);
+		int receivedCount = in.readInt();
+
+		idManager.refDeleted(deletedRef, receivedCount);
+	}
+
 	private Args<REF> readArgs(DataInput in) throws IOException
 	{
 		int paramCount = in.readInt();
@@ -165,6 +174,6 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 
 	protected final void writeRef(DataOutput out, REF ref) throws IOException
 	{
-		out.writeInt(idManager.getID(ref));
+		out.writeInt(idManager.getIDForSending(ref));
 	}
 }

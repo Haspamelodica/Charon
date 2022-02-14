@@ -2,6 +2,18 @@ package net.haspamelodica.studentcodeseparator;
 
 public class ReferencingClassImpl
 {
+	private final MyClassImpl impl;
+
+	public ReferencingClassImpl(MyClassImpl impl)
+	{
+		this.impl = impl;
+	}
+
+	public MyClassImpl getImpl()
+	{
+		return impl;
+	}
+
 	public static MyClassImpl createImpl()
 	{
 		return new MyClassImpl("myField from ReferencingClassImpl");

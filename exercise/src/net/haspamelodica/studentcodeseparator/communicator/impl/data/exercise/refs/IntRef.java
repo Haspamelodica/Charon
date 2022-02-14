@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise;
+package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs;
 
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 

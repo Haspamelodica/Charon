@@ -7,6 +7,7 @@ import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Comm
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.GET_INSTANCE_FIELD;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.GET_STATIC_FIELD;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.RECEIVE;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.REF_DELETED;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SEND;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SET_INSTANCE_FIELD;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SET_STATIC_FIELD;
@@ -18,9 +19,13 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.Command;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRef;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager.DeletedRef;
 import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
 import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
@@ -30,14 +35,47 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	private final DataInputStream	rawIn;
 	private final DataOutputStream	rawOut;
 
+	private final Object communicationLock;
+
 	private final IntRefManager<ATTACHMENT> refManager;
+
+	private final AtomicBoolean	running;
+	private final Thread		refCleanupThread;
 
 	public DataCommunicatorClient(DataInputStream rawIn, DataOutputStream rawOut)
 	{
 		this.rawIn = rawIn;
 		this.rawOut = rawOut;
 
+		this.communicationLock = new Object();
+
 		this.refManager = new IntRefManager<>();
+		this.running = new AtomicBoolean(true);
+		this.refCleanupThread = new Thread(this::refCleanupThread);
+		refCleanupThread.start();
+	}
+
+	private void refCleanupThread()
+	{
+		while(running.get())
+		{
+			try
+			{
+				DeletedRef deletedRef = refManager.removeDeletedRef();
+				refDeleted(deletedRef.id(), deletedRef.receivedCount());
+			} catch(InterruptedException e)
+			{
+				// ignore InterruptedException: means the cleanup thread is being shut down
+			}
+		}
+	}
+
+	public void shutdown()
+	{
+		running.set(false);
+		refCleanupThread.interrupt();
+		executeVoidCommand(SHUTDOWN, out ->
+		{});
 	}
 
 	@Override
@@ -145,10 +183,14 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 		});
 	}
 
-	public void shutdown()
+	private void refDeleted(int id, int receivedCount)
 	{
-		executeVoidCommand(SHUTDOWN, out ->
-		{});
+		executeVoidCommand(REF_DELETED, out ->
+		{
+			// Can't use writeRef: the ref doesn't exist anymore
+			out.writeInt(id);
+			out.writeInt(receivedCount);
+		});
 	}
 
 	private void executeVoidCommand(Command command, IOConsumer<DataOutput> sendParams)
@@ -161,15 +203,19 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	}
 	private <R> R executeCommand(Command command, IOConsumer<DataOutput> sendParams, IOFunction<DataInput, R> parseResponse)
 	{
-		try
+		//TODO replace with more sophisticated synchronization approach allowing for multiple threads
+		synchronized(communicationLock)
 		{
-			rawOut.writeByte(command.encode());
-			sendParams.accept(rawOut);
-			rawOut.flush();
-			return parseResponse.apply(rawIn);
-		} catch(IOException e)
-		{
-			throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
+			try
+			{
+				rawOut.writeByte(command.encode());
+				sendParams.accept(rawOut);
+				rawOut.flush();
+				return parseResponse.apply(rawIn);
+			} catch(IOException e)
+			{
+				throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
+			}
 		}
 	}
 
@@ -188,7 +234,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 	private IntRef<ATTACHMENT> readRef(DataInput in) throws IOException
 	{
-		return refManager.getRef(in.readInt());
+		return refManager.lookupReceivedRef(in.readInt());
 	}
 
 	private void writeRef(DataOutput out, IntRef<ATTACHMENT> ref) throws IOException

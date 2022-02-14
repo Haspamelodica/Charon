@@ -48,6 +48,14 @@ public class ExampleExercise
 		System.out.println("EXERCISE: myClassImplToString(instance) is \"" + ReferencingClassP.myClassImplToString(instance) + "\"");
 		System.out.println("EXERCISE: myClassImplToString(instanceFromStudent) is \"" + ReferencingClassP.myClassImplToString(instanceFromStudent) + "\"");
 
+		System.out.println("\nEXERCISE: --- Testing cleaning refs");
+		ReferencingClass wrappedInstance = ReferencingClassP.new_(ReferencingClassP.createImpl());
+		for(int i = 0; i < 10; i ++)
+		{
+			System.gc();
+			System.out.println(wrappedInstance.getImpl());
+		}
+
 		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
 		// Prototype classes (and SSI classes) can contain methods
 		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.

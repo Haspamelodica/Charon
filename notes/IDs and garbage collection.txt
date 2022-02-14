@@ -12,7 +12,7 @@ So, the exercise-side garbage collector will be able to reclaim an IntRef exactl
 To detect if an IntRef is actually reclaimed, we use WeakReferences and reference queues.
 We don't use PhantomReferences since they are triggered later, and don't use finalizers because they are deprecated.
 There is Cleaner, but it doesn't seem useful as well because it uses PhantomReferences, doesn't give us access to the raw reference objects,
-and its documentation states it should only used for simple actions. ("Typically the cleaning actions should be very quick to executeand not block.")
+and its documentation states it should only used for simple actions. ("Typically the cleaning actions should be very quick to execute and not block.")
 
 TODO mention IDs and IntRefs are unique
 TODO mention race condition
@@ -30,4 +30,4 @@ TODO it might, though, if the student side _never_ reuses IDs. Would also make S
   Compromise: use complicated approach with unique IDs by default, and switch to this approach when given a certain flag at creation
 TODO mention idea about counting received refs
 TODO other idea: delete in multiple phases. Probably very hard to synchronize, but still maybe easier than counting refs
-TODO manually trigger GC if student-side JVM starts running out of memory. Maybe detect with a SoftReference
+TODO manually trigger exercise-side GC if student-side JVM starts running out of memory. Maybe detect with a student-side SoftReference.

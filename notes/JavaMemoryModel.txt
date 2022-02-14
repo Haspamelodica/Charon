@@ -1,0 +1,62 @@
+Main idea: Formalize executions. An execution is one way a given program could be executed.
+An execution can only be allowed by Java if it is "well-formed".
+(Java makes some requirements beyond well-formedness; they are about causality, infinite loops, and final fields.)
+The rules for well-formed executions are complicated. The following concepts gradually build up to these rules:
+
+program order:              Intuition: Semantical order of actions within a thread (like the programmer wrote it down).
+                              Fully defined by program together with all control flow choices taken.
+Seeing a write from a read: The thread in which the read occurs continues as if the read returned the value stored by the write.
+                              Obviously only makes sense if a read and write refer to the same variable.
+                              Which read sees which write is chosen arbitrarily by the execution,
+                              but only few combinations result in well-formed executions due to the definition of happens-before consistency.
+sequentially consistent:    there is an order for _all_ actions (the execution order) consistent with the program order (of all threads),
+                              and each read sees the most recent write (to the same variable) according to that order.
+synchronization order:      some total order of all synchronization actions. Intuition: The order the synchronization actions happen in.
+                              Be very careful not to assume this order has to be reflected in the happens-before order precisely!
+                              Only the synchronized-with relations derived from the synchronization order are taken into account in happens-before.
+                              Arbitrarily chosen by an execution (but only few synchronization orders result in a well-formed execution).
+synchronized-with:          relation for some synchronization order between two synchronization actions happening after another
+                              if the first is required to happen before the second one by the definition of the action
+                              and not just happens before the second one by chance.
+                              Not required to be transitive.
+                              Examples: Unlock synchronizes-with all subsequent locks (for the same object);
+                              volatile writes s-w with all subsequent reads (of the same variable).
+                              "subsequent" means later according to synchronization order.
+                              Uniquely defined by an execution.
+happens-before:             relation between any two actions if the first has to happen before the second one.
+                              Intuition: The order the actions seem to happen in.
+                              Incorporates program order of all threads as well as all synchronizes-with relations, and is transitive (but not total).
+                              A happens-before order doesn't provide sequential consistency by itself since it isn't required to being total,
+                              which means it may allow results unexplainable by any order of all actions. See example below.
+                              Uniquely defined by an execution.
+happens-before consistent:  No read sees a value from a write which couldn't sensibly be read when only taking happens-before order into account.
+                              More precisely, the read isn't allowed to happen-before the write,
+                              and it isn't allowed for a write to happen between the write and the read.
+                              (Because happens-before is transitive, this only happens if the write (seen by the read) happens-before the read.)
+well-formed exeuction:      An execution which fulfils the following rules (among some technical and obvious ones):
+                              Firstly, it is happens-before consistent.
+                              Secondly, which volatile reads see which volatile writes is sensible according to the synchronization order of the execution.
+                              This follows analogous rules to happens-before consistency.
+                              (I'm not sure why this requirement is neccessary since volatile accesses cause happens-before relations anyway.)
+
+
+Furthermore, the JLS makes a guarantee where a program will always appear to be executed sequentially consistently under some condition.
+More concepts are needed:
+
+conflicting:                two accesses to the same variable where (at least) one is a write
+Data race:                  An execution contains two conflicting accesses, which are not ordered by the execution's happens-before order.
+                              Not invalid Java, but can lead to _very_ unexpected results.
+
+The JLS states:
+  A program is correctly synchronized if and only if all sequentially consistent executions are free of data races.
+  If a program is correctly synchronized, then all executions of the program will appear to be sequentially consistent.
+So as long as we stay in correctly synchronized programs, reordering compiler optimizations don't matter.
+
+
+Classical example why a happens-before order doesn't imply sequential consistency:
+  Assume G1 and G2 start at 0. Thread 1 does 'read(G1); write(G2, 1);' and thread 2 does 'read(G2); write(G1, 1);'.
+    When considering only sequentially consistent executions, at most one of the reads can result in 1.
+    When considering happens-before orders (resulting in a well-formed execution), both reads can result in 1:
+      There is no happens-before order between any of the two pairs of accesses to the same variable:
+      They happen in different threads, so program order doesn't apply,
+      also there are no (relevant) synchronization actions. (There are some artificial actions like thread start, thread stop, but those don't matter here.)

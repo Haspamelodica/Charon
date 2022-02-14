@@ -1,6 +1,0 @@
-Exercise-side XYZ        : XYZ happens in or lives in the exercise JVM
-Student-side XYZ         : XYZ happens in or lives in the student JVM
-Exercise code            : Code created specifically for an exercise; assumed to be trustworthy; running in exercise JVM
-                           (mostly - maybe there'll be a mechanism for exercise creators to define student-side classes).
-Student code             : Code submitted by a student as the solution for an exercise; not trustworthy; running in student JVM.
-StudentSideInstance / SSI: Instance of (a subinterface of) StudentSideInstance, living in the exercise JVM.

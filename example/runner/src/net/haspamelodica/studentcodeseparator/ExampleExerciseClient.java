@@ -91,8 +91,13 @@ public class ExampleExerciseClient
 				DataOutputStream out = new DataOutputStream(sock.getOutputStream()))
 		{
 			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(in, out);
-			run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));
-			client.shutdown();
+			try
+			{
+				run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));
+			} finally
+			{
+				client.shutdown();
+			}
 		}
 	}
 }

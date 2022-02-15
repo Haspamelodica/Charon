@@ -9,7 +9,7 @@ public class StringArrayList
 
 	public StringArrayList(int capacity)
 	{
-		this.array = new String[10];
+		this.array = new String[capacity];
 	}
 	public StringArrayList(String[] array, int length)
 	{

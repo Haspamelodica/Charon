@@ -71,8 +71,5 @@ public class IDManager<REF extends Ref<DataCommunicatorAttachment>>
 		if(refNowInactive)
 			// delete the reference to the now-unused ref to make it accessible for the GC
 			refs[attachment.id()] = null;
-		//TODO debug; remove
-		else
-			System.out.println("Race condition would have occurred now");
 	}
 }

@@ -107,7 +107,6 @@ public class IntRefManager<ATTACHMENT>
 		allocatedRefs = refID + 1;
 		if(allocatedRefs > refs.length)
 		{
-			System.out.println("reallocating refs");
 			int newLength = allocatedRefs * 2;
 			// Overflow handling: We do '*2'. This is equivalent to a lshift by one bit.
 			// Also, we know allocatedRefs to be positive => sign bit is 0.

@@ -78,7 +78,6 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 
 	private void pollAndHandleQueue()
 	{
-		boolean someWereDeleted = false;
 		for(;;)
 		{
 			@SuppressWarnings("unchecked")
@@ -86,10 +85,7 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 					(WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>>) queue.poll();
 			if(clearedRef == null)
 				break;
-			someWereDeleted = true;
 			cachedRefs.remove(clearedRef.attachment());
 		}
-		if(someWereDeleted)
-			System.out.println("Removed some refs; " + cachedRefs.size() + " refs remaining");
 	}
 }

@@ -49,16 +49,23 @@ public class SorterExercise
 
 	private static void checkListElements(String[] expected, StringArrayList actualList)
 	{
-		assertEquals(expected.length, actualList.length());
+		assertEquals("list length", expected.length, actualList.length());
 		for(int i = 0; i < expected.length; i ++)
-			assertEquals(expected[i], actualList.get(i));
+			assertEquals("index " + i, expected[i], actualList.get(i));
 	}
 
 	// A real exercise would probably use a proper testing framework like JUnit.
 	// Unfortunately, JUnit so far doesn't integrate well.
 	private static <T> void assertEquals(T expected, T actual)
 	{
+		assertEquals(null, expected, actual);
+	}
+
+	// A real exercise would probably use a proper testing framework like JUnit.
+	// Unfortunately, JUnit so far doesn't integrate well.
+	private static <T> void assertEquals(String context, T expected, T actual)
+	{
 		if(!Objects.equals(expected, actual))
-			throw new RuntimeException("Expected: " + expected + ", actual " + actual);
+			throw new RuntimeException((context != null ? context + ": " : "") + "Expected: " + expected + ", actual " + actual);
 	}
 }

@@ -33,8 +33,7 @@ but will transparently be translated to method calls in the student JVM in the f
 
 ### Example
 
-An exercise creator only needs to provide two classes to use this library:
-An interface defining the structure of a class expected to be written by the student ([`MyClass.java`](exampleExercise/net/haspamelodica/studentcodeseparator/MyClass.java)),
-and a class containing test code ([`ExampleExercise.java`](exampleExercise/net/haspamelodica/studentcodeseparator/ExampleExercise.java)).
+For each class expected to be written by the staudent, the exercise creator needs to create an interface defining its expected structure: [`Sorter.java`](examples/sorter/exercise/src/sorter/Sorter.java), [`StringArrayList.java`](examples/sorter/exercise/src/sorter/StringArrayList.java).
+Based on them, one or more classes containing test code can be written: [`SorterExercise.java`](examples/sorter/exercise/src/sorter/SorterExercise.java).
 
-Students only need to provide the class required by the exercise: [`MyClassImpl.java`](exampleStudent/net/haspamelodica/studentcodeseparator/MyClassImpl.java).
+Students only need to create the classes required by the exercise: [`Sorter.java`](examples/sorter/student/src/sorter/Sorter.java), [`StringArrayList.java`](examples/sorter/student/src/sorter/StringArrayList.java).

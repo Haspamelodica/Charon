@@ -1,5 +1,6 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
 import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
@@ -14,13 +15,18 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 	 * The overhead of wrapping each object seems smaller than the overhead of having to synchronize on every map access.
 	 * (When using an unsynchronized map, we can't even call get unsyncrhonized in a fast path since the map might be in an invalid state,
 	 * or worse, change state while get is running.)
-	 * So, we use a {@link ConcurrentHashMap} (concurrent) mapping {@link IdentityObjectContainer} (identity-based) to {@link WeakReference}s (weak).
+	 * So, we use a {@link ConcurrentHashMap} (concurrent)
+	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak).
 	 */
-	private final ConcurrentHashMap<IdentityObjectContainer, WeakReference<SameJVMRef<ATTACHMENT>>> cachedRefs;
+	private final ConcurrentHashMap<IdentityObjectContainer,
+			WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>>> cachedRefs;
+
+	private final ReferenceQueue<SameJVMRef<ATTACHMENT>> queue;
 
 	public WeakSameJVMRefManager()
 	{
-		cachedRefs = new ConcurrentHashMap<>();
+		this.cachedRefs = new ConcurrentHashMap<>();
+		this.queue = new ReferenceQueue<>();
 	}
 
 	@Override
@@ -28,6 +34,8 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 	{
 		if(obj == null)
 			return null;
+
+		pollAndHandleQueue();
 
 		// ouch... but see comment on cachedRefs
 		IdentityObjectContainer container = new IdentityObjectContainer(obj);
@@ -40,10 +48,11 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 		// The JVM could optimize this away to immediately delete the SameJVMRef if the mapping function finishes.
 
 		// fast path
-		WeakReference<SameJVMRef<ATTACHMENT>> weakRef = cachedRefs.get(container);
+		WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>> weakRef = cachedRefs.get(container);
 		if(weakRef != null)
 		{
 			SameJVMRef<ATTACHMENT> ref = weakRef.get();
+			// Yes, we polled the queue, but some object could have been cleared since then
 			if(ref != null)
 				return ref;
 		}
@@ -62,8 +71,25 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 
 			// No SameJVMRef for that object anymore. Create a new one.
 			SameJVMRef<ATTACHMENT> ref = new SameJVMRef<>(obj);
-			cachedRefs.put(container, new WeakReference<SameJVMRef<ATTACHMENT>>(ref));
+			cachedRefs.put(container, new WeakReferenceWithAttachment<>(ref, container, queue));
 			return ref;
 		}
+	}
+
+	private void pollAndHandleQueue()
+	{
+		boolean someWereDeleted = false;
+		for(;;)
+		{
+			@SuppressWarnings("unchecked")
+			WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>> clearedRef =
+					(WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>>) queue.poll();
+			if(clearedRef == null)
+				break;
+			someWereDeleted = true;
+			cachedRefs.remove(clearedRef.attachment());
+		}
+		if(someWereDeleted)
+			System.out.println("Removed some refs; " + cachedRefs.size() + " refs remaining");
 	}
 }

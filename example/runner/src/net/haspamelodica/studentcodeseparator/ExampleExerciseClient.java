@@ -23,12 +23,12 @@ import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 
 public class ExampleExerciseClient
 {
-	private static final boolean LOGGING = true;
+	private static final boolean LOGGING = false;
 	// If you use DATA_OTHER_JVM, start ExampleExerciseServer first.
 	private static final Mode MODE = Mode.DATA_OTHER_JVM;
 	// HOST and PORT only matter for mode DATA_OTHER_JVM
 	private static final String	HOST	= "localhost";
-	private static final int	PORT	= ExampleExerciseServer.PORT;
+	private static final int	PORT	= 1337;
 
 	private enum Mode
 	{

@@ -3,6 +3,7 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.r
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
+import java.util.function.Consumer;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
@@ -106,6 +107,7 @@ public class IntRefManager<ATTACHMENT>
 		allocatedRefs = refID + 1;
 		if(allocatedRefs > refs.length)
 		{
+			System.out.println("reallocating refs");
 			int newLength = allocatedRefs * 2;
 			// Overflow handling: We do '*2'. This is equivalent to a lshift by one bit.
 			// Also, we know allocatedRefs to be positive => sign bit is 0.
@@ -123,11 +125,15 @@ public class IntRefManager<ATTACHMENT>
 	 * Interruptibly waits until an {@link IntRef} returned by this manager gets unreachable and garbage-collected,
 	 * then returns an object contiaining the old ref's ID together with how often the ref was looked up
 	 * using the {@link IntRefManager#lookupReceivedRef(int)} method.
+	 * 
+	 * @param doSynchronized a consumer which performs given actions
+	 *                           synchronized with all invocations of {@link #getID(IntRef)} and {@link #lookupReceivedRef(int)}.
 	 */
-	public DeletedRef removeDeletedRef() throws InterruptedException
+	public DeletedRef removeDeletedRef(Consumer<Runnable> doSynchronized) throws InterruptedException
 	{
 		@SuppressWarnings("unchecked") // we only put WeakIntRefReferences into the queue
 		WeakIntRefReference<ATTACHMENT> ref = (WeakIntRefReference<ATTACHMENT>) refQueue.remove();
+		doSynchronized.accept(() -> refs[ref.id()] = null);
 		// Once a WeakIntRefReference is in the refQueue, its lookupCount won't be modified anymore.
 		// We guarantee this using reachability fences.
 		// This means we can safely read lookupCount here without further synchronization or worrying it might change later.

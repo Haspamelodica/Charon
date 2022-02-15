@@ -61,11 +61,20 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 		{
 			try
 			{
-				DeletedRef deletedRef = refManager.removeDeletedRef();
+				DeletedRef deletedRef = refManager.removeDeletedRef(r ->
+				{
+					synchronized(communicationLock)
+					{
+						r.run();
+					}
+				});
 				refDeleted(deletedRef.id(), deletedRef.receivedCount());
 			} catch(InterruptedException e)
 			{
-				// ignore InterruptedException: means the cleanup thread is being shut down
+				// ignore: means the cleanup thread is being shut down
+			} catch(CommunicationException e)
+			{
+				// ignore: means student side crashed; user-controlled threads will get this exception as well
 			}
 		}
 	}

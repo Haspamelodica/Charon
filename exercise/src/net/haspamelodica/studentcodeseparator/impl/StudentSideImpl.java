@@ -14,8 +14,11 @@ import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyEx
 import net.haspamelodica.studentcodeseparator.serialization.PrimitiveSerializer;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-// TODO find better names for StudentSideInstance/Prototype and configuration annotations.
-// Problem: Superclasses/interfaces.
+//TODO find better names for StudentSideInstance/Prototype and configuration annotations.
+//TODO maybe provide syncWithStudentSide method for mutable serialized objects
+//TODO maybe create classes with same interface like "real" student-side classes (or based on template classes); replaces Prototypes
+// .Problem: Doesn't work for student-side instances of standard JDK classes which shouldn't serialized
+//TODO Superclasses/interfaces.
 // .Idea: Specify using regular Java superinterfaces: Student-side instance class extends other student-side instance class
 // ..Problem: What if a student class is reqired to override a class / interface from the standard library?
 // ...Idea: Use a prototype for that class.

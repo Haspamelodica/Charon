@@ -9,7 +9,7 @@ public class WeakIntRefReference<ATTACHMENT> extends WeakReference<IntRef<ATTACH
 	private final int			id;
 	private final AtomicInteger	receivedCount;
 
-	/** {@link WeakIntRefReference#receivedCount} starts at 1. */
+	/** {@link #receivedCount} starts at 1. */
 	public WeakIntRefReference(IntRef<ATTACHMENT> referent, ReferenceQueue<IntRef<ATTACHMENT>> queue)
 	{
 		super(referent, queue);

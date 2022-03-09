@@ -92,7 +92,6 @@ public class IntRefManager<ATTACHMENT>
 		return ref;
 	}
 
-	/** Must only be called within a <code>synchronized(refs)</code> block. */
 	private void growRefsToFitID(int refID)
 	{
 		//TODO The current implementation allows students to allocate an array of size up to Integer.MAX_VALUE.
@@ -123,7 +122,7 @@ public class IntRefManager<ATTACHMENT>
 	/**
 	 * Interruptibly waits until an {@link IntRef} returned by this manager gets unreachable and garbage-collected,
 	 * then returns an object contiaining the old ref's ID together with how often the ref was looked up
-	 * using the {@link IntRefManager#lookupReceivedRef(int)} method.
+	 * using the {@link #lookupReceivedRef(int)} method.
 	 * 
 	 * @param doSynchronized a consumer which performs given actions
 	 *                           synchronized with all invocations of {@link #getID(IntRef)} and {@link #lookupReceivedRef(int)}.

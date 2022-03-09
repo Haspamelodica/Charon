@@ -6,7 +6,7 @@ public class DataCommunicatorAttachment
 	/** 0 means inactive, a positive value means that number of pending sends, a negative value is illegal state */
 	private int			pendingSendsCount;
 
-	/** {@link DataCommunicatorAttachment#pendingSendsCount} starts at 1. */
+	/** {@link #pendingSendsCount} starts at 1. */
 	public DataCommunicatorAttachment(int id)
 	{
 		this.id = id;
@@ -20,8 +20,8 @@ public class DataCommunicatorAttachment
 
 	/**
 	 * If this attachment is <i>deactivated</i>, does nothing and returns <code>false</code>.
-	 * Otherwise, increments {@link DataCommunicatorAttachment#pendingSendsCount} by 1 and returns <code>true</code>.
-	 * See {@link DataCommunicatorAttachment#decreasePendingSendsCount(int)} for details about deactivation.
+	 * Otherwise, increments {@link #pendingSendsCount} by 1 and returns <code>true</code>.
+	 * See {@link #decreasePendingSendsCount(int)} for details about deactivation.
 	 * 
 	 * @return <code>true</code> if this attachment is sill active, otherwise <code>false</code>
 	 */
@@ -35,7 +35,7 @@ public class DataCommunicatorAttachment
 	}
 	/**
 	 * If this attachment is <i>deactivated</i>, throws an exception.
-	 * Otherwise, decreases {@link DataCommunicatorAttachment#pendingSendsCount} by the passed argument,
+	 * Otherwise, decreases {@link #pendingSendsCount} by the passed argument,
 	 * and if this decrement causes the peding sends count to become 0, deactivates this attachment.
 	 * 
 	 * @return <code>true</code> if this attachment is deactivated (after decrementing), otherwise <code>false</code>

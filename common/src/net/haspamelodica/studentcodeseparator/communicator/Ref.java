@@ -9,7 +9,7 @@ package net.haspamelodica.studentcodeseparator.communicator;
  * then <code>refA == refB</code> is <code>true</code> iff <code>a == b</code>.
  * (This holds even if <code>refA</code> and/or <code>refB</code> are <code>null</code>.)
  * <p>
- * Comparing REFs with {@link Object#equals(Object)} is equivalent to comparing with <code>==</code>
+ * Comparing REFs with {@link #equals(Object)} is equivalent to comparing with <code>==</code>
  * (except if the {@link Ref} <code>equals</code> is being called on is <code>null</code>, of course).
  */
 public abstract class Ref<ATTACHMENT>

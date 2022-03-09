@@ -1,0 +1,3 @@
+[submodule "streammultiplexer"]
+	path = streammultiplexer
+	url = https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer

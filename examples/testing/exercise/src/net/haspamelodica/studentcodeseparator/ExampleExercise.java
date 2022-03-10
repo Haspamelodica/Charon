@@ -1,7 +1,5 @@
 package net.haspamelodica.studentcodeseparator;
 
-import java.io.IOException;
-
 public class ExampleExercise
 {
 	// To run, use ExampleExerciseClient in example.runner.
@@ -63,15 +61,5 @@ public class ExampleExercise
 		// Prototype classes (and SSI classes) can contain methods
 		// implemented in the prototype / SSI class itself, although I'm not sure where this would be useful.
 		System.out.println(MyClassP.test2());
-
-		System.out.println("Press Enter to shut down");
-		try
-		{
-			System.in.read();
-		} catch(IOException e)
-		{
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
 	}
 }

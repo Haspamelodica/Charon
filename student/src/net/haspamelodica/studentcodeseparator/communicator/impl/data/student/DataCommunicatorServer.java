@@ -1,7 +1,10 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
 
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadResponse.SERIALIZER_READY;
+
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -16,7 +19,7 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMR
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.WeakSameJVMRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-//TODO server, client or both crash on shutdown
+// TODO server, client or both crash on shutdown
 public class DataCommunicatorServer extends DataCommunicatorServerWithoutSerialization<SameJVMRef<DataCommunicatorAttachment>>
 {
 	private final SameJVMRefManager<DataCommunicatorAttachment> refManager;
@@ -56,15 +59,16 @@ public class DataCommunicatorServer extends DataCommunicatorServerWithoutSeriali
 	}
 
 	@Override
-	protected void respondReceive(DataInput in, DataOutput out) throws IOException
+	protected void respondReceive(DataInput in, DataOutputStream out) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(readRef(in));
 		Object obj = refManager.unpack(readRef(in));
 		MultiplexedDataOutputStream serializerOut = multiplexer.getOut(in.readInt());
 
-		// Magic number to notify serializerOut is finished; see corresponding client code
-		out.writeByte(42);
+		out.writeByte(SERIALIZER_READY.encode());
+		out.flush();
 		respondReceive(serializerOut, serializer, obj);
+		serializerOut.flush();
 	}
 
 	// extracted to own method so cast to T is expressible in Java

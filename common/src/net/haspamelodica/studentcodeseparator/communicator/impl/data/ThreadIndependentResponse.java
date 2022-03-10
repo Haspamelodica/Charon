@@ -1,17 +1,15 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data;
 
-public enum ThreadIndependentCommand
+public enum ThreadIndependentResponse
 {
-	NEW_THREAD,
-	REF_DELETED,
-	SHUTDOWN,
+	SHUTDOWN_FINISHED,
 	;
 
 	public byte encode()
 	{
 		return (byte) ordinal();
 	}
-	public static ThreadIndependentCommand decode(byte raw)
+	public static ThreadIndependentResponse decode(byte raw)
 	{
 		return values()[raw];
 	}

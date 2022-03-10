@@ -1,5 +1,7 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
 
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentResponse.SHUTDOWN_FINISHED;
+
 import java.io.DataInput;
 import java.io.DataInputStream;
 import java.io.DataOutput;
@@ -10,7 +12,9 @@ import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
 
+import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
@@ -28,20 +32,25 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 
 	private final IDManager<REF> idManager;
 
+	private final AtomicBoolean running;
+
 	public DataCommunicatorServerWithoutSerialization(InputStream rawIn, OutputStream rawOut,
 			StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment, REF> communicator)
 	{
-		this.multiplexer = new DataStreamMultiplexer(rawIn, rawOut);
+		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 
 		this.communicator = communicator;
 
 		this.idManager = new IDManager<>();
+
+		this.running = new AtomicBoolean();
 	}
 
 	// Don't even try to catch IOExceptions; just crash.
 	// Exercise has to handle this correctly anyway as this behaviour could also created maliciously.
 	public void run() throws IOException
 	{
+		running.set(true);
 		MultiplexedDataInputStream in0 = multiplexer.getIn(0);
 		try
 		{
@@ -57,6 +66,11 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 					}
 				}
 			}
+			running.set(false);
+			// notify exercise side we received the shutdown signal
+			MultiplexedDataOutputStream out0 = multiplexer.getOut(0);
+			out0.writeByte(SHUTDOWN_FINISHED.encode());
+			out0.flush();
 			multiplexer.close();
 		} catch(RuntimeException e)
 		{
@@ -88,10 +102,18 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 			}
 		} catch(RuntimeException e)
 		{
+			if(!running.get())
+				// ignore; we are shutting down
+				return;
+
 			//TODO log to somewhere instead of rethrowing
 			throw e;
 		} catch(IOException e)
 		{
+			if(!running.get())
+				// ignore; we are shutting down
+				return;
+
 			//TODO do we need to do something with this exception?
 			// I don't think so because once StreamMultiplexer or one of its streams throws any exception,
 			// it will continue to throw that exception forever
@@ -107,7 +129,7 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 	}
 
 	protected abstract void respondSend(DataInput in, DataOutput out) throws IOException;
-	protected abstract void respondReceive(DataInput in, DataOutput out) throws IOException;
+	protected abstract void respondReceive(DataInput in, DataOutputStream out) throws IOException;
 
 	private void respondCallConstructor(DataInput in, DataOutput out) throws IOException
 	{

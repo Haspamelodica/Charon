@@ -16,6 +16,7 @@ import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Thre
 
 import java.io.DataInput;
 import java.io.DataOutput;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,6 +26,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
@@ -33,6 +35,8 @@ import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentResponse;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRef;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager.DeletedRef;
@@ -62,7 +66,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut)
 	{
-		this.multiplexer = new DataStreamMultiplexer(rawIn, rawOut);
+		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 		this.nextInStreamID = new AtomicInteger(1);
 		this.nextOutStreamID = new AtomicInteger(1);
 
@@ -102,7 +106,12 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 		running.set(false);
 		refCleanupThread.interrupt();
 		executeThreadIndependentCommand(SHUTDOWN, out0 ->
-		{});
+		{}, in0 ->
+		{
+			if(ThreadIndependentResponse.decode(in0.readByte()) != ThreadIndependentResponse.SHUTDOWN_FINISHED)
+				throw new IllegalBehaviourException("Student side didn't respond with SHUTDOWN_FINISHED to SHUTDOWN");
+			return null;
+		});
 		multiplexer.close();
 	}
 
@@ -123,7 +132,9 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 			writeRef(out, serializerRef);
 			out.writeInt(serializerOut.getStreamID());
+			out.flush();
 			serializer.serialize(serializerOut, obj);
+			serializerOut.flush();
 
 			freeStreamsForSending.add(serializerOut);
 		});
@@ -145,10 +156,10 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 			return serializerIn;
 		}, (in, serializerIn) ->
 		{
-			// The student side notifies us it is finished with createing the output stream behind serializerIn by sending 42.
-			// Neccessary because StreamMultiplexer requires it.
-			if(in.readByte() != 42)
-				throw new IllegalBehaviourException("Expected magic number 42");
+			// The student side notifies us it is finished with createing the output stream behind serializerIn by sending SERIALIZER_READY.
+			// Neccessary because StreamMultiplexer requires the output stream to exist before the input stream is used.
+			if(ThreadResponse.decode(in.readByte()) != ThreadResponse.SERIALIZER_READY)
+				throw new IllegalBehaviourException("Expected SERIALIZER_READY");
 			T result = serializer.deserialize(serializerIn);
 			freeStreamsForReceiving.add(serializerIn);
 			return result;
@@ -244,15 +255,15 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 		});
 	}
 
-	private void executeVoidCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams)
+	private void executeVoidCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private IntRef<ATTACHMENT> executeRefCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams)
+	private IntRef<ATTACHMENT> executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
 	{
 		return executeCommand(command, sendParams, this::readRef);
 	}
-	private <R> R executeCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams, IOFunction<DataInput, R> parseResponse)
+	private <R> R executeCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
 	{
 		return executeCommand(command, out ->
 		{
@@ -260,7 +271,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 			return null;
 		}, (in, params) -> parseResponse.apply(in));
 	}
-	private <R, P> R executeCommand(ThreadCommand command, IOFunction<DataOutput, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
+	private <R, P> R executeCommand(ThreadCommand command, IOFunction<DataOutputStream, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
 	{
 		try
 		{
@@ -283,20 +294,27 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand)
 	{
+		executeThreadIndependentCommand(command, sendCommand, in -> null);
+	}
+	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand,
+			IOFunction<DataInput, R> parseResponse)
+	{
 		synchronized(out0Lock)
 		{
 			try
 			{
 				MultiplexedDataOutputStream out0 = multiplexer.getOut(0);
+				MultiplexedDataInputStream in0 = multiplexer.getIn(0);
 				out0.writeByte(command.encode());
 				sendCommand.accept(out0);
 				out0.flush();
+				return parseResponse.apply(in0);
 			} catch(UnexpectedResponseException e)
 			{
-				wrapUnexpectedResponseException(e);
+				return wrapUnexpectedResponseException(e);
 			} catch(IOException e)
 			{
-				wrapIOException(e);
+				return wrapIOException(e);
 			}
 		}
 	}

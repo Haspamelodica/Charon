@@ -2,8 +2,6 @@ package sorter;
 
 import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator.maybeWrapLogging;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 
@@ -20,11 +18,9 @@ public class SorterExerciseClient
 	public static void main(String[] args) throws IOException, InterruptedException
 	{
 		// This code will eventually be moved to the framework.
-		try(Socket sock = new Socket(HOST, PORT);
-				DataInputStream in = new DataInputStream(sock.getInputStream());
-				DataOutputStream out = new DataOutputStream(sock.getOutputStream()))
+		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(in, out);
+			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(sock.getInputStream(), sock.getOutputStream());
 			try
 			{
 				SorterExercise.run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));

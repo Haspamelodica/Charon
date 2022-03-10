@@ -2,8 +2,6 @@ package net.haspamelodica.studentcodeseparator;
 
 import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
@@ -13,6 +11,7 @@ import java.net.Socket;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
 
+//TODO this sometimes crashes
 public class ExampleExerciseServer
 {
 	private static final boolean	LOGGING	= false;
@@ -34,12 +33,9 @@ public class ExampleExerciseServer
 		softRefClearListener.setDaemon(true);
 		softRefClearListener.start();
 
-		try(ServerSocket serverSocket = new ServerSocket(PORT);
-				Socket sock = serverSocket.accept();
-				DataInputStream in = new DataInputStream(sock.getInputStream());
-				DataOutputStream out = new DataOutputStream(sock.getOutputStream()))
+		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(in, out,
+			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
 					refManager -> maybeWrapLoggingW(new DirectSameJVMCommunicatorWithoutSerialization<>(refManager), LOGGING));
 			server.run();
 		}

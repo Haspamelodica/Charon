@@ -5,27 +5,33 @@ import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import net.haspamelodica.streammultiplexer.ClosedException;
+import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
+import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
+import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.Command;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
 
 public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref<DataCommunicatorAttachment>>
 {
-	private final DataInputStream	rawIn;
-	private final DataOutputStream	rawOut;
+	protected final DataStreamMultiplexer multiplexer;
 
 	private final StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment, REF> communicator;
 
 	private final IDManager<REF> idManager;
 
-	public DataCommunicatorServerWithoutSerialization(DataInputStream rawIn, DataOutputStream rawOut,
+	public DataCommunicatorServerWithoutSerialization(InputStream rawIn, OutputStream rawOut,
 			StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment, REF> communicator)
 	{
-		this.rawIn = rawIn;
-		this.rawOut = rawOut;
+		this.multiplexer = new DataStreamMultiplexer(rawIn, rawOut);
 
 		this.communicator = communicator;
 
@@ -33,37 +39,63 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 	}
 
 	// Don't even try to catch IOExceptions; just crash.
-	// Exercise has to handle this correctly as this behaviour could also created maliciously.
+	// Exercise has to handle this correctly anyway as this behaviour could also created maliciously.
 	public void run() throws IOException
 	{
+		MultiplexedDataInputStream in0 = multiplexer.getIn(0);
 		try
 		{
 			loop: for(;;)
 			{
-				switch(Command.decode(rawIn.readByte()))
+				switch(ThreadIndependentCommand.decode(in0.readByte()))
 				{
-					case GET_CLASSNAME -> respondGetStudentSideClassname(rawIn, rawOut);
-					case SEND -> respondSend(rawIn, rawOut);
-					case RECEIVE -> respondReceive(rawIn, rawOut);
-					case CALL_CONSTRUCTOR -> respondCallConstructor(rawIn, rawOut);
-					case CALL_STATIC_METHOD -> respondCallStaticMethod(rawIn, rawOut);
-					case GET_STATIC_FIELD -> respondGetStaticField(rawIn, rawOut);
-					case SET_STATIC_FIELD -> respondSetStaticField(rawIn, rawOut);
-					case CALL_INSTANCE_METHOD -> respondCallInstanceMethod(rawIn, rawOut);
-					case GET_INSTANCE_FIELD -> respondGetInstanceField(rawIn, rawOut);
-					case SET_INSTANCE_FIELD -> respondSetInstanceField(rawIn, rawOut);
-					case REF_DELETED -> respondRefDeleted(rawIn, rawOut);
+					case NEW_THREAD -> respondNewThread(in0);
+					case REF_DELETED -> respondRefDeleted(in0);
 					case SHUTDOWN ->
 					{
 						break loop;
 					}
 				}
-				rawOut.flush();
+			}
+			multiplexer.close();
+		} catch(RuntimeException e)
+		{
+			//TODO log to somewhere instead of rethrowing
+			throw e;
+		}
+	}
+
+	private void studentSideThread(DataInputStream in, DataOutputStream out)
+	{
+		try
+		{
+			for(;;)
+			{
+				switch(ThreadCommand.decode(in.readByte()))
+				{
+					case GET_CLASSNAME -> respondGetStudentSideClassname(in, out);
+					case SEND -> respondSend(in, out);
+					case RECEIVE -> respondReceive(in, out);
+					case CALL_CONSTRUCTOR -> respondCallConstructor(in, out);
+					case CALL_STATIC_METHOD -> respondCallStaticMethod(in, out);
+					case GET_STATIC_FIELD -> respondGetStaticField(in, out);
+					case SET_STATIC_FIELD -> respondSetStaticField(in, out);
+					case CALL_INSTANCE_METHOD -> respondCallInstanceMethod(in, out);
+					case GET_INSTANCE_FIELD -> respondGetInstanceField(in, out);
+					case SET_INSTANCE_FIELD -> respondSetInstanceField(in, out);
+				}
+				out.flush();
 			}
 		} catch(RuntimeException e)
 		{
-			//TODO log to rawOut instead of rethrowing
+			//TODO log to somewhere instead of rethrowing
 			throw e;
+		} catch(IOException e)
+		{
+			//TODO do we need to do something with this exception?
+			// I don't think so because once StreamMultiplexer or one of its streams throws any exception,
+			// it will continue to throw that exception forever
+			throw new UncheckedIOException(e);
 		}
 	}
 
@@ -142,7 +174,14 @@ public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref
 		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
 	}
 
-	private void respondRefDeleted(DataInput in, DataOutput out) throws IOException
+	private void respondNewThread(MultiplexedDataInputStream in0) throws ClosedException, IOException
+	{
+		MultiplexedDataOutputStream out = multiplexer.getOut(in0.readInt());
+		MultiplexedDataInputStream in = multiplexer.getIn(in0.readInt());
+
+		new Thread(() -> studentSideThread(in, out)).start();
+	}
+	private void respondRefDeleted(DataInput in) throws IOException
 	{
 		REF deletedRef = readRef(in);
 		int receivedCount = in.readInt();

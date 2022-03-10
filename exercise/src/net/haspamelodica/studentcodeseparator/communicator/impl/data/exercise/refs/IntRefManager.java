@@ -3,7 +3,6 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.r
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
-import java.util.function.Consumer;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
@@ -42,6 +41,8 @@ public class IntRefManager<ATTACHMENT>
 
 	private int allocatedRefs;
 
+	private final Object lock;
+
 	public IntRefManager()
 	{
 		@SuppressWarnings("unchecked")
@@ -49,47 +50,52 @@ public class IntRefManager<ATTACHMENT>
 		this.refs = refs;
 		this.refQueue = new ReferenceQueue<>();
 		this.allocatedRefs = 0;
+		this.lock = new Object();
 	}
 
-	/** Not thread-safe. Callers must make sure only one thread is in {@link #getID(IntRef)} or {@link #lookupReceivedRef(int)}. */
 	public int getID(IntRef<ATTACHMENT> objRef)
 	{
-		return objRef != null ? objRef.id() : 0;
+		synchronized(lock)
+		{
+			return objRef != null ? objRef.id() : 0;
+		}
 	}
 
-	/** Not thread-safe. Callers must make sure only one thread is in {@link #getID(IntRef)} or {@link #lookupReceivedRef(int)}. */
 	public IntRef<ATTACHMENT> lookupReceivedRef(int refID)
 	{
-		if(refID == 0)
-			return null;
-
-		if(refID < allocatedRefs)
+		synchronized(lock)
 		{
-			WeakIntRefReference<ATTACHMENT> weakRef = refs[refID];
-			if(weakRef != null)
-			{
-				IntRef<ATTACHMENT> ref = weakRef.get();
-				if(ref != null)
-				{
-					weakRef.incrementReceivedCount();
-					// Not sure if this is really needed, but this might avoid some race condition
-					// where the weakRef is cleared and polled before the lookup count is incremented
-					Reference.reachabilityFence(ref);
-					return ref;
-				}
-				// No need to explicitly delete the weak reference: we'll have to create a new one anyway.
-			}
-		} else if(refID >= allocatedRefs)
-			growRefsToFitID(refID);
-		// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
-		IntRef<ATTACHMENT> ref = new IntRef<ATTACHMENT>(refID);
-		refs[refID] = new WeakIntRefReference<>(ref, refQueue);
-		// No need to explicitly increment received count: it starts at 1.
+			if(refID == 0)
+				return null;
 
-		// This is probably very paranoid, but the weakRef _might_ get cleared and polled while it is being constructed,
-		// so before the constructor set lookupCount to 1.
-		Reference.reachabilityFence(ref);
-		return ref;
+			if(refID < allocatedRefs)
+			{
+				WeakIntRefReference<ATTACHMENT> weakRef = refs[refID];
+				if(weakRef != null)
+				{
+					IntRef<ATTACHMENT> ref = weakRef.get();
+					if(ref != null)
+					{
+						weakRef.incrementReceivedCount();
+						// Not sure if this is really needed, but this might avoid some race condition
+						// where the weakRef is cleared and polled before the lookup count is incremented
+						Reference.reachabilityFence(ref);
+						return ref;
+					}
+					// No need to explicitly delete the weak reference: we'll have to create a new one anyway.
+				}
+			} else if(refID >= allocatedRefs)
+				growRefsToFitID(refID);
+			// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
+			IntRef<ATTACHMENT> ref = new IntRef<ATTACHMENT>(refID);
+			refs[refID] = new WeakIntRefReference<>(ref, refQueue);
+			// No need to explicitly increment received count: it starts at 1.
+
+			// This is probably very paranoid, but the weakRef _might_ get cleared and polled while it is being constructed,
+			// so before the constructor set lookupCount to 1.
+			Reference.reachabilityFence(ref);
+			return ref;
+		}
 	}
 
 	private void growRefsToFitID(int refID)
@@ -123,15 +129,15 @@ public class IntRefManager<ATTACHMENT>
 	 * Interruptibly waits until an {@link IntRef} returned by this manager gets unreachable and garbage-collected,
 	 * then returns an object contiaining the old ref's ID together with how often the ref was looked up
 	 * using the {@link #lookupReceivedRef(int)} method.
-	 * 
-	 * @param doSynchronized a consumer which performs given actions
-	 *                           synchronized with all invocations of {@link #getID(IntRef)} and {@link #lookupReceivedRef(int)}.
 	 */
-	public DeletedRef removeDeletedRef(Consumer<Runnable> doSynchronized) throws InterruptedException
+	public DeletedRef removeDeletedRef() throws InterruptedException
 	{
 		@SuppressWarnings("unchecked") // we only put WeakIntRefReferences into the queue
 		WeakIntRefReference<ATTACHMENT> ref = (WeakIntRefReference<ATTACHMENT>) refQueue.remove();
-		doSynchronized.accept(() -> refs[ref.id()] = null);
+		synchronized(lock)
+		{
+			refs[ref.id()] = null;
+		}
 		// Once a WeakIntRefReference is in the refQueue, its lookupCount won't be modified anymore.
 		// We guarantee this using reachability fences.
 		// This means we can safely read lookupCount here without further synchronization or worrying it might change later.

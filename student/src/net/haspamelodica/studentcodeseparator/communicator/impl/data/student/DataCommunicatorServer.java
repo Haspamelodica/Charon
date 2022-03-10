@@ -1,12 +1,13 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
 
 import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.function.Function;
 
+import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
@@ -15,25 +16,26 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.SameJVMR
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.WeakSameJVMRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
+//TODO server, client or both crash on shutdown
 public class DataCommunicatorServer extends DataCommunicatorServerWithoutSerialization<SameJVMRef<DataCommunicatorAttachment>>
 {
 	private final SameJVMRefManager<DataCommunicatorAttachment> refManager;
 
-	public DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut)
+	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut)
 	{
 		this(rawIn, rawOut, DirectSameJVMCommunicatorWithoutSerialization::new);
 	}
 	/**
 	 * This constructor exists so {@link LoggingCommunicatorWithoutSerialization} can be used server-side.
 	 */
-	public DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut,
+	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut,
 			Function<SameJVMRefManager<DataCommunicatorAttachment>, StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment,
 					SameJVMRef<DataCommunicatorAttachment>>> createCommunicator)
 	{
 		this(rawIn, rawOut, createCommunicator, new WeakSameJVMRefManager<>());
 	}
 	// extracted into own constructor so we can use refManager in super constructor call and store it as a final field
-	private DataCommunicatorServer(DataInputStream rawIn, DataOutputStream rawOut,
+	private DataCommunicatorServer(InputStream rawIn, OutputStream rawOut,
 			Function<SameJVMRefManager<DataCommunicatorAttachment>, StudentSideCommunicatorWithoutSerialization<DataCommunicatorAttachment,
 					SameJVMRef<DataCommunicatorAttachment>>> createCommunicator,
 			SameJVMRefManager<DataCommunicatorAttachment> refManager)
@@ -42,20 +44,27 @@ public class DataCommunicatorServer extends DataCommunicatorServerWithoutSeriali
 		this.refManager = refManager;
 	}
 
-	public void respondSend(DataInput in, DataOutput out) throws IOException
+	@Override
+	protected void respondSend(DataInput in, DataOutput out) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(readRef(in));
-		Object result = serializer.deserialize(in);
+		int serializerInID = in.readInt();
+
+		Object result = serializer.deserialize(multiplexer.getIn(serializerInID));
 
 		writeRef(out, refManager.pack(result));
 	}
 
-	public void respondReceive(DataInput in, DataOutput out) throws IOException
+	@Override
+	protected void respondReceive(DataInput in, DataOutput out) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(readRef(in));
 		Object obj = refManager.unpack(readRef(in));
+		MultiplexedDataOutputStream serializerOut = multiplexer.getOut(in.readInt());
 
-		respondReceive(out, serializer, obj);
+		// Magic number to notify serializerOut is finished; see corresponding client code
+		out.writeByte(42);
+		respondReceive(serializerOut, serializer, obj);
 	}
 
 	// extracted to own method so cast to T is expressible in Java

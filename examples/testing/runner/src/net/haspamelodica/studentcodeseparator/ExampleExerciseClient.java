@@ -4,8 +4,6 @@ import static net.haspamelodica.studentcodeseparator.ExampleExercise.run;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator.maybeWrapLogging;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
 
-import java.io.DataInputStream;
-import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
 import java.io.PipedOutputStream;
@@ -64,7 +62,7 @@ public class ExampleExerciseClient
 				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
 				{
 					serverConnected.release();
-					DataCommunicatorServer server = new DataCommunicatorServer(new DataInputStream(serverIn), new DataOutputStream(serverOut),
+					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
 							refManager -> maybeWrapLoggingW(new DirectSameJVMCommunicatorWithoutSerialization<>(refManager), "SERVER: ", LOGGING));
 					server.run();
 				} catch(IOException e)
@@ -78,7 +76,7 @@ public class ExampleExerciseClient
 			}).start();
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
-			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(new DataInputStream(clientIn), new DataOutputStream(clientOut));
+			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(clientIn, clientOut);
 			run(new StudentSideImpl<>(maybeWrapLogging(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
@@ -86,11 +84,9 @@ public class ExampleExerciseClient
 
 	private static void runDataOtherJVM() throws IOException, UnknownHostException
 	{
-		try(Socket sock = new Socket(HOST, PORT);
-				DataInputStream in = new DataInputStream(sock.getInputStream());
-				DataOutputStream out = new DataOutputStream(sock.getOutputStream()))
+		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(in, out);
+			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(sock.getInputStream(), sock.getOutputStream());
 			try
 			{
 				run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));

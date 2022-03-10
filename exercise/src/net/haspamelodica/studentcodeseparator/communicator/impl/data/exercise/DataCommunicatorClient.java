@@ -1,53 +1,77 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.CALL_CONSTRUCTOR;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.CALL_INSTANCE_METHOD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.CALL_STATIC_METHOD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.GET_CLASSNAME;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.GET_INSTANCE_FIELD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.GET_STATIC_FIELD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.RECEIVE;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.REF_DELETED;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SEND;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SET_INSTANCE_FIELD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SET_STATIC_FIELD;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.data.Command.SHUTDOWN;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.CALL_CONSTRUCTOR;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.CALL_INSTANCE_METHOD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.CALL_STATIC_METHOD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.GET_CLASSNAME;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.GET_STATIC_FIELD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.RECEIVE;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.SEND;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.SET_INSTANCE_FIELD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand.SET_STATIC_FIELD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand.NEW_THREAD;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand.REF_DELETED;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand.SHUTDOWN;
 
 import java.io.DataInput;
-import java.io.DataInputStream;
 import java.io.DataOutput;
-import java.io.DataOutputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import net.haspamelodica.streammultiplexer.ClosedException;
+import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
+import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
+import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
+import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.Command;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRef;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager.DeletedRef;
 import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
 import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
+import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
+// TODO server, client or both crash on shutdown
 public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
 {
-	private final DataInputStream	rawIn;
-	private final DataOutputStream	rawOut;
+	private final DataStreamMultiplexer	multiplexer;
+	private final AtomicInteger			nextInStreamID;
+	private final AtomicInteger			nextOutStreamID;
 
-	private final Object communicationLock;
+	private final Queue<MultiplexedDataInputStream>		freeStreamsForReceiving;
+	private final Queue<MultiplexedDataOutputStream>	freeStreamsForSending;
+
+	private final Object out0Lock;
+
+	private final ThreadLocal<StudentSideThread> threads;
 
 	private final IntRefManager<ATTACHMENT> refManager;
 
 	private final AtomicBoolean	running;
 	private final Thread		refCleanupThread;
 
-	public DataCommunicatorClient(DataInputStream rawIn, DataOutputStream rawOut)
+	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut)
 	{
-		this.rawIn = rawIn;
-		this.rawOut = rawOut;
+		this.multiplexer = new DataStreamMultiplexer(rawIn, rawOut);
+		this.nextInStreamID = new AtomicInteger(1);
+		this.nextOutStreamID = new AtomicInteger(1);
 
-		this.communicationLock = new Object();
+		this.freeStreamsForReceiving = new ConcurrentLinkedQueue<>();
+		this.freeStreamsForSending = new ConcurrentLinkedQueue<>();
+
+		this.threads = new ThreadLocal<>();
+
+		this.out0Lock = new Object();
 
 		this.refManager = new IntRefManager<>();
 		this.running = new AtomicBoolean(true);
@@ -61,13 +85,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 		{
 			try
 			{
-				DeletedRef deletedRef = refManager.removeDeletedRef(r ->
-				{
-					synchronized(communicationLock)
-					{
-						r.run();
-					}
-				});
+				DeletedRef deletedRef = refManager.removeDeletedRef();
 				refDeleted(deletedRef.id(), deletedRef.receivedCount());
 			} catch(InterruptedException e)
 			{
@@ -83,8 +101,9 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	{
 		running.set(false);
 		refCleanupThread.interrupt();
-		executeVoidCommand(SHUTDOWN, out ->
+		executeThreadIndependentCommand(SHUTDOWN, out0 ->
 		{});
+		multiplexer.close();
 	}
 
 	@Override
@@ -98,8 +117,15 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	{
 		return executeRefCommand(SEND, out ->
 		{
+			MultiplexedDataOutputStream serializerOut = freeStreamsForSending.poll();
+			if(serializerOut == null)
+				serializerOut = nextOutStream();
+
 			writeRef(out, serializerRef);
-			serializer.serialize(out, obj);
+			out.writeInt(serializerOut.getStreamID());
+			serializer.serialize(serializerOut, obj);
+
+			freeStreamsForSending.add(serializerOut);
 		});
 	}
 
@@ -108,9 +134,25 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	{
 		return executeCommand(RECEIVE, out ->
 		{
+			MultiplexedDataInputStream serializerIn = freeStreamsForReceiving.poll();
+			if(serializerIn == null)
+				serializerIn = nextInStream();
+
 			writeRef(out, serializerRef);
 			writeRef(out, objRef);
-		}, serializer::deserialize);
+			out.writeInt(serializerIn.getStreamID());
+
+			return serializerIn;
+		}, (in, serializerIn) ->
+		{
+			// The student side notifies us it is finished with createing the output stream behind serializerIn by sending 42.
+			// Neccessary because StreamMultiplexer requires it.
+			if(in.readByte() != 42)
+				throw new IllegalBehaviourException("Expected magic number 42");
+			T result = serializer.deserialize(serializerIn);
+			freeStreamsForReceiving.add(serializerIn);
+			return result;
+		});
 	}
 
 	@Override
@@ -194,38 +236,107 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 	private void refDeleted(int id, int receivedCount)
 	{
-		executeVoidCommand(REF_DELETED, out ->
+		executeThreadIndependentCommand(REF_DELETED, out0 ->
 		{
 			// Can't use writeRef: the ref doesn't exist anymore
-			out.writeInt(id);
-			out.writeInt(receivedCount);
+			out0.writeInt(id);
+			out0.writeInt(receivedCount);
 		});
 	}
 
-	private void executeVoidCommand(Command command, IOConsumer<DataOutput> sendParams)
+	private void executeVoidCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams)
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private IntRef<ATTACHMENT> executeRefCommand(Command command, IOConsumer<DataOutput> sendParams)
+	private IntRef<ATTACHMENT> executeRefCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams)
 	{
 		return executeCommand(command, sendParams, this::readRef);
 	}
-	private <R> R executeCommand(Command command, IOConsumer<DataOutput> sendParams, IOFunction<DataInput, R> parseResponse)
+	private <R> R executeCommand(ThreadCommand command, IOConsumer<DataOutput> sendParams, IOFunction<DataInput, R> parseResponse)
 	{
-		//TODO replace with more sophisticated synchronization approach allowing for multiple threads
-		synchronized(communicationLock)
+		return executeCommand(command, out ->
+		{
+			sendParams.accept(out);
+			return null;
+		}, (in, params) -> parseResponse.apply(in));
+	}
+	private <R, P> R executeCommand(ThreadCommand command, IOFunction<DataOutput, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
+	{
+		try
+		{
+			StudentSideThread thread = getStudentSideThread();
+
+			MultiplexedDataOutputStream out = thread.out();
+			out.writeByte(command.encode());
+			P params = sendParams.apply(out);
+			out.flush();
+
+			return parseResponse.apply(thread.in(), params);
+		} catch(UnexpectedResponseException e)
+		{
+			return wrapUnexpectedResponseException(e);
+		} catch(IOException e)
+		{
+			return wrapIOException(e);
+		}
+	}
+
+	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand)
+	{
+		synchronized(out0Lock)
 		{
 			try
 			{
-				rawOut.writeByte(command.encode());
-				sendParams.accept(rawOut);
-				rawOut.flush();
-				return parseResponse.apply(rawIn);
+				MultiplexedDataOutputStream out0 = multiplexer.getOut(0);
+				out0.writeByte(command.encode());
+				sendCommand.accept(out0);
+				out0.flush();
+			} catch(UnexpectedResponseException e)
+			{
+				wrapUnexpectedResponseException(e);
 			} catch(IOException e)
 			{
-				throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
+				wrapIOException(e);
 			}
 		}
+	}
+
+	private <R> R wrapUnexpectedResponseException(UnexpectedResponseException e)
+	{
+		throw new IllegalBehaviourException(e);
+	}
+	private <R> R wrapIOException(IOException e)
+	{
+		throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
+	}
+
+	private StudentSideThread getStudentSideThread() throws ClosedException
+	{
+		StudentSideThread thread = threads.get();
+		// Can't use a supplied ThreadLocal because of the ClosedException
+		if(thread == null)
+		{
+			thread = createStudentSideThread();
+			threads.set(thread);
+		}
+		return thread;
+	}
+
+	private StudentSideThread createStudentSideThread() throws ClosedException
+	{
+		// in only is usable as soon as the student side created the corresponding output stream.
+		// But the first communication between two threads is always a write by the exercise side,
+		// which will (according to GenericStreamMultiplexer) finish only when read is called on the corresponding input stream.
+		// The student side does this only after creating the output stream, which means this won't cause problems.
+		// (If the student side is malicious and doesn't create the output stream, all it can do is cause UnexpectedResponseExceptions.)
+		MultiplexedDataInputStream in = nextInStream();
+		MultiplexedDataOutputStream out = nextOutStream();
+		executeThreadIndependentCommand(NEW_THREAD, out0 ->
+		{
+			out0.writeInt(in.getStreamID());
+			out0.writeInt(out.getStreamID());
+		});
+		return new StudentSideThread(in, out);
 	}
 
 	private void writeArgs(DataOutput out, List<String> params, List<IntRef<ATTACHMENT>> argRefs) throws IOException
@@ -250,4 +361,17 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	{
 		out.writeInt(refManager.getID(ref));
 	}
+
+	private MultiplexedDataInputStream nextInStream() throws ClosedException
+	{
+		return multiplexer.getIn(nextInStreamID.getAndIncrement());
+	}
+
+	private MultiplexedDataOutputStream nextOutStream() throws ClosedException
+	{
+		return multiplexer.getOut(nextOutStreamID.getAndIncrement());
+	}
+
+	private static record StudentSideThread(MultiplexedDataInputStream in, MultiplexedDataOutputStream out)
+	{}
 }

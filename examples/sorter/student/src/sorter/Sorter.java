@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public class Sorter
 {
-	private static final boolean BUG = true;
+	private static final boolean BUG = false;
 
 	public static StringArrayList sort(StringArrayList list)
 	{

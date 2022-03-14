@@ -11,7 +11,7 @@ import java.net.Socket;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
 
-//TODO this sometimes crashes
+// TODO this sometimes crashes
 public class ExampleExerciseServer
 {
 	private static final boolean	LOGGING	= false;

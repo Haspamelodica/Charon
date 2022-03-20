@@ -1,5 +1,8 @@
 package net.haspamelodica.studentcodeseparator;
 
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+
 public class MyClassImpl
 {
 	private static String myStaticField = "Hello World";
@@ -34,7 +37,16 @@ public class MyClassImpl
 
 	public int otherThirdMethod(String input)
 	{
-		System.out.println(" STUDENT: otherThirdMethod(\"" + input + "\")");
 		return input.length();
+	}
+
+	private final BlockingQueue<String> messages = new ArrayBlockingQueue<>(1);
+	public String waitForMessage() throws InterruptedException
+	{
+		return messages.take();
+	}
+	public void sendMessage(String msg) throws InterruptedException
+	{
+		messages.put(msg);
 	}
 }

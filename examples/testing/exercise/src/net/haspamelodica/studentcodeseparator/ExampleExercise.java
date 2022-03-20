@@ -1,5 +1,8 @@
 package net.haspamelodica.studentcodeseparator;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class ExampleExercise
 {
 	// To run, use ExampleExerciseClient in example.runner.
@@ -56,6 +59,45 @@ public class ExampleExercise
 			System.gc();
 			wrappedInstance.getImpl();
 		}
+
+		System.out.println("\nEXERCISE: --- Testing multithreading");
+		System.out.println("\nEXERCISE: --- Testing blocking");
+		instance.sendMessage("a");
+		new Thread(() ->
+		{
+			instance.sendMessage("b");
+			System.out.println("EXERCISE: Sent message b");
+		}).start();
+		try
+		{
+			Thread.sleep(1000);
+		} catch(InterruptedException e)
+		{
+			throw new RuntimeException(e);
+		}
+		System.out.println("EXERCISE: Got message " + instance.waitForMessage());
+		System.out.println("EXERCISE: Got message " + instance.waitForMessage());
+		System.out.println("\nEXERCISE: --- Testing interleaving threads");
+		List<Thread> threads = new ArrayList<>();
+		for(int i = 0; i < 10; i ++)
+		{
+			Thread thread = new Thread(() ->
+			{
+				for(int j = 0; j < 100; j ++)
+					if(instance.thirdMethod("String") != 6)
+						throw new IllegalStateException();
+			});
+			threads.add(thread);
+			thread.start();
+		}
+		for(Thread thread : threads)
+			try
+			{
+				thread.join();
+			} catch(InterruptedException e)
+			{
+				throw new RuntimeException(e);
+			}
 
 		System.out.println("\nEXERCISE: --- Testing non-abstract methods");
 		// Prototype classes (and SSI classes) can contain methods

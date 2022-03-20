@@ -36,6 +36,12 @@ public interface MyClass extends StudentSideInstance
 	@StudentSideInstanceMethodKind(INSTANCE_FIELD_SETTER)
 	public void myField(String value);
 
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
+	public void sendMessage(String msg);
+
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
+	public String waitForMessage();
+
 	public static interface Prototype extends StudentSidePrototype<MyClass>
 	{
 		@StudentSidePrototypeMethodKind(CONSTRUCTOR)

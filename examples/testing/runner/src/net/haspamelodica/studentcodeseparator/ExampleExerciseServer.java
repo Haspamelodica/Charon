@@ -3,6 +3,7 @@ package net.haspamelodica.studentcodeseparator;
 import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
 
 import java.io.IOException;
+import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.SoftReference;
 import java.net.ServerSocket;
@@ -40,6 +41,6 @@ public class ExampleExerciseServer
 			server.run();
 		}
 
-		System.out.println(softref);
+		Reference.reachabilityFence(softref);
 	}
 }

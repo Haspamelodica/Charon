@@ -1,8 +1,8 @@
 package net.haspamelodica.studentcodeseparator;
 
 import static net.haspamelodica.studentcodeseparator.ExampleExercise.run;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator.maybeWrapLogging;
-import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorClientSide.maybeWrapLoggingC;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorServerSide.maybeWrapLoggingS;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -14,8 +14,8 @@ import java.util.concurrent.Semaphore;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicator;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 import net.haspamelodica.studentcodeseparator.refs.WeakDirectRefManager;
 
@@ -49,7 +49,7 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		run(new StudentSideImpl<>(maybeWrapLogging(new DirectSameJVMCommunicator<>(new WeakDirectRefManager<>()), LOGGING)));
+		run(new StudentSideImpl<>(maybeWrapLoggingC(new DirectSameJVMCommunicatorClientSide<>(new WeakDirectRefManager<>()), LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -62,8 +62,8 @@ public class ExampleExerciseClient
 				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
 				{
 					serverConnected.release();
-					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
-							refManager -> maybeWrapLoggingW(new DirectSameJVMCommunicatorWithoutSerialization<>(refManager), "SERVER: ", LOGGING));
+					DataCommunicatorServer<?> server = new DataCommunicatorServer<>(serverIn, serverOut,
+							maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<>()), "SERVER: ", LOGGING));
 					server.run();
 				} catch(IOException e)
 				{
@@ -77,7 +77,7 @@ public class ExampleExerciseClient
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
 			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(clientIn, clientOut);
-			run(new StudentSideImpl<>(maybeWrapLogging(client, "CLIENT: ", LOGGING)));
+			run(new StudentSideImpl<>(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
 	}
@@ -89,7 +89,7 @@ public class ExampleExerciseClient
 			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));
+				run(new StudentSideImpl<>(maybeWrapLoggingC(client, LOGGING)));
 			} finally
 			{
 				client.shutdown();

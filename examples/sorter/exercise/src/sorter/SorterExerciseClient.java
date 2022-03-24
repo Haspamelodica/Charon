@@ -1,6 +1,6 @@
 package sorter;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicator.maybeWrapLogging;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorClientSide.maybeWrapLoggingC;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -23,7 +23,7 @@ public class SorterExerciseClient
 			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				SorterExercise.run(new StudentSideImpl<>(maybeWrapLogging(client, LOGGING)));
+				SorterExercise.run(new StudentSideImpl<>(maybeWrapLoggingC(client, LOGGING)));
 			} finally
 			{
 				client.shutdown();

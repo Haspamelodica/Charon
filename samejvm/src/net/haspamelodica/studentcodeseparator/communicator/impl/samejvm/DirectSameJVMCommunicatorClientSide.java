@@ -1,6 +1,8 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 
+import java.io.DataInput;
 import java.io.DataInputStream;
+import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -9,9 +11,11 @@ import java.io.UncheckedIOException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServerWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IOBiConsumer;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IOFunction;
+import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 import net.haspamelodica.studentcodeseparator.refs.DirectRef;
 import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
@@ -24,34 +28,34 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * <p>
  * Commands are executed in the same JVM and same thread as they are called in; they also aren't serialized and deserialized.
  * This makes debugging a little bit easier and speeds up execution
- * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServerWithoutSerialization} in the same JVM.
+ * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
-		implements StudentSideCommunicator<ATTACHMENT, DirectRef<ATTACHMENT>>
+public class DirectSameJVMCommunicatorClientSide<ATTACHMENT> extends DirectSameJVMCommunicator<ATTACHMENT>
+		implements StudentSideCommunicatorClientSide<ATTACHMENT, DirectRef<ATTACHMENT>>
 {
-	public DirectSameJVMCommunicator(DirectRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicatorClientSide(DirectRefManager<ATTACHMENT> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public <T> DirectRef<ATTACHMENT> send(Serializer<T> serializer, DirectRef<ATTACHMENT> serializerRef, T obj)
+	public <T> DirectRef<ATTACHMENT> send(DirectRef<ATTACHMENT> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
-		return refManager.pack(sendAndReceive(serializer, studentSideSerializer, obj));
+		return refManager.pack(sendAndReceive(sendObj, studentSideSerializer::deserialize, obj));
 	}
 	@Override
-	public <T> T receive(Serializer<T> serializer, DirectRef<ATTACHMENT> serializerRef, DirectRef<ATTACHMENT> objRef)
+	public <T> T receive(DirectRef<ATTACHMENT> serializerRef, IOFunction<DataInput, T> receiveObj, DirectRef<ATTACHMENT> objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		T obj = (T) refManager.unpack(objRef);
-		return sendAndReceive(studentSideSerializer, serializer, obj);
+		return sendAndReceive(studentSideSerializer::serialize, receiveObj, obj);
 	}
-	private <T> T sendAndReceive(Serializer<T> serializer, Serializer<T> deserializer, T obj)
+	private <T> T sendAndReceive(IOBiConsumer<DataOutput, T> sender, IOFunction<DataInput, T> receiver, T obj)
 	{
 		// We have to actually serialize and deserialize the object to be compatible with a "real" communicator
 		// in case the passed object is mutable or if any code relies on object identity.
@@ -67,7 +71,7 @@ public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunic
 				try(PipedOutputStream pipeOut = new PipedOutputStream(pipeIn); DataOutputStream out = new DataOutputStream(pipeOut))
 				{
 					pipeOutCreated.release();
-					serializer.serialize(out, obj);
+					sender.accept(out, obj);
 				} catch(IOException e)
 				{
 					serializationIOExceptionA.set(e);
@@ -83,7 +87,7 @@ public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunic
 			serializerThread.start();
 
 			pipeOutCreated.acquireUninterruptibly();
-			T result = deserializer.deserialize(in);
+			T result = receiver.apply(in);
 
 			doUninterruptible(serializerThread::join);
 

@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator;
 
-import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorWithoutSerialization.maybeWrapLoggingW;
+import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCommunicatorServerSide.maybeWrapLoggingS;
 
 import java.io.IOException;
 import java.lang.ref.Reference;
@@ -10,7 +10,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
+import net.haspamelodica.studentcodeseparator.refs.WeakDirectRefManager;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -36,8 +37,8 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
-					refManager -> maybeWrapLoggingW(new DirectSameJVMCommunicatorWithoutSerialization<>(refManager), LOGGING));
+			DataCommunicatorServer<?> server = new DataCommunicatorServer<>(sock.getInputStream(), sock.getOutputStream(),
+					maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<>()), LOGGING));
 			server.run();
 		}
 

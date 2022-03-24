@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.haspamelodica.studentcodeseparator.StudentSide;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.PrimitiveSerializer;
@@ -31,14 +31,14 @@ import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler
 // ..Benefit: Handles non-immutable datastructures fine.
 public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements StudentSide
 {
-	private final StudentSideCommunicator<StudentSideInstance, REF>	communicator;
+	private final StudentSideCommunicatorClientSide<StudentSideInstance, REF>	communicator;
 	private final SerializationHandler<StudentSideInstance, REF>	globalSerializer;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
 	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(StudentSideCommunicator<StudentSideInstance, REF> communicator)
+	public StudentSideImpl(StudentSideCommunicatorClientSide<StudentSideInstance, REF> communicator)
 	{
 		this.communicator = communicator;
 		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::studentSideInstanceForRef, PrimitiveSerializer.PRIMITIVE_SERIALIZERS);

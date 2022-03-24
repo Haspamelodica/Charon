@@ -22,14 +22,14 @@ import net.haspamelodica.studentcodeseparator.annotations.OverrideStudentSideNam
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
 public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstance>, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
-	public final StudentSideCommunicator<StudentSideInstance, REF>	communicator;
+	public final StudentSideCommunicatorClientSide<StudentSideInstance, REF>	communicator;
 	public final SerializationHandler<StudentSideInstance, REF>		globalSerializer;
 	public final Class<SP>											prototypeClass;
 
@@ -43,7 +43,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<StudentSideInstan
 
 	private final SP prototype;
 
-	public StudentSidePrototypeBuilder(StudentSideCommunicator<StudentSideInstance, REF> communicator, SerializationHandler<StudentSideInstance, REF> globalSerializer,
+	public StudentSidePrototypeBuilder(StudentSideCommunicatorClientSide<StudentSideInstance, REF> communicator, SerializationHandler<StudentSideInstance, REF> globalSerializer,
 			Class<SP> prototypeClass)
 	{
 		this.communicator = communicator;

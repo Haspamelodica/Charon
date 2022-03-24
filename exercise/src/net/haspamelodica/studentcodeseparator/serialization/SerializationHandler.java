@@ -12,23 +12,23 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.exceptions.MissingSerializerException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 {
-	private final StudentSideCommunicator<ATTACHMENT, REF>	communicator;
-	private final Function<StudentSideInstance, REF>		refForStudentSideInstance;
-	private final Function<REF, StudentSideInstance>		studentSideInstanceForRef;
-	private final List<Class<? extends Serializer<?>>>		serializerClasses;
+	private final StudentSideCommunicatorClientSide<ATTACHMENT, REF>	communicator;
+	private final Function<StudentSideInstance, REF>					refForStudentSideInstance;
+	private final Function<REF, StudentSideInstance>					studentSideInstanceForRef;
+	private final List<Class<? extends Serializer<?>>>					serializerClasses;
 
 	private final ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<ATTACHMENT, REF, ?>> initializedSerializersBySerializerClass;
 
 	private final Map<Class<?>, InitializedSerializer<ATTACHMENT, REF, ?>> initializedSerializersByInstanceClass;
 
-	public SerializationHandler(StudentSideCommunicator<ATTACHMENT, REF> communicator, Function<StudentSideInstance, REF> refForStudentSideInstance,
+	public SerializationHandler(StudentSideCommunicatorClientSide<ATTACHMENT, REF> communicator, Function<StudentSideInstance, REF> refForStudentSideInstance,
 			Function<REF, StudentSideInstance> studentSideInstanceForRef, List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		this.communicator = communicator;
@@ -91,7 +91,7 @@ public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 
 		//TODO maybe choose serializer based on dynamic class instead?
 		InitializedSerializer<ATTACHMENT, REF, T> serializer = getSerializerForObjectClass(clazz);
-		return communicator.send(serializer.serializer(), serializer.studentSideSerializerRef(), obj);
+		return communicator.send(serializer.studentSideSerializerRef(), serializer.serializer()::serialize, obj);
 	}
 
 	public <T> T receive(Class<T> clazz, REF objRef)
@@ -109,7 +109,7 @@ public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 
 		//TODO maybe choose serializer based on dynamic class instead?
 		InitializedSerializer<ATTACHMENT, REF, T> serializer = getSerializerForObjectClass(clazz);
-		return communicator.receive(serializer.serializer(), serializer.studentSideSerializerRef(), objRef);
+		return communicator.receive(serializer.studentSideSerializerRef(), serializer.serializer()::deserialize, objRef);
 	}
 
 	private <T> InitializedSerializer<ATTACHMENT, REF, T> getSerializerForObjectClass(Class<T> clazz)

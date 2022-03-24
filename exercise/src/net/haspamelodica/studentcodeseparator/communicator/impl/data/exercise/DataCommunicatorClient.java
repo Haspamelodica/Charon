@@ -32,7 +32,7 @@ import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
 import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentResponse;
@@ -44,10 +44,9 @@ import net.haspamelodica.studentcodeseparator.refs.IllegalRefException;
 import net.haspamelodica.studentcodeseparator.refs.IntRef;
 import net.haspamelodica.studentcodeseparator.refs.IntRefManager;
 import net.haspamelodica.studentcodeseparator.refs.IntRefManager.DeletedRef;
-import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
+public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicatorClientSide<ATTACHMENT, IntRef<ATTACHMENT>>
 {
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
@@ -123,7 +122,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	}
 
 	@Override
-	public <T> IntRef<ATTACHMENT> send(Serializer<T> serializer, IntRef<ATTACHMENT> serializerRef, T obj)
+	public <T> IntRef<ATTACHMENT> send(IntRef<ATTACHMENT> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
@@ -134,7 +133,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 			writeRef(out, serializerRef);
 			out.writeInt(serializerOut.getStreamID());
 			out.flush();
-			serializer.serialize(serializerOut, obj);
+			sendObj.accept(serializerOut, obj);
 			serializerOut.flush();
 
 			freeStreamsForSending.add(serializerOut);
@@ -142,7 +141,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 	}
 
 	@Override
-	public <T> T receive(Serializer<T> serializer, IntRef<ATTACHMENT> serializerRef, IntRef<ATTACHMENT> objRef)
+	public <T> T receive(IntRef<ATTACHMENT> serializerRef, IOFunction<DataInput, T> receiveObj, IntRef<ATTACHMENT> objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
@@ -161,7 +160,7 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 			// Neccessary because StreamMultiplexer requires the output stream to exist before the input stream is used.
 			if(ThreadResponse.decode(in.readByte()) != ThreadResponse.SERIALIZER_READY)
 				throw new IllegalBehaviourException("Expected SERIALIZER_READY");
-			T result = serializer.deserialize(serializerIn);
+			T result = receiveObj.apply(serializerIn);
 			freeStreamsForReceiving.add(serializerIn);
 			return result;
 		});

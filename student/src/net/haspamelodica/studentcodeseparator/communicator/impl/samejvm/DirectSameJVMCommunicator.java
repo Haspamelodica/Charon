@@ -3,19 +3,23 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
 import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils.nameToClass;
 
+import java.io.DataInput;
+import java.io.DataOutput;
+import java.io.IOException;
 import java.util.List;
 
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 import net.haspamelodica.studentcodeseparator.refs.DirectRef;
 import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
+import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
-		implements StudentSideCommunicatorWithoutSerialization<ATTACHMENT, DirectRef<ATTACHMENT>>
+public class DirectSameJVMCommunicator<ATTACHMENT>
+		implements StudentSideCommunicatorServerSide<ATTACHMENT, DirectRef<ATTACHMENT>>
 {
 	protected final DirectRefManager<ATTACHMENT> refManager;
 
-	public DirectSameJVMCommunicatorWithoutSerialization(DirectRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicator(DirectRefManager<ATTACHMENT> refManager)
 	{
 		this.refManager = refManager;
 	}
@@ -103,5 +107,28 @@ public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
 		@SuppressWarnings("unchecked") // responsibility of caller
 		F valueCasted = (F) value;
 		ReflectionUtils.setInstanceField(clazz, name, fieldClass, receiverCasted, valueCasted);
+	}
+
+	@Override
+	public DirectRef<ATTACHMENT> send(DirectRef<ATTACHMENT> serializerRef, DataInput objIn) throws IOException
+	{
+		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
+		Object result = serializer.deserialize(objIn);
+		return refManager.pack(result);
+	}
+	@Override
+	public void receive(DirectRef<ATTACHMENT> serializerRef, DirectRef<ATTACHMENT> objRef, DataOutput objOut) throws IOException
+	{
+		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
+		Object obj = refManager.unpack(objRef);
+		respondReceive(objOut, serializer, obj);
+	}
+
+	// extracted to own method so cast to T is expressible in Java
+	private <T> void respondReceive(DataOutput out, Serializer<T> serializer, Object obj) throws IOException
+	{
+		@SuppressWarnings("unchecked") // responsibility of server
+		T objCasted = (T) obj;
+		serializer.serialize(out, objCasted);
 	}
 }

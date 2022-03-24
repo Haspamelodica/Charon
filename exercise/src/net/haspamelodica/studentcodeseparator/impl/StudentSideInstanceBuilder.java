@@ -23,10 +23,10 @@ import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKin
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
 public final class StudentSideInstanceBuilder<REF extends Ref<StudentSideInstance>, SI extends StudentSideInstance>

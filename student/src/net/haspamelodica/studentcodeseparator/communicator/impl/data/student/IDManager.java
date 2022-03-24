@@ -2,7 +2,7 @@ package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
 
 import java.util.Arrays;
 
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public class IDManager<REF extends Ref<DataCommunicatorAttachment>>
 {

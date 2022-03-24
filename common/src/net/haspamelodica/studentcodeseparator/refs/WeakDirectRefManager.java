@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
+package net.haspamelodica.studentcodeseparator.refs;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -6,7 +6,7 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManager<ATTACHMENT>
+public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<ATTACHMENT>
 {
 	/**
 	 * We want need a weak, concurrent identity-based map.
@@ -19,18 +19,18 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak).
 	 */
 	private final ConcurrentHashMap<IdentityObjectContainer,
-			WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>>> cachedRefs;
+			WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>>> cachedRefs;
 
-	private final ReferenceQueue<SameJVMRef<ATTACHMENT>> queue;
+	private final ReferenceQueue<DirectRef<ATTACHMENT>> queue;
 
-	public WeakSameJVMRefManager()
+	public WeakDirectRefManager()
 	{
 		this.cachedRefs = new ConcurrentHashMap<>();
 		this.queue = new ReferenceQueue<>();
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> pack(Object obj)
+	public DirectRef<ATTACHMENT> pack(Object obj)
 	{
 		if(obj == null)
 			return null;
@@ -41,17 +41,17 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 		IdentityObjectContainer container = new IdentityObjectContainer(obj);
 
 		// We can't really use computeIfAbsent:
-		// The returned WeakReference might be null, in which case we have to recreate a SameJVMRef as well.
+		// The returned WeakReference might be null, in which case we have to recreate a DirectRef as well.
 		// We can't express this using computeIfAbsent.
-		// Also, inside the mapping function, we have to wrap a newly created SameJVMRef in a WeakReference
+		// Also, inside the mapping function, we have to wrap a newly created DirectRef in a WeakReference
 		// before passing it to the map. So, the ref will (for a short while) only be accessible through the WeakReference.
-		// The JVM could optimize this away to immediately delete the SameJVMRef if the mapping function finishes.
+		// The JVM could optimize this away to immediately delete the DirectRef if the mapping function finishes.
 
 		// fast path
-		WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>> weakRef = cachedRefs.get(container);
+		WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>> weakRef = cachedRefs.get(container);
 		if(weakRef != null)
 		{
-			SameJVMRef<ATTACHMENT> ref = weakRef.get();
+			DirectRef<ATTACHMENT> ref = weakRef.get();
 			// Yes, we polled the queue, but some object could have been cleared since then
 			if(ref != null)
 				return ref;
@@ -64,13 +64,13 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 			weakRef = cachedRefs.get(container);
 			if(weakRef != null)
 			{
-				SameJVMRef<ATTACHMENT> ref = weakRef.get();
+				DirectRef<ATTACHMENT> ref = weakRef.get();
 				if(ref != null)
 					return ref;
 			}
 
-			// No SameJVMRef for that object anymore. Create a new one.
-			SameJVMRef<ATTACHMENT> ref = new SameJVMRef<>(obj);
+			// No DirectRef for that object anymore. Create a new one.
+			DirectRef<ATTACHMENT> ref = new DirectRef<>(obj);
 			cachedRefs.put(container, new WeakReferenceWithAttachment<>(ref, container, queue));
 			return ref;
 		}
@@ -81,8 +81,8 @@ public final class WeakSameJVMRefManager<ATTACHMENT> implements SameJVMRefManage
 		for(;;)
 		{
 			@SuppressWarnings("unchecked")
-			WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>> clearedRef =
-					(WeakReferenceWithAttachment<IdentityObjectContainer, SameJVMRef<ATTACHMENT>>) queue.poll();
+			WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>> clearedRef =
+					(WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>>) queue.poll();
 			if(clearedRef == null)
 				break;
 			cachedRefs.remove(clearedRef.attachment());

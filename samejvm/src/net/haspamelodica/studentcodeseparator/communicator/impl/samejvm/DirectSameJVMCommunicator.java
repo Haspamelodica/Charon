@@ -13,6 +13,8 @@ import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicat
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServerWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
+import net.haspamelodica.studentcodeseparator.refs.DirectRef;
+import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 /**
@@ -26,22 +28,22 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  */
 //TODO better exception handling. Use StudentSideException
 public class DirectSameJVMCommunicator<ATTACHMENT> extends DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
-		implements StudentSideCommunicator<ATTACHMENT, SameJVMRef<ATTACHMENT>>
+		implements StudentSideCommunicator<ATTACHMENT, DirectRef<ATTACHMENT>>
 {
-	public DirectSameJVMCommunicator(SameJVMRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicator(DirectRefManager<ATTACHMENT> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public <T> SameJVMRef<ATTACHMENT> send(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, T obj)
+	public <T> DirectRef<ATTACHMENT> send(Serializer<T> serializer, DirectRef<ATTACHMENT> serializerRef, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
 		return refManager.pack(sendAndReceive(serializer, studentSideSerializer, obj));
 	}
 	@Override
-	public <T> T receive(Serializer<T> serializer, SameJVMRef<ATTACHMENT> serializerRef, SameJVMRef<ATTACHMENT> objRef)
+	public <T> T receive(Serializer<T> serializer, DirectRef<ATTACHMENT> serializerRef, DirectRef<ATTACHMENT> objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);

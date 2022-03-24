@@ -16,8 +16,8 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.Da
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicator;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorWithoutSerialization;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.WeakSameJVMRefManager;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
+import net.haspamelodica.studentcodeseparator.refs.WeakDirectRefManager;
 
 public class ExampleExerciseClient
 {
@@ -49,7 +49,7 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		run(new StudentSideImpl<>(maybeWrapLogging(new DirectSameJVMCommunicator<>(new WeakSameJVMRefManager<>()), LOGGING)));
+		run(new StudentSideImpl<>(maybeWrapLogging(new DirectSameJVMCommunicator<>(new WeakDirectRefManager<>()), LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException

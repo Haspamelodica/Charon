@@ -3,8 +3,8 @@ package net.haspamelodica.studentcodeseparator.communicator.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public class LoggingCommunicatorWithoutSerialization<ATTACHMENT, REF extends Ref<ATTACHMENT>,
 		COMM extends StudentSideCommunicatorWithoutSerialization<ATTACHMENT, REF>> implements StudentSideCommunicatorWithoutSerialization<ATTACHMENT, REF>

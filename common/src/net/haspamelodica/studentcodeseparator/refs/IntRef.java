@@ -1,6 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs;
-
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
+package net.haspamelodica.studentcodeseparator.refs;
 
 public class IntRef<ATTACHMENT> extends Ref<ATTACHMENT>
 {

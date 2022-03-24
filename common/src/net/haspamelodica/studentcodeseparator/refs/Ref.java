@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator;
+package net.haspamelodica.studentcodeseparator.refs;
 
 /**
  * There must not be a REF referring to a null value.

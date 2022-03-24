@@ -37,15 +37,16 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadComma
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentResponse;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadResponse;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRef;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager;
-import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs.IntRefManager.DeletedRef;
 import net.haspamelodica.studentcodeseparator.exceptions.CommunicationException;
 import net.haspamelodica.studentcodeseparator.exceptions.FrameworkCausedException;
 import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
+import net.haspamelodica.studentcodeseparator.refs.IllegalRefException;
+import net.haspamelodica.studentcodeseparator.refs.IntRef;
+import net.haspamelodica.studentcodeseparator.refs.IntRefManager;
+import net.haspamelodica.studentcodeseparator.refs.IntRefManager.DeletedRef;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-// TODO server, client or both crash on shutdown
+// TODO server, client or both crash on shutdown sometimes
 public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicator<ATTACHMENT, IntRef<ATTACHMENT>>
 {
 	private final DataStreamMultiplexer	multiplexer;
@@ -372,7 +373,13 @@ public class DataCommunicatorClient<ATTACHMENT> implements StudentSideCommunicat
 
 	private IntRef<ATTACHMENT> readRef(DataInput in) throws IOException
 	{
-		return refManager.lookupReceivedRef(in.readInt());
+		try
+		{
+			return refManager.lookupReceivedRef(in.readInt());
+		} catch(IllegalRefException e)
+		{
+			throw new IllegalBehaviourException(e);
+		}
 	}
 
 	private void writeRef(DataOutput out, IntRef<ATTACHMENT> ref) throws IOException

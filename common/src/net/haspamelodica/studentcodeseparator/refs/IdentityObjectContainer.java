@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
+package net.haspamelodica.studentcodeseparator.refs;
 
 class IdentityObjectContainer
 {

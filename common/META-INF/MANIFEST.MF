@@ -9,4 +9,5 @@ Export-Package: net.haspamelodica.studentcodeseparator.communicator,
  net.haspamelodica.studentcodeseparator.communicator.impl,
  net.haspamelodica.studentcodeseparator.communicator.impl.data,
  net.haspamelodica.studentcodeseparator.reflection,
+ net.haspamelodica.studentcodeseparator.refs,
  net.haspamelodica.studentcodeseparator.serialization

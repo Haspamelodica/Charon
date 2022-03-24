@@ -1,5 +1,6 @@
 package net.haspamelodica.studentcodeseparator.communicator;
 
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public interface StudentSideCommunicator<ATTACHMENT, REF extends Ref<ATTACHMENT>>

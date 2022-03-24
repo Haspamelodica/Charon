@@ -1,7 +1,7 @@
 package net.haspamelodica.studentcodeseparator.communicator.impl;
 
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 public class LoggingCommunicator<ATTACHMENT, REF extends Ref<ATTACHMENT>>

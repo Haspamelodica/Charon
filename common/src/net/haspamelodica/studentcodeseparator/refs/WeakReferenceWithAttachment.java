@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.samejvm;
+package net.haspamelodica.studentcodeseparator.refs;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;

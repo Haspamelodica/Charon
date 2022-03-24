@@ -19,10 +19,10 @@ import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
 import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public abstract class DataCommunicatorServerWithoutSerialization<REF extends Ref<DataCommunicatorAttachment>>
 {

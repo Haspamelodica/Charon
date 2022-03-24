@@ -7,3 +7,4 @@ StudentSideInstance / SSI: Instance of (a subinterface of) the interface Student
 Student-side XYZ         : XYZ happens in / lives in / is associated with the student JVM.
                             Exception: StudentSideInstance and StudentSidePrototype. Those live in the exercise JVM
                             and only refer to objects in the student JVM.
+Ref                      : Handle for an object in one JVM by the other JVM.

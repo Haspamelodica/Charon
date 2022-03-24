@@ -1,6 +1,6 @@
 package net.haspamelodica.studentcodeseparator.impl;
 
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public interface InstanceMethodHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 {

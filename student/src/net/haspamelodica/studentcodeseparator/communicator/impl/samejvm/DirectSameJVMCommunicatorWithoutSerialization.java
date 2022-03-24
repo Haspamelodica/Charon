@@ -7,45 +7,47 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorWithoutSerialization;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
+import net.haspamelodica.studentcodeseparator.refs.DirectRef;
+import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
 
 public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
-		implements StudentSideCommunicatorWithoutSerialization<ATTACHMENT, SameJVMRef<ATTACHMENT>>
+		implements StudentSideCommunicatorWithoutSerialization<ATTACHMENT, DirectRef<ATTACHMENT>>
 {
-	protected final SameJVMRefManager<ATTACHMENT> refManager;
+	protected final DirectRefManager<ATTACHMENT> refManager;
 
-	public DirectSameJVMCommunicatorWithoutSerialization(SameJVMRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicatorWithoutSerialization(DirectRefManager<ATTACHMENT> refManager)
 	{
 		this.refManager = refManager;
 	}
 
 	@Override
-	public String getStudentSideClassname(SameJVMRef<ATTACHMENT> ref)
+	public String getStudentSideClassname(DirectRef<ATTACHMENT> ref)
 	{
 		return classToName(refManager.unpack(ref).getClass());
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> callConstructor(String cn, List<String> params, List<SameJVMRef<ATTACHMENT>> argRefs)
+	public DirectRef<ATTACHMENT> callConstructor(String cn, List<String> params, List<DirectRef<ATTACHMENT>> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
-			List<SameJVMRef<ATTACHMENT>> argRefs)
+	public DirectRef<ATTACHMENT> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+			List<DirectRef<ATTACHMENT>> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> getStaticField(String cn, String name, String fieldClassname)
+	public DirectRef<ATTACHMENT> getStaticField(String cn, String name, String fieldClassname)
 	{
 		return refManager.pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, SameJVMRef<ATTACHMENT> valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, DirectRef<ATTACHMENT> valueRef)
 	{
 		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(valueRef));
 	}
@@ -58,8 +60,8 @@ public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-			SameJVMRef<ATTACHMENT> receiverRef, List<SameJVMRef<ATTACHMENT>> argRefs)
+	public DirectRef<ATTACHMENT> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			DirectRef<ATTACHMENT> receiverRef, List<DirectRef<ATTACHMENT>> argRefs)
 	{
 		return refManager.pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(receiverRef), refManager.unpack(argRefs)));
@@ -74,7 +76,7 @@ public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
 	}
 
 	@Override
-	public SameJVMRef<ATTACHMENT> getInstanceField(String cn, String name, String fieldClassname, SameJVMRef<ATTACHMENT> receiverRef)
+	public DirectRef<ATTACHMENT> getInstanceField(String cn, String name, String fieldClassname, DirectRef<ATTACHMENT> receiverRef)
 	{
 		return refManager.pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(receiverRef)));
 	}
@@ -88,7 +90,7 @@ public class DirectSameJVMCommunicatorWithoutSerialization<ATTACHMENT>
 
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname,
-			SameJVMRef<ATTACHMENT> receiverRef, SameJVMRef<ATTACHMENT> valueRef)
+			DirectRef<ATTACHMENT> receiverRef, DirectRef<ATTACHMENT> valueRef)
 	{
 		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname),
 				refManager.unpack(receiverRef), refManager.unpack(valueRef));

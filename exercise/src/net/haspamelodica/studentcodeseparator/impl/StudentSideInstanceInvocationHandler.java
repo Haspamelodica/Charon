@@ -5,7 +5,7 @@ import java.lang.reflect.Method;
 import java.util.Map;
 
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public class StudentSideInstanceInvocationHandler<REF extends Ref<StudentSideInstance>> implements InvocationHandler
 {

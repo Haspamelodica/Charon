@@ -12,10 +12,10 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.MissingSerializerException;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 
 public class SerializationHandler<ATTACHMENT, REF extends Ref<ATTACHMENT>>
 {

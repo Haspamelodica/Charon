@@ -1,11 +1,8 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.refs;
+package net.haspamelodica.studentcodeseparator.refs;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
-
-import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
-import net.haspamelodica.studentcodeseparator.exceptions.IllegalBehaviourException;
 
 public class IntRefManager<ATTACHMENT>
 {
@@ -29,7 +26,8 @@ public class IntRefManager<ATTACHMENT>
 	 * we can throw it away and notify the student side.
 	 * <p>
 	 * If the same object is made reachable again after the WeakReference to it has been cleared, a new IntRef will be created.
-	 * The contract of {@link StudentSideCommunicator} requires that "<code>refA == refB</code> has to be <code>true</code>
+	 * The contract of StudentSideCommunicator requires
+	 * that "<code>refA == refB</code> has to be <code>true</code>
 	 * iff <code>refA</code> and <code>refB</code> refer to the same student-side object".
 	 * However, an IntRef is only recreated if the WeakReference to the old IntRef is cleared,
 	 * and neither <code>refA</code> or <code>refB</code> can refer to an IntRef for which WeakReferences have been cleared
@@ -61,7 +59,7 @@ public class IntRefManager<ATTACHMENT>
 		}
 	}
 
-	public IntRef<ATTACHMENT> lookupReceivedRef(int refID)
+	public IntRef<ATTACHMENT> lookupReceivedRef(int refID) throws IllegalRefException
 	{
 		synchronized(lock)
 		{
@@ -98,7 +96,7 @@ public class IntRefManager<ATTACHMENT>
 		}
 	}
 
-	private void growRefsToFitID(int refID)
+	private void growRefsToFitID(int refID) throws IllegalRefException
 	{
 		//TODO The current implementation allows students to allocate an array of size up to Integer.MAX_VALUE.
 		// We might want to prevent that.
@@ -108,7 +106,7 @@ public class IntRefManager<ATTACHMENT>
 		// The addition below this if might overflow. This results in the student being able to force creation of multiple IntRefs
 		// for the same ID. While this doesn't seem very bad, we still prevent it because it might lead to unexpected side effects.
 		if(refID == Integer.MAX_VALUE)
-			throw new IllegalBehaviourException("Student returned maximal integer as ID: " + Integer.MAX_VALUE);
+			throw new IllegalRefException("Student returned maximal integer as ID: " + Integer.MAX_VALUE);
 		allocatedRefs = refID + 1;
 		if(allocatedRefs > refs.length)
 		{

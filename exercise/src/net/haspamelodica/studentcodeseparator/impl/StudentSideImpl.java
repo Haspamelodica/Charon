@@ -8,9 +8,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import net.haspamelodica.studentcodeseparator.StudentSide;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
-import net.haspamelodica.studentcodeseparator.communicator.Ref;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.PrimitiveSerializer;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 

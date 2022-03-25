@@ -52,7 +52,7 @@ public class StudentSideImplUtils
 		return (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}
 
-	public static <ATTACHMENT, REF extends Ref<ATTACHMENT>> InstanceMethodHandler<ATTACHMENT, REF> defaultInstanceHandler(Method method)
+	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> InstanceMethodHandler<REFERENT, REFERRER, REF> defaultInstanceHandler(Method method)
 	{
 		return (ref, proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}

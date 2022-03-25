@@ -7,6 +7,7 @@ public enum ThreadCommand
 	SET_STATIC_FIELD,
 	GET_INSTANCE_FIELD,
 	SET_INSTANCE_FIELD,
+	CREATE_CALLBACK_INSTANCE,
 
 	//callback possible
 	GET_CLASSNAME,

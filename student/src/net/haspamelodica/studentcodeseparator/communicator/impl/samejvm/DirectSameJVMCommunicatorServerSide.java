@@ -5,28 +5,28 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.studentcodeseparator.refs.DirectRef;
-import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
+import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicatorServerSide<ATTACHMENT>
-		extends DirectSameJVMCommunicator<ATTACHMENT>
-		implements StudentSideCommunicatorServerSide<ATTACHMENT, DirectRef<ATTACHMENT>>
+public class DirectSameJVMCommunicatorServerSide<REFERRER>
+		extends DirectSameJVMCommunicator<REFERRER>
+		implements StudentSideCommunicatorServerSide<Object, REFERRER, Ref<Object, REFERRER>>
 {
-	public DirectSameJVMCommunicatorServerSide(DirectRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicatorServerSide(DirectRefManager<REFERRER> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> send(DirectRef<ATTACHMENT> serializerRef, DataInput objIn) throws IOException
+	public Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, DataInput objIn) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object result = serializer.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(DirectRef<ATTACHMENT> serializerRef, DirectRef<ATTACHMENT> objRef, DataOutput objOut) throws IOException
+	public void receive(Ref<Object, REFERRER> serializerRef, Ref<Object, REFERRER> objRef, DataOutput objOut) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object obj = refManager.unpack(objRef);

@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.refs;
+package net.haspamelodica.studentcodeseparator.refs.direct;
 
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
@@ -6,7 +6,9 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<ATTACHMENT>
+import net.haspamelodica.studentcodeseparator.refs.Ref;
+
+public final class WeakDirectRefManager<REFERRER> implements DirectRefManager<REFERRER>
 {
 	/**
 	 * We want need a weak, concurrent identity-based map.
@@ -19,9 +21,9 @@ public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<
 	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak).
 	 */
 	private final ConcurrentHashMap<IdentityObjectContainer,
-			WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>>> cachedRefs;
+			WeakReferenceWithAttachment<IdentityObjectContainer, Ref<Object, REFERRER>>> cachedRefs;
 
-	private final ReferenceQueue<DirectRef<ATTACHMENT>> queue;
+	private final ReferenceQueue<Ref<Object, REFERRER>> queue;
 
 	public WeakDirectRefManager()
 	{
@@ -30,7 +32,7 @@ public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> pack(Object obj)
+	public Ref<Object, REFERRER> pack(Object obj)
 	{
 		if(obj == null)
 			return null;
@@ -48,10 +50,10 @@ public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<
 		// The JVM could optimize this away to immediately delete the DirectRef if the mapping function finishes.
 
 		// fast path
-		WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>> weakRef = cachedRefs.get(container);
+		WeakReferenceWithAttachment<IdentityObjectContainer, Ref<Object, REFERRER>> weakRef = cachedRefs.get(container);
 		if(weakRef != null)
 		{
-			DirectRef<ATTACHMENT> ref = weakRef.get();
+			Ref<Object, REFERRER> ref = weakRef.get();
 			// Yes, we polled the queue, but some object could have been cleared since then
 			if(ref != null)
 				return ref;
@@ -64,13 +66,13 @@ public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<
 			weakRef = cachedRefs.get(container);
 			if(weakRef != null)
 			{
-				DirectRef<ATTACHMENT> ref = weakRef.get();
+				Ref<Object, REFERRER> ref = weakRef.get();
 				if(ref != null)
 					return ref;
 			}
 
-			// No DirectRef for that object anymore. Create a new one.
-			DirectRef<ATTACHMENT> ref = new DirectRef<>(obj);
+			// No ref for that object anymore. Create a new one.
+			Ref<Object, REFERRER> ref = new Ref<>(obj);
 			cachedRefs.put(container, new WeakReferenceWithAttachment<>(ref, container, queue));
 			return ref;
 		}
@@ -81,8 +83,8 @@ public final class WeakDirectRefManager<ATTACHMENT> implements DirectRefManager<
 		for(;;)
 		{
 			@SuppressWarnings("unchecked")
-			WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>> clearedRef =
-					(WeakReferenceWithAttachment<IdentityObjectContainer, DirectRef<ATTACHMENT>>) queue.poll();
+			WeakReferenceWithAttachment<IdentityObjectContainer, Ref<Object, REFERRER>> clearedRef =
+					(WeakReferenceWithAttachment<IdentityObjectContainer, Ref<Object, REFERRER>>) queue.poll();
 			if(clearedRef == null)
 				break;
 			cachedRefs.remove(clearedRef.attachment());

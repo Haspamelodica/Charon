@@ -12,16 +12,26 @@ package net.haspamelodica.studentcodeseparator.refs;
  * Comparing REFs with {@link #equals(Object)} is equivalent to comparing with <code>==</code>
  * (except if the {@link Ref} <code>equals</code> is being called on is <code>null</code>, of course).
  */
-public abstract class Ref<ATTACHMENT>
+public class Ref<REFERENT, REFERRER>
 {
-	private volatile ATTACHMENT attachment;
+	private final REFERENT		referent;
+	private volatile REFERRER	referrer;
 
-	public final ATTACHMENT getAttachment()
+	public Ref(REFERENT referent)
 	{
-		return attachment;
+		this.referent = referent;
 	}
-	public final void setAttachment(ATTACHMENT attachment)
+
+	public final REFERENT referent()
 	{
-		this.attachment = attachment;
+		return referent;
+	}
+	public final void setReferrer(REFERRER referrer)
+	{
+		this.referrer = referrer;
+	}
+	public final REFERRER referrer()
+	{
+		return referrer;
 	}
 }

@@ -1,4 +1,4 @@
-package net.haspamelodica.studentcodeseparator.refs;
+package net.haspamelodica.studentcodeseparator.refs.direct;
 
 class IdentityObjectContainer
 {

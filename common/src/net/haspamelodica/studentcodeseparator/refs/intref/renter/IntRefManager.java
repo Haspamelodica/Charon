@@ -1,10 +1,14 @@
-package net.haspamelodica.studentcodeseparator.refs;
+package net.haspamelodica.studentcodeseparator.refs.intref.renter;
 
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
 
-public class IntRefManager<ATTACHMENT>
+import net.haspamelodica.studentcodeseparator.refs.IllegalRefException;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
+import net.haspamelodica.studentcodeseparator.refs.WeakIntRefReference;
+
+public class IntRefManager<REFERRER>
 {
 	/**
 	 * We need to guarantee only one Ref exists for every student-side object, for comparing SSIs with '=='.
@@ -33,9 +37,9 @@ public class IntRefManager<ATTACHMENT>
 	 * and neither <code>refA</code> or <code>refB</code> can refer to an IntRef for which WeakReferences have been cleared
 	 * as long as {@link IntRef} does not have a finalizer making it reachable again.
 	 */
-	private WeakIntRefReference<ATTACHMENT>[] refs;
+	private WeakIntRefReference<REFERRER>[] refs;
 
-	private final ReferenceQueue<IntRef<ATTACHMENT>> refQueue;
+	private final ReferenceQueue<Ref<Integer, REFERRER>> refQueue;
 
 	private int allocatedRefs;
 
@@ -44,22 +48,22 @@ public class IntRefManager<ATTACHMENT>
 	public IntRefManager()
 	{
 		@SuppressWarnings("unchecked")
-		WeakIntRefReference<ATTACHMENT>[] refs = new WeakIntRefReference[10];
+		WeakIntRefReference<REFERRER>[] refs = new WeakIntRefReference[10];
 		this.refs = refs;
 		this.refQueue = new ReferenceQueue<>();
 		this.allocatedRefs = 0;
 		this.lock = new Object();
 	}
 
-	public int getID(IntRef<ATTACHMENT> objRef)
+	public int getID(Ref<Integer, REFERRER> objRef)
 	{
 		synchronized(lock)
 		{
-			return objRef != null ? objRef.id() : 0;
+			return objRef != null ? objRef.referent() : 0;
 		}
 	}
 
-	public IntRef<ATTACHMENT> lookupReceivedRef(int refID) throws IllegalRefException
+	public Ref<Integer, REFERRER> lookupReceivedRef(int refID) throws IllegalRefException
 	{
 		synchronized(lock)
 		{
@@ -68,10 +72,10 @@ public class IntRefManager<ATTACHMENT>
 
 			if(refID < allocatedRefs)
 			{
-				WeakIntRefReference<ATTACHMENT> weakRef = refs[refID];
+				WeakIntRefReference<REFERRER> weakRef = refs[refID];
 				if(weakRef != null)
 				{
-					IntRef<ATTACHMENT> ref = weakRef.get();
+					Ref<Integer, REFERRER> ref = weakRef.get();
 					if(ref != null)
 					{
 						weakRef.incrementReceivedCount();
@@ -85,7 +89,7 @@ public class IntRefManager<ATTACHMENT>
 			} else if(refID >= allocatedRefs)
 				growRefsToFitID(refID);
 			// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
-			IntRef<ATTACHMENT> ref = new IntRef<ATTACHMENT>(refID);
+			Ref<Integer, REFERRER> ref = new Ref<>(refID);
 			refs[refID] = new WeakIntRefReference<>(ref, refQueue);
 			// No need to explicitly increment received count: it starts at 1.
 
@@ -131,7 +135,7 @@ public class IntRefManager<ATTACHMENT>
 	public DeletedRef removeDeletedRef() throws InterruptedException
 	{
 		@SuppressWarnings("unchecked") // we only put WeakIntRefReferences into the queue
-		WeakIntRefReference<ATTACHMENT> ref = (WeakIntRefReference<ATTACHMENT>) refQueue.remove();
+		WeakIntRefReference<REFERRER> ref = (WeakIntRefReference<REFERRER>) refQueue.remove();
 		synchronized(lock)
 		{
 			refs[ref.id()] = null;

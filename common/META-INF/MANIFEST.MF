@@ -10,4 +10,7 @@ Export-Package: net.haspamelodica.studentcodeseparator.communicator,
  net.haspamelodica.studentcodeseparator.communicator.impl.data,
  net.haspamelodica.studentcodeseparator.reflection,
  net.haspamelodica.studentcodeseparator.refs,
+ net.haspamelodica.studentcodeseparator.refs.direct,
+ net.haspamelodica.studentcodeseparator.refs.intref.owner,
+ net.haspamelodica.studentcodeseparator.refs.intref.renter,
  net.haspamelodica.studentcodeseparator.serialization

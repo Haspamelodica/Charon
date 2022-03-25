@@ -6,8 +6,8 @@ import java.io.IOException;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public interface StudentSideCommunicatorServerSide<ATTACHMENT, REF extends Ref<ATTACHMENT>>
-		extends StudentSideCommunicator<ATTACHMENT, REF>
+public interface StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>>
+		extends StudentSideCommunicator<REFERENT, REFERRER, REF>
 {
 	public REF send(REF serializerRef, DataInput objIn) throws IOException;
 	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException;

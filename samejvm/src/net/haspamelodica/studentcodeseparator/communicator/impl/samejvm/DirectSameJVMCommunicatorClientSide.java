@@ -17,8 +17,8 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IO
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
-import net.haspamelodica.studentcodeseparator.refs.DirectRef;
-import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
+import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
 /**
@@ -31,23 +31,23 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide<ATTACHMENT> extends DirectSameJVMCommunicator<ATTACHMENT>
-		implements StudentSideCommunicatorClientSide<ATTACHMENT, DirectRef<ATTACHMENT>>
+public class DirectSameJVMCommunicatorClientSide<REFERRER> extends DirectSameJVMCommunicator<REFERRER>
+		implements StudentSideCommunicatorClientSide<Object, REFERRER, Ref<Object, REFERRER>>
 {
-	public DirectSameJVMCommunicatorClientSide(DirectRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicatorClientSide(DirectRefManager<REFERRER> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public <T> DirectRef<ATTACHMENT> send(DirectRef<ATTACHMENT> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
 		return refManager.pack(sendAndReceive(sendObj, studentSideSerializer::deserialize, obj));
 	}
 	@Override
-	public <T> T receive(DirectRef<ATTACHMENT> serializerRef, IOFunction<DataInput, T> receiveObj, DirectRef<ATTACHMENT> objRef)
+	public <T> T receive(Ref<Object, REFERRER> serializerRef, IOFunction<DataInput, T> receiveObj, Ref<Object, REFERRER> objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);

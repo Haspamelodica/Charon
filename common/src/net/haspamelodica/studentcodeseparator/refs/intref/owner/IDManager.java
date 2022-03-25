@@ -1,40 +1,40 @@
-package net.haspamelodica.studentcodeseparator.communicator.impl.data.student;
+package net.haspamelodica.studentcodeseparator.refs.intref.owner;
 
 import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class IDManager<REF extends Ref<DataCommunicatorAttachment>>
+public class IDManager<REFERENT>
 {
 	/** Since 0 represents <code>null</code>, <code>refs[0]</code> is always <code>null</code> */
-	private REF[]	refs;
-	private int		nextFreeID;
+	private Ref<REFERENT, IDReferrer>[]	refs;
+	private int							nextFreeID;
 
 	private final Object lock;
 
 	public IDManager()
 	{
 		@SuppressWarnings("unchecked")
-		REF[] refs = (REF[]) new Ref[10];
+		Ref<REFERENT, IDReferrer>[] refs = (Ref<REFERENT, IDReferrer>[]) new Ref[10];
 		this.refs = refs;
 		this.nextFreeID = 1;
 
 		this.lock = new Object();
 	}
 
-	public int getIDForSending(REF ref)
+	public int getIDForSending(Ref<REFERENT, IDReferrer> ref)
 	{
 		synchronized(lock)
 		{
 			if(ref == null)
 				return 0;
 
-			DataCommunicatorAttachment attachment = ref.getAttachment();
-			if(attachment != null)
-				if(attachment.incrementPendingSendsCount())
-					return attachment.id();
+			IDReferrer referrer = ref.referrer();
+			if(referrer != null)
+				if(referrer.incrementPendingSendsCount())
+					return referrer.id();
 
-			// Create a new ID
+			// Create a new ID. _Don't_ reuse the old one if one exists.
 			int id = nextFreeID;
 			if(id == Integer.MAX_VALUE)
 				//TODO better exception type
@@ -53,15 +53,15 @@ public class IDManager<REF extends Ref<DataCommunicatorAttachment>>
 				refs = Arrays.copyOf(refs, newLength);
 			}
 
+			// No need to explicitly increment pending sent count: starts at 1
+			ref.setReferrer(new IDReferrer(id));
 			refs[id] = ref;
 
-			// No need to explicitly increment pending sent count: starts at 1
-			ref.setAttachment(new DataCommunicatorAttachment(id));
 			return id;
 		}
 	}
 
-	public REF getRef(int id)
+	public Ref<REFERENT, IDReferrer> getRef(int id)
 	{
 		synchronized(lock)
 		{
@@ -71,15 +71,15 @@ public class IDManager<REF extends Ref<DataCommunicatorAttachment>>
 		}
 	}
 
-	public void refDeleted(REF deletedRef, int receivedCount)
+	public void refDeleted(Ref<REFERENT, IDReferrer> deletedRef, int receivedCount)
 	{
 		synchronized(lock)
 		{
-			DataCommunicatorAttachment attachment = deletedRef.getAttachment();
-			boolean refNowInactive = attachment.decreasePendingSendsCount(receivedCount);
+			IDReferrer referrer = deletedRef.referrer();
+			boolean refNowInactive = referrer.decreasePendingSendsCount(receivedCount);
 			if(refNowInactive)
 				// delete the reference to the now-unused ref to make it accessible for the GC
-				refs[attachment.id()] = null;
+				refs[referrer.id()] = null;
 		}
 	}
 }

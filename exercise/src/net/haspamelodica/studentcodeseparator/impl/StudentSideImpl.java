@@ -29,16 +29,16 @@ import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler
 // ..Problem: what about non-immutable datastructures?
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
-public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements StudentSide
+public class StudentSideImpl<REFERENT, REF extends Ref<REFERENT, StudentSideInstance>> implements StudentSide
 {
-	private final StudentSideCommunicatorClientSide<StudentSideInstance, REF>	communicator;
-	private final SerializationHandler<StudentSideInstance, REF>	globalSerializer;
+	private final StudentSideCommunicatorClientSide<REFERENT, StudentSideInstance, REF>	communicator;
+	private final SerializationHandler<REFERENT, StudentSideInstance, REF>				globalSerializer;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
-	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
+	private final Map<String, StudentSidePrototypeBuilder<REFERENT, REF, ?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(StudentSideCommunicatorClientSide<StudentSideInstance, REF> communicator)
+	public StudentSideImpl(StudentSideCommunicatorClientSide<REFERENT, StudentSideInstance, REF> communicator)
 	{
 		this.communicator = communicator;
 		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::studentSideInstanceForRef, PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
@@ -56,7 +56,7 @@ public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements St
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalSerializer, prototypeClass);
+		StudentSidePrototypeBuilder<REFERENT, REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalSerializer, prototypeClass);
 
 		synchronized(prototypes)
 		{
@@ -69,7 +69,7 @@ public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements St
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
-				StudentSidePrototypeBuilder<REF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				StudentSidePrototypeBuilder<REFERENT, REF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 				if(otherPrototypeBuilder.instanceClass.equals(prototypeBuilder.instanceClass))
 					throw new InconsistentHierarchyException("Two prototype classes for " + prototypeBuilder.instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
@@ -98,20 +98,20 @@ public class StudentSideImpl<REF extends Ref<StudentSideInstance>> implements St
 		// Guaranteed by StudentSidePrototypeBuilder#getPrototype
 		InvocationHandler invocationHandler = Proxy.getInvocationHandler(studentSideInstance);
 		@SuppressWarnings("unchecked") // Guaranteed by StudentSidePrototypeBuilder#getPrototype
-		StudentSideInstanceInvocationHandler<REF> invocationHandlerCasted = (StudentSideInstanceInvocationHandler<REF>) invocationHandler;
+		StudentSideInstanceInvocationHandler<REFERENT, REF> invocationHandlerCasted = (StudentSideInstanceInvocationHandler<REFERENT, REF>) invocationHandler;
 		return invocationHandlerCasted.getRef();
 	}
 
 	private StudentSideInstance studentSideInstanceForRef(REF ref)
 	{
 		// fast path
-		StudentSideInstance studentSideInstance = ref.getAttachment();
+		StudentSideInstance studentSideInstance = ref.referrer();
 		if(studentSideInstance != null)
 			return studentSideInstance;
 
 		//TODO if we support inheritance, we need to check super-class-names too
 		String studentSideCN = communicator.getStudentSideClassname(ref);
-		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+		StudentSidePrototypeBuilder<REFERENT, REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 		if(prototypeBuilder == null)
 			return null;
 

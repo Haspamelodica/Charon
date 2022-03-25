@@ -8,7 +8,7 @@ import java.net.Socket;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.studentcodeseparator.refs.WeakDirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.direct.WeakDirectRefManager;
 
 public class SorterExerciseServer
 {

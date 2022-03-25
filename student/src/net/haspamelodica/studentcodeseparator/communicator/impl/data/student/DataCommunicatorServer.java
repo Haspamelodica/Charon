@@ -20,23 +20,26 @@ import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
 import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
+import net.haspamelodica.studentcodeseparator.communicator.Callback;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
+import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDManager;
+import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDReferrer;
 
-public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
+public class DataCommunicatorServer<REFERENT>
 {
 	protected final DataStreamMultiplexer multiplexer;
 
-	private final StudentSideCommunicatorServerSide<DataCommunicatorAttachment, REF> communicator;
+	private final StudentSideCommunicatorServerSide<REFERENT, IDReferrer, Ref<REFERENT, IDReferrer>> communicator;
 
-	private final IDManager<REF> idManager;
+	private final IDManager<REFERENT> idManager;
 
 	private final AtomicBoolean running;
 
 	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut,
-			StudentSideCommunicatorServerSide<DataCommunicatorAttachment, REF> communicator)
+			StudentSideCommunicatorServerSide<REFERENT, IDReferrer, Ref<REFERENT, IDReferrer>> communicator)
 	{
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 
@@ -98,6 +101,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 					case CALL_INSTANCE_METHOD -> respondCallInstanceMethod(in, out);
 					case GET_INSTANCE_FIELD -> respondGetInstanceField(in, out);
 					case SET_INSTANCE_FIELD -> respondSetInstanceField(in, out);
+					case CREATE_CALLBACK_INSTANCE -> respondCreateCallbackInstance(in, out);
 				}
 				out.flush();
 			}
@@ -124,7 +128,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 
 	private void respondGetStudentSideClassname(DataInput in, DataOutput out) throws IOException
 	{
-		REF ref = readRef(in);
+		Ref<REFERENT, IDReferrer> ref = readRef(in);
 
 		out.writeUTF(communicator.getStudentSideClassname(ref));
 	}
@@ -132,7 +136,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 	private void respondCallConstructor(DataInput in, DataOutput out) throws IOException
 	{
 		String cn = in.readUTF();
-		Args<REF> args = readArgs(in);
+		Args<Ref<REFERENT, IDReferrer>> args = readArgs(in);
 
 		writeRef(out, communicator.callConstructor(cn, args.params(), args.argRefs()));
 	}
@@ -142,7 +146,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		String cn = in.readUTF();
 		String name = in.readUTF();
 		String returnClassname = in.readUTF();
-		Args<REF> args = readArgs(in);
+		Args<Ref<REFERENT, IDReferrer>> args = readArgs(in);
 
 		writeRef(out, communicator.callStaticMethod(cn, name, returnClassname, args.params(), args.argRefs()));
 	}
@@ -159,7 +163,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		String cn = in.readUTF();
 		String name = in.readUTF();
 		String fieldClassname = in.readUTF();
-		REF valueRef = readRef(in);
+		Ref<REFERENT, IDReferrer> valueRef = readRef(in);
 
 		communicator.setStaticField(cn, name, fieldClassname, valueRef);
 	}
@@ -169,8 +173,8 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		String cn = in.readUTF();
 		String name = in.readUTF();
 		String returnClassname = in.readUTF();
-		REF receiverRef = readRef(in);
-		Args<REF> args = readArgs(in);
+		Ref<REFERENT, IDReferrer> receiverRef = readRef(in);
+		Args<Ref<REFERENT, IDReferrer>> args = readArgs(in);
 
 		writeRef(out, communicator.callInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs()));
 	}
@@ -179,7 +183,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		String cn = in.readUTF();
 		String name = in.readUTF();
 		String fieldClassname = in.readUTF();
-		REF receiverRef = readRef(in);
+		Ref<REFERENT, IDReferrer> receiverRef = readRef(in);
 
 		writeRef(out, communicator.getInstanceField(cn, name, fieldClassname, receiverRef));
 	}
@@ -188,15 +192,23 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		String cn = in.readUTF();
 		String name = in.readUTF();
 		String fieldClassname = in.readUTF();
-		REF receiverRef = readRef(in);
-		REF valueRef = readRef(in);
+		Ref<REFERENT, IDReferrer> receiverRef = readRef(in);
+		Ref<REFERENT, IDReferrer> valueRef = readRef(in);
 
 		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
 	}
 
+	private void respondCreateCallbackInstance(DataInput in, DataOutput out) throws IOException
+	{
+		String interfaceName = in.readUTF();
+
+		Callback<REFERENT, IDReferrer, Ref<REFERENT, IDReferrer>> callback = null; //TODO create callback which communicates with client
+		writeRef(out, communicator.createCallbackInstance(interfaceName, callback));
+	}
+
 	private void respondSend(DataInput in, DataOutput out) throws IOException
 	{
-		REF serializerRef = readRef(in);
+		Ref<REFERENT, IDReferrer> serializerRef = readRef(in);
 		int serializerInID = in.readInt();
 
 		writeRef(out, communicator.send(serializerRef, multiplexer.getIn(serializerInID)));
@@ -204,8 +216,8 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 
 	private void respondReceive(DataInput in, DataOutputStream out) throws IOException
 	{
-		REF serializerRef = readRef(in);
-		REF objRef = readRef(in);
+		Ref<REFERENT, IDReferrer> serializerRef = readRef(in);
+		Ref<REFERENT, IDReferrer> objRef = readRef(in);
 		MultiplexedDataOutputStream serializerOut = multiplexer.getOut(in.readInt());
 
 		out.writeByte(SERIALIZER_READY.encode());
@@ -223,13 +235,13 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 	}
 	private void respondRefDeleted(DataInput in) throws IOException
 	{
-		REF deletedRef = readRef(in);
+		Ref<REFERENT, IDReferrer> deletedRef = readRef(in);
 		int receivedCount = in.readInt();
 
 		idManager.refDeleted(deletedRef, receivedCount);
 	}
 
-	private Args<REF> readArgs(DataInput in) throws IOException
+	private Args<Ref<REFERENT, IDReferrer>> readArgs(DataInput in) throws IOException
 	{
 		int paramCount = in.readInt();
 
@@ -237,7 +249,7 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 		for(int i = 0; i < paramCount; i ++)
 			params.add(in.readUTF());
 
-		List<REF> argRefs = new ArrayList<>(paramCount);
+		List<Ref<REFERENT, IDReferrer>> argRefs = new ArrayList<>(paramCount);
 		for(int i = 0; i < paramCount; i ++)
 			argRefs.add(readRef(in));
 
@@ -246,12 +258,12 @@ public class DataCommunicatorServer<REF extends Ref<DataCommunicatorAttachment>>
 	private record Args<REF> (List<String> params, List<REF> argRefs)
 	{}
 
-	protected final REF readRef(DataInput in) throws IOException
+	protected final Ref<REFERENT, IDReferrer> readRef(DataInput in) throws IOException
 	{
 		return idManager.getRef(in.readInt());
 	}
 
-	protected final void writeRef(DataOutput out, REF ref) throws IOException
+	protected final void writeRef(DataOutput out, Ref<REFERENT, IDReferrer> ref) throws IOException
 	{
 		out.writeInt(idManager.getIDForSending(ref));
 	}

@@ -8,50 +8,51 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
+import net.haspamelodica.studentcodeseparator.communicator.Callback;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
-import net.haspamelodica.studentcodeseparator.refs.DirectRef;
-import net.haspamelodica.studentcodeseparator.refs.DirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
+import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicator<ATTACHMENT>
-		implements StudentSideCommunicatorServerSide<ATTACHMENT, DirectRef<ATTACHMENT>>
+public class DirectSameJVMCommunicator<REFERRER>
+		implements StudentSideCommunicatorServerSide<Object, REFERRER, Ref<Object, REFERRER>>
 {
-	protected final DirectRefManager<ATTACHMENT> refManager;
+	protected final DirectRefManager<REFERRER> refManager;
 
-	public DirectSameJVMCommunicator(DirectRefManager<ATTACHMENT> refManager)
+	public DirectSameJVMCommunicator(DirectRefManager<REFERRER> refManager)
 	{
 		this.refManager = refManager;
 	}
 
 	@Override
-	public String getStudentSideClassname(DirectRef<ATTACHMENT> ref)
+	public String getStudentSideClassname(Ref<Object, REFERRER> ref)
 	{
 		return classToName(refManager.unpack(ref).getClass());
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> callConstructor(String cn, List<String> params, List<DirectRef<ATTACHMENT>> argRefs)
+	public Ref<Object, REFERRER> callConstructor(String cn, List<String> params, List<Ref<Object, REFERRER>> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
-			List<DirectRef<ATTACHMENT>> argRefs)
+	public Ref<Object, REFERRER> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+			List<Ref<Object, REFERRER>> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> getStaticField(String cn, String name, String fieldClassname)
+	public Ref<Object, REFERRER> getStaticField(String cn, String name, String fieldClassname)
 	{
 		return refManager.pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, DirectRef<ATTACHMENT> valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, Ref<Object, REFERRER> valueRef)
 	{
 		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(valueRef));
 	}
@@ -64,8 +65,8 @@ public class DirectSameJVMCommunicator<ATTACHMENT>
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-			DirectRef<ATTACHMENT> receiverRef, List<DirectRef<ATTACHMENT>> argRefs)
+	public Ref<Object, REFERRER> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			Ref<Object, REFERRER> receiverRef, List<Ref<Object, REFERRER>> argRefs)
 	{
 		return refManager.pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(receiverRef), refManager.unpack(argRefs)));
@@ -80,7 +81,7 @@ public class DirectSameJVMCommunicator<ATTACHMENT>
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> getInstanceField(String cn, String name, String fieldClassname, DirectRef<ATTACHMENT> receiverRef)
+	public Ref<Object, REFERRER> getInstanceField(String cn, String name, String fieldClassname, Ref<Object, REFERRER> receiverRef)
 	{
 		return refManager.pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(receiverRef)));
 	}
@@ -94,7 +95,7 @@ public class DirectSameJVMCommunicator<ATTACHMENT>
 
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname,
-			DirectRef<ATTACHMENT> receiverRef, DirectRef<ATTACHMENT> valueRef)
+			Ref<Object, REFERRER> receiverRef, Ref<Object, REFERRER> valueRef)
 	{
 		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname),
 				refManager.unpack(receiverRef), refManager.unpack(valueRef));
@@ -110,14 +111,21 @@ public class DirectSameJVMCommunicator<ATTACHMENT>
 	}
 
 	@Override
-	public DirectRef<ATTACHMENT> send(DirectRef<ATTACHMENT> serializerRef, DataInput objIn) throws IOException
+	public Ref<Object, REFERRER> createCallbackInstance(String interfaceName, Callback<Object, REFERRER, Ref<Object, REFERRER>> callback)
+	{
+		//TODO create callback instance
+		return null;
+	}
+
+	@Override
+	public Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, DataInput objIn) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object result = serializer.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(DirectRef<ATTACHMENT> serializerRef, DirectRef<ATTACHMENT> objRef, DataOutput objOut) throws IOException
+	public void receive(Ref<Object, REFERRER> serializerRef, Ref<Object, REFERRER> objRef, DataOutput objOut) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object obj = refManager.unpack(objRef);

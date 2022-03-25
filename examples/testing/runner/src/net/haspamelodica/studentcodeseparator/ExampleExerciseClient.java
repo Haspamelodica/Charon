@@ -14,10 +14,10 @@ import java.util.concurrent.Semaphore;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorClientSide;
+import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
-import net.haspamelodica.studentcodeseparator.refs.WeakDirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.direct.WeakDirectRefManager;
 
 public class ExampleExerciseClient
 {

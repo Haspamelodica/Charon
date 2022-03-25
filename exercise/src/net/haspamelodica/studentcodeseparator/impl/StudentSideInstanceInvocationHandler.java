@@ -7,13 +7,13 @@ import java.util.Map;
 import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class StudentSideInstanceInvocationHandler<REF extends Ref<StudentSideInstance>> implements InvocationHandler
+public class StudentSideInstanceInvocationHandler<REFERENT, REF extends Ref<REFERENT, StudentSideInstance>> implements InvocationHandler
 {
-	private final Map<Method, InstanceMethodHandler<StudentSideInstance, REF>> methodHandlers;
+	private final Map<Method, InstanceMethodHandler<REFERENT, StudentSideInstance, REF>> methodHandlers;
 
 	private final REF ref;
 
-	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler<StudentSideInstance, REF>> methodHandlers, REF ref)
+	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler<REFERENT, StudentSideInstance, REF>> methodHandlers, REF ref)
 	{
 		this.methodHandlers = methodHandlers;
 		this.ref = ref;

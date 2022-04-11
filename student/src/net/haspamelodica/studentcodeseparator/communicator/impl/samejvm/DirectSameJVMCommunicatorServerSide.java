@@ -9,24 +9,24 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicatorServerSide<REFERRER>
-		extends DirectSameJVMCommunicator<REFERRER>
-		implements StudentSideCommunicatorServerSide<Object, REFERRER, Ref<Object, REFERRER>>
+public class DirectSameJVMCommunicatorServerSide<REF extends Ref<Object, ?, ?, ?, ?, ?>>
+		extends DirectSameJVMCommunicator<REF>
+		implements StudentSideCommunicatorServerSide<REF>
 {
-	public DirectSameJVMCommunicatorServerSide(DirectRefManager<REFERRER> refManager)
+	public DirectSameJVMCommunicatorServerSide(DirectRefManager<REF> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, DataInput objIn) throws IOException
+	public REF send(REF serializerRef, DataInput objIn) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object result = serializer.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(Ref<Object, REFERRER> serializerRef, Ref<Object, REFERRER> objRef, DataOutput objOut) throws IOException
+	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object obj = refManager.unpack(objRef);

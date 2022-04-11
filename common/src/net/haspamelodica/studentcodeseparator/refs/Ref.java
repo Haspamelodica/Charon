@@ -12,26 +12,10 @@ package net.haspamelodica.studentcodeseparator.refs;
  * Comparing REFs with {@link #equals(Object)} is equivalent to comparing with <code>==</code>
  * (except if the {@link Ref} <code>equals</code> is being called on is <code>null</code>, of course).
  */
-public class Ref<REFERENT, REFERRER>
+public sealed interface Ref<REFT, REFR, FREFT extends REFT, FREFR extends REFR, BREFT extends REFT,
+		BREFR extends REFR> permits ForwardRef<REFT, REFR, FREFT, FREFR, BREFT, BREFR>,BackwardRef<REFT, REFR, FREFT, FREFR, BREFT, BREFR>
 {
-	private final REFERENT		referent;
-	private volatile REFERRER	referrer;
-
-	public Ref(REFERENT referent)
-	{
-		this.referent = referent;
-	}
-
-	public final REFERENT referent()
-	{
-		return referent;
-	}
-	public final void setReferrer(REFERRER referrer)
-	{
-		this.referrer = referrer;
-	}
-	public final REFERRER referrer()
-	{
-		return referrer;
-	}
+	public REFT referent();
+	//No setReferrer: we don't know whether it needs FREFR or BREFR
+	public REFR referrer();
 }

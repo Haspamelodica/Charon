@@ -7,28 +7,28 @@ import java.io.IOException;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicatorServerSide<REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>>
-		extends LoggingCommunicator<REFERENT, REFERRER, REF, StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF>>
-		implements StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF>
+public class LoggingCommunicatorServerSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
+		extends LoggingCommunicator<REF, StudentSideCommunicatorServerSide<REF>>
+		implements StudentSideCommunicatorServerSide<REF>
 {
-	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF> communicator)
+	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REF> communicator)
 	{
 		super(communicator);
 	}
-	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF> communicator, String prefix)
+	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REF> communicator, String prefix)
 	{
 		super(communicator, prefix);
 	}
 
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF>
-			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF> communicator, String prefix, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorServerSide<REF>
+			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorServerSide<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF>
-			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REFERENT, REFERRER, REF> communicator, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorServerSide<REF>
+			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorServerSide<>(communicator);

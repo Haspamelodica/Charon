@@ -17,7 +17,9 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.student.Dat
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorClientSide;
 import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
+import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.WeakDirectRefManager;
+import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDReferrer;
 
 public class ExampleExerciseClient
 {
@@ -49,7 +51,8 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		run(new StudentSideImpl<>(maybeWrapLoggingC(new DirectSameJVMCommunicatorClientSide<>(new WeakDirectRefManager<>()), LOGGING)));
+		run(new StudentSideImpl<>(maybeWrapLoggingC(new DirectSameJVMCommunicatorClientSide<>(new WeakDirectRefManager<
+				Ref<Object, ?, Object, StudentSideInstance, ?, ?>>()), LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -63,7 +66,8 @@ public class ExampleExerciseClient
 				{
 					serverConnected.release();
 					DataCommunicatorServer<?> server = new DataCommunicatorServer<>(serverIn, serverOut,
-							maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<>()), "SERVER: ", LOGGING));
+							maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<
+									Ref<Object, IDReferrer, Object, ?, ?, ?>>()), "SERVER: ", LOGGING));
 					server.run();
 				} catch(IOException e)
 				{
@@ -76,7 +80,7 @@ public class ExampleExerciseClient
 			}).start();
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
-			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(clientIn, clientOut);
+			DataCommunicatorClient<Ref<Integer, ?, Integer, StudentSideInstance, ?, ?>> client = new DataCommunicatorClient<>(clientIn, clientOut);
 			run(new StudentSideImpl<>(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
@@ -86,7 +90,8 @@ public class ExampleExerciseClient
 	{
 		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient<StudentSideInstance> client = new DataCommunicatorClient<>(sock.getInputStream(), sock.getOutputStream());
+			DataCommunicatorClient<Ref<Integer, ?, Integer, StudentSideInstance, ?, ?>> client = new DataCommunicatorClient<>(
+					sock.getInputStream(), sock.getOutputStream());
 			try
 			{
 				run(new StudentSideImpl<>(maybeWrapLoggingC(client, LOGGING)));

@@ -7,8 +7,8 @@ import net.haspamelodica.studentcodeseparator.communicator.Callback;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicator<REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>,
-		COMM extends StudentSideCommunicator<REFERENT, REFERRER, REF>> implements StudentSideCommunicator<REFERENT, REFERRER, REF>
+public class LoggingCommunicator<REF extends Ref<?, ?, ?, ?, ?, ?>, COMM extends StudentSideCommunicator<REF>>
+		implements StudentSideCommunicator<REF>
 {
 	protected final COMM communicator;
 
@@ -24,15 +24,15 @@ public class LoggingCommunicator<REFERENT, REFERRER, REF extends Ref<REFERENT, R
 		this.prefix = prefix;
 	}
 
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicator<REFERENT, REFERRER, REF>
-			maybeWrapLogging(StudentSideCommunicator<REFERENT, REFERRER, REF> communicator, String prefix, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicator<REF>
+			maybeWrapLogging(StudentSideCommunicator<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicator<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicator<REFERENT, REFERRER, REF>
-			maybeWrapLogging(StudentSideCommunicator<REFERENT, REFERRER, REF> communicator, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicator<REF>
+			maybeWrapLogging(StudentSideCommunicator<REF> communicator, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicator<>(communicator);
@@ -92,7 +92,7 @@ public class LoggingCommunicator<REFERENT, REFERRER, REF extends Ref<REFERENT, R
 	}
 
 	@Override
-	public REF createCallbackInstance(String interfaceName, Callback<REFERENT, REFERRER, REF> callback)
+	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
 	{
 		log("new callback " + interfaceName);
 		return communicator.createCallbackInstance(interfaceName, callback);

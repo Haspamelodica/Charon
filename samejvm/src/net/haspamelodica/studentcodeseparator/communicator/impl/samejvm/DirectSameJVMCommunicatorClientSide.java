@@ -31,23 +31,23 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide<REFERRER> extends DirectSameJVMCommunicator<REFERRER>
-		implements StudentSideCommunicatorClientSide<Object, REFERRER, Ref<Object, REFERRER>>
+public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?, ?, ?, ?, ?>> extends DirectSameJVMCommunicator<REF>
+		implements StudentSideCommunicatorClientSide<REF>
 {
-	public DirectSameJVMCommunicatorClientSide(DirectRefManager<REFERRER> refManager)
+	public DirectSameJVMCommunicatorClientSide(DirectRefManager<REF> refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public <T> Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
 		return refManager.pack(sendAndReceive(sendObj, studentSideSerializer::deserialize, obj));
 	}
 	@Override
-	public <T> T receive(Ref<Object, REFERRER> serializerRef, IOFunction<DataInput, T> receiveObj, Ref<Object, REFERRER> objRef)
+	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);

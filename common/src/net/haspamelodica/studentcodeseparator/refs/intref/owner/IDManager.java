@@ -4,25 +4,26 @@ import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class IDManager<REFERENT>
+//TODO this type bound is wrong: IDManager only cares for / works for ForwardRefs
+public class IDManager<REF extends Ref<?, IDReferrer, ?, ?, ?, ?>>
 {
 	/** Since 0 represents <code>null</code>, <code>refs[0]</code> is always <code>null</code> */
-	private Ref<REFERENT, IDReferrer>[]	refs;
-	private int							nextFreeID;
+	private REF[]	refs;
+	private int		nextFreeID;
 
 	private final Object lock;
 
 	public IDManager()
 	{
 		@SuppressWarnings("unchecked")
-		Ref<REFERENT, IDReferrer>[] refs = (Ref<REFERENT, IDReferrer>[]) new Ref[10];
+		REF[] refs = (REF[]) new Ref[10];
 		this.refs = refs;
 		this.nextFreeID = 1;
 
 		this.lock = new Object();
 	}
 
-	public int getIDForSending(Ref<REFERENT, IDReferrer> ref)
+	public int getIDForSending(REF ref)
 	{
 		synchronized(lock)
 		{
@@ -61,7 +62,7 @@ public class IDManager<REFERENT>
 		}
 	}
 
-	public Ref<REFERENT, IDReferrer> getRef(int id)
+	public REF getRef(int id)
 	{
 		synchronized(lock)
 		{
@@ -71,7 +72,7 @@ public class IDManager<REFERENT>
 		}
 	}
 
-	public void refDeleted(Ref<REFERENT, IDReferrer> deletedRef, int receivedCount)
+	public void refDeleted(REF deletedRef, int receivedCount)
 	{
 		synchronized(lock)
 		{

@@ -48,7 +48,7 @@ import net.haspamelodica.studentcodeseparator.refs.intref.renter.IntRefManager;
 import net.haspamelodica.studentcodeseparator.refs.intref.renter.IntRefManager.DeletedRef;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicatorClientSide<Integer, REFERRER, Ref<Integer, REFERRER>>
+public class DataCommunicatorClient<REF extends Ref<Integer, ?, Integer, ?, ?, ?>> implements StudentSideCommunicatorClientSide<REF>
 {
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
@@ -61,7 +61,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 
 	private final ThreadLocal<StudentSideThread> threads;
 
-	private final IntRefManager<REFERRER> refManager;
+	private final IntRefManager<REF> refManager;
 
 	private final AtomicBoolean	running;
 	private final Thread		refCleanupThread;
@@ -118,13 +118,13 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	}
 
 	@Override
-	public String getStudentSideClassname(Ref<Integer, REFERRER> ref)
+	public String getStudentSideClassname(REF ref)
 	{
 		return executeCommand(GET_CLASSNAME, out -> writeRef(out, ref), DataInput::readUTF);
 	}
 
 	@Override
-	public <T> Ref<Integer, REFERRER> send(Ref<Integer, REFERRER> serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
@@ -142,7 +142,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		});
 	}
 	@Override
-	public <T> T receive(Ref<Integer, REFERRER> serializerRef, IOFunction<DataInput, T> receiveObj, Ref<Integer, REFERRER> objRef)
+	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
@@ -168,7 +168,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	}
 
 	@Override
-	public Ref<Integer, REFERRER> callConstructor(String cn, List<String> params, List<Ref<Integer, REFERRER>> argRefs)
+	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
 	{
 		return executeRefCommand(CALL_CONSTRUCTOR, out ->
 		{
@@ -178,7 +178,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	}
 
 	@Override
-	public Ref<Integer, REFERRER> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<Ref<Integer, REFERRER>> argRefs)
+	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs)
 	{
 		return executeRefCommand(CALL_STATIC_METHOD, out ->
 		{
@@ -189,7 +189,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		});
 	}
 	@Override
-	public Ref<Integer, REFERRER> getStaticField(String cn, String name, String fieldClassname)
+	public REF getStaticField(String cn, String name, String fieldClassname)
 	{
 		return executeRefCommand(GET_STATIC_FIELD, out ->
 		{
@@ -199,7 +199,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		});
 	}
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, Ref<Integer, REFERRER> valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef)
 	{
 		executeVoidCommand(SET_STATIC_FIELD, out ->
 		{
@@ -211,7 +211,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	}
 
 	@Override
-	public Ref<Integer, REFERRER> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Ref<Integer, REFERRER> receiverRef, List<Ref<Integer, REFERRER>> argRefs)
+	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
 	{
 		return executeRefCommand(CALL_INSTANCE_METHOD, out ->
 		{
@@ -223,7 +223,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		});
 	}
 	@Override
-	public Ref<Integer, REFERRER> getInstanceField(String cn, String name, String fieldClassname, Ref<Integer, REFERRER> receiverRef)
+	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
 	{
 		return executeRefCommand(GET_INSTANCE_FIELD, out ->
 		{
@@ -234,7 +234,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		});
 	}
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, Ref<Integer, REFERRER> receiverRef, Ref<Integer, REFERRER> valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef)
 	{
 		executeVoidCommand(SET_INSTANCE_FIELD, out ->
 		{
@@ -247,7 +247,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	}
 
 	@Override
-	public Ref<Integer, REFERRER> createCallbackInstance(String interfaceName, Callback<Integer, REFERRER, Ref<Integer, REFERRER>> callback)
+	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
 	{
 		//TODO do something with the passed callback
 		//TODO cache callbacks so that == works
@@ -271,7 +271,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private Ref<Integer, REFERRER> executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
+	private REF executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
 	{
 		return executeCommand(command, sendParams, this::readRef);
 	}
@@ -369,7 +369,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		return new StudentSideThread(in, out);
 	}
 
-	private void writeArgs(DataOutput out, List<String> params, List<Ref<Integer, REFERRER>> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<String> params, List<REF> argRefs) throws IOException
 	{
 		int paramCount = params.size();
 		if(paramCount != argRefs.size())
@@ -378,11 +378,11 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		out.writeInt(paramCount);
 		for(String param : params)
 			out.writeUTF(param);
-		for(Ref<Integer, REFERRER> argRef : argRefs)
+		for(REF argRef : argRefs)
 			writeRef(out, argRef);
 	}
 
-	private Ref<Integer, REFERRER> readRef(DataInput in) throws IOException
+	private REF readRef(DataInput in) throws IOException
 	{
 		try
 		{
@@ -393,7 +393,7 @@ public class DataCommunicatorClient<REFERRER> implements StudentSideCommunicator
 		}
 	}
 
-	private void writeRef(DataOutput out, Ref<Integer, REFERRER> ref) throws IOException
+	private void writeRef(DataOutput out, REF ref) throws IOException
 	{
 		out.writeInt(refManager.getID(ref));
 	}

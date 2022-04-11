@@ -4,11 +4,11 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
 
+import net.haspamelodica.studentcodeseparator.refs.ForwardRef;
 import net.haspamelodica.studentcodeseparator.refs.IllegalRefException;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
-import net.haspamelodica.studentcodeseparator.refs.WeakIntRefReference;
 
-public class IntRefManager<REFERRER>
+public class IntRefManager<REF extends Ref<Integer, ?, Integer, ?, ?, ?>>
 {
 	/**
 	 * We need to guarantee only one Ref exists for every student-side object, for comparing SSIs with '=='.
@@ -37,9 +37,9 @@ public class IntRefManager<REFERRER>
 	 * and neither <code>refA</code> or <code>refB</code> can refer to an IntRef for which WeakReferences have been cleared
 	 * as long as {@link IntRef} does not have a finalizer making it reachable again.
 	 */
-	private WeakIntRefReference<REFERRER>[] refs;
+	private WeakIntRefReference<REF>[] refs;
 
-	private final ReferenceQueue<Ref<Integer, REFERRER>> refQueue;
+	private final ReferenceQueue<REF> refQueue;
 
 	private int allocatedRefs;
 
@@ -48,14 +48,14 @@ public class IntRefManager<REFERRER>
 	public IntRefManager()
 	{
 		@SuppressWarnings("unchecked")
-		WeakIntRefReference<REFERRER>[] refs = new WeakIntRefReference[10];
+		WeakIntRefReference<REF>[] refs = new WeakIntRefReference[10];
 		this.refs = refs;
 		this.refQueue = new ReferenceQueue<>();
 		this.allocatedRefs = 0;
 		this.lock = new Object();
 	}
 
-	public int getID(Ref<Integer, REFERRER> objRef)
+	public int getID(REF objRef)
 	{
 		synchronized(lock)
 		{
@@ -63,7 +63,7 @@ public class IntRefManager<REFERRER>
 		}
 	}
 
-	public Ref<Integer, REFERRER> lookupReceivedRef(int refID) throws IllegalRefException
+	public REF lookupReceivedRef(int refID) throws IllegalRefException
 	{
 		synchronized(lock)
 		{
@@ -72,10 +72,10 @@ public class IntRefManager<REFERRER>
 
 			if(refID < allocatedRefs)
 			{
-				WeakIntRefReference<REFERRER> weakRef = refs[refID];
+				WeakIntRefReference<REF> weakRef = refs[refID];
 				if(weakRef != null)
 				{
-					Ref<Integer, REFERRER> ref = weakRef.get();
+					REF ref = weakRef.get();
 					if(ref != null)
 					{
 						weakRef.incrementReceivedCount();
@@ -89,7 +89,9 @@ public class IntRefManager<REFERRER>
 			} else if(refID >= allocatedRefs)
 				growRefsToFitID(refID);
 			// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
-			Ref<Integer, REFERRER> ref = new Ref<>(refID);
+			//TODO to fix this unchecked cast, we either have to replace all uses of REF in all classes with Ref<concrete type arguments...>
+			// or pass ForwardRef constructors down the entire hierarchy. Same in WeakDirectRefManager.
+			REF ref = (REF) new ForwardRef<>(refID);
 			refs[refID] = new WeakIntRefReference<>(ref, refQueue);
 			// No need to explicitly increment received count: it starts at 1.
 
@@ -135,7 +137,7 @@ public class IntRefManager<REFERRER>
 	public DeletedRef removeDeletedRef() throws InterruptedException
 	{
 		@SuppressWarnings("unchecked") // we only put WeakIntRefReferences into the queue
-		WeakIntRefReference<REFERRER> ref = (WeakIntRefReference<REFERRER>) refQueue.remove();
+		WeakIntRefReference<REF> ref = (WeakIntRefReference<REF>) refQueue.remove();
 		synchronized(lock)
 		{
 			refs[ref.id()] = null;

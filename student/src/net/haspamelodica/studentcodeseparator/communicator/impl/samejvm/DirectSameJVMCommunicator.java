@@ -15,44 +15,44 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicator<REFERRER>
-		implements StudentSideCommunicatorServerSide<Object, REFERRER, Ref<Object, REFERRER>>
+public class DirectSameJVMCommunicator<REF extends Ref<Object, ?, ?, ?, ?, ?>>
+		implements StudentSideCommunicatorServerSide<REF>
 {
-	protected final DirectRefManager<REFERRER> refManager;
+	protected final DirectRefManager<REF> refManager;
 
-	public DirectSameJVMCommunicator(DirectRefManager<REFERRER> refManager)
+	public DirectSameJVMCommunicator(DirectRefManager<REF> refManager)
 	{
 		this.refManager = refManager;
 	}
 
 	@Override
-	public String getStudentSideClassname(Ref<Object, REFERRER> ref)
+	public String getStudentSideClassname(REF ref)
 	{
 		return classToName(refManager.unpack(ref).getClass());
 	}
 
 	@Override
-	public Ref<Object, REFERRER> callConstructor(String cn, List<String> params, List<Ref<Object, REFERRER>> argRefs)
+	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public Ref<Object, REFERRER> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
-			List<Ref<Object, REFERRER>> argRefs)
+	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+			List<REF> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public Ref<Object, REFERRER> getStaticField(String cn, String name, String fieldClassname)
+	public REF getStaticField(String cn, String name, String fieldClassname)
 	{
 		return refManager.pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, Ref<Object, REFERRER> valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef)
 	{
 		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(valueRef));
 	}
@@ -65,8 +65,8 @@ public class DirectSameJVMCommunicator<REFERRER>
 	}
 
 	@Override
-	public Ref<Object, REFERRER> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-			Ref<Object, REFERRER> receiverRef, List<Ref<Object, REFERRER>> argRefs)
+	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			REF receiverRef, List<REF> argRefs)
 	{
 		return refManager.pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(receiverRef), refManager.unpack(argRefs)));
@@ -81,7 +81,7 @@ public class DirectSameJVMCommunicator<REFERRER>
 	}
 
 	@Override
-	public Ref<Object, REFERRER> getInstanceField(String cn, String name, String fieldClassname, Ref<Object, REFERRER> receiverRef)
+	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
 	{
 		return refManager.pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(receiverRef)));
 	}
@@ -95,7 +95,7 @@ public class DirectSameJVMCommunicator<REFERRER>
 
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname,
-			Ref<Object, REFERRER> receiverRef, Ref<Object, REFERRER> valueRef)
+			REF receiverRef, REF valueRef)
 	{
 		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname),
 				refManager.unpack(receiverRef), refManager.unpack(valueRef));
@@ -111,21 +111,21 @@ public class DirectSameJVMCommunicator<REFERRER>
 	}
 
 	@Override
-	public Ref<Object, REFERRER> createCallbackInstance(String interfaceName, Callback<Object, REFERRER, Ref<Object, REFERRER>> callback)
+	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
 	{
 		//TODO create callback instance
 		return null;
 	}
 
 	@Override
-	public Ref<Object, REFERRER> send(Ref<Object, REFERRER> serializerRef, DataInput objIn) throws IOException
+	public REF send(REF serializerRef, DataInput objIn) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object result = serializer.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(Ref<Object, REFERRER> serializerRef, Ref<Object, REFERRER> objRef, DataOutput objOut) throws IOException
+	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException
 	{
 		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
 		Object obj = refManager.unpack(objRef);

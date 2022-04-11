@@ -4,7 +4,7 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public interface StudentSideCommunicator<REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>>
+public interface StudentSideCommunicator<REF extends Ref<?, ?, ?, ?, ?, ?>>
 {
 	public String getStudentSideClassname(REF ref);
 
@@ -18,5 +18,5 @@ public interface StudentSideCommunicator<REFERENT, REFERRER, REF extends Ref<REF
 	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
 	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
 
-	public REF createCallbackInstance(String interfaceName, Callback<REFERENT, REFERRER, REF> callback);
+	public REF createCallbackInstance(String interfaceName, Callback<REF> callback);
 }

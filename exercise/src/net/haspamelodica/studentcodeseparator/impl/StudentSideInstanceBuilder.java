@@ -29,17 +29,18 @@ import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyEx
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT, StudentSideInstance>, SI extends StudentSideInstance>
+// TODO type bound is wrong: StudentSideInstance only for forward refs
+public final class StudentSideInstanceBuilder<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>, SI extends StudentSideInstance>
 {
-	public final StudentSideCommunicatorClientSide<REFERENT, StudentSideInstance, REF>	communicator;
-	public final Class<SI>																instanceClass;
-	public final String																	studentSideCN;
+	public final StudentSideCommunicatorClientSide<REF>	communicator;
+	public final Class<SI>								instanceClass;
+	public final String									studentSideCN;
 
-	public final SerializationHandler<REFERENT, StudentSideInstance, REF> instanceWideSerializer;
+	public final SerializationHandler<REF> instanceWideSerializer;
 
-	private final Map<Method, InstanceMethodHandler<REFERENT, StudentSideInstance, REF>> methodHandlers;
+	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
-	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REFERENT, REF, SI, SP> prototypeBuilder)
+	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
 	{
 		this.communicator = prototypeBuilder.communicator;
 		this.instanceClass = prototypeBuilder.instanceClass;
@@ -93,10 +94,10 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
-	private record MethodWithHandler<REFERENT, REF extends Ref<REFERENT, StudentSideInstance>> (
-			Method method, InstanceMethodHandler<REFERENT, StudentSideInstance, REF> handler)
+	private record MethodWithHandler<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>> (
+			Method method, InstanceMethodHandler<REF> handler)
 	{}
-	private Map<Method, InstanceMethodHandler<REFERENT, StudentSideInstance, REF>> createMethodHandlers()
+	private Map<Method, InstanceMethodHandler<REF>> createMethodHandlers()
 	{
 		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
 		return Stream.concat(
@@ -105,7 +106,7 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 				objectMethodHandlers())
 				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
 	}
-	private Stream<MethodWithHandler<REFERENT, REF>> objectMethodHandlers()
+	private Stream<MethodWithHandler<REF>> objectMethodHandlers()
 	{
 		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
 		// So, throwing an exception (via checkReturnAndParameterTypes) is appropriate.
@@ -132,13 +133,13 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 		return method;
 	}
 
-	private InstanceMethodHandler<REFERENT, StudentSideInstance, REF> methodHandlerFor(Method method)
+	private InstanceMethodHandler<REF> methodHandlerFor(Method method)
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-		SerializationHandler<REFERENT, StudentSideInstance, REF> serializerMethod = instanceWideSerializer.withAdditionalSerializers(getSerializers(method));
+		SerializationHandler<REF> serializerMethod = instanceWideSerializer.withAdditionalSerializers(getSerializers(method));
 
-		InstanceMethodHandler<REFERENT, StudentSideInstance, REF> defaultHandler = defaultInstanceHandler(method);
+		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
@@ -148,7 +149,7 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 				});
 	}
 
-	private InstanceMethodHandler<REFERENT, StudentSideInstance, REF> methodHandler(SerializationHandler<REFERENT, StudentSideInstance, REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> methodHandler(SerializationHandler<REF> serializer, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -164,7 +165,7 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 		};
 	}
 
-	private InstanceMethodHandler<REFERENT, StudentSideInstance, REF> fieldGetterHandler(SerializationHandler<REFERENT, StudentSideInstance, REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> fieldGetterHandler(SerializationHandler<REF> serializer, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -182,7 +183,7 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 		};
 	}
 
-	private InstanceMethodHandler<REFERENT, StudentSideInstance, REF> fieldSetterHandler(SerializationHandler<REFERENT, StudentSideInstance, REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> fieldSetterHandler(SerializationHandler<REF> serializer, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
@@ -197,7 +198,7 @@ public final class StudentSideInstanceBuilder<REFERENT, REF extends Ref<REFERENT
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> InstanceMethodHandler<REFERENT, StudentSideInstance, REF> fieldSetterHandlerChecked(SerializationHandler<REFERENT, StudentSideInstance, REF> serializer, String name, Class<F> fieldType)
+	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(SerializationHandler<REF> serializer, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 

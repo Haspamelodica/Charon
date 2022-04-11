@@ -8,28 +8,28 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IO
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicatorClientSide<REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>>
-		extends LoggingCommunicator<REFERENT, REFERRER, REF, StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF>>
-		implements StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF>
+public class LoggingCommunicatorClientSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
+		extends LoggingCommunicator<REF, StudentSideCommunicatorClientSide<REF>>
+		implements StudentSideCommunicatorClientSide<REF>
 {
-	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF> communicator)
+	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REF> communicator)
 	{
 		super(communicator);
 	}
-	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF> communicator, String prefix)
+	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REF> communicator, String prefix)
 	{
 		super(communicator, prefix);
 	}
 
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF>
-			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF> communicator, String prefix, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorClientSide<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REFERENT, REFERRER, REF extends Ref<REFERENT, REFERRER>> StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF>
-			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REFERENT, REFERRER, REF> communicator, boolean logging)
+	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorClientSide<>(communicator);

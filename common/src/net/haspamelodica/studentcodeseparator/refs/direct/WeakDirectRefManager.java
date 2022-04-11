@@ -11,14 +11,14 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 public final class WeakDirectRefManager<REFERRER> implements DirectRefManager<REFERRER>
 {
 	/**
-	 * We want need a weak, concurrent identity-based map.
-	 * Sadly, we have to choose between {@link WeakHashMap}, {@link ConcurrentHashMap}, or {@link IdentityHashMap}.
-	 * Implementing weak references isn't hard, so we don't use {@link WeakHashMap}.
+	 * We want need a concurrent identity-based map with weak values.
+	 * Sadly, we have to choose between {@link ConcurrentHashMap}, or {@link IdentityHashMap}.
+	 * ({@link WeakHashMap} has weak keys, not weak values.)
 	 * The overhead of wrapping each object seems smaller than the overhead of having to synchronize on every map access.
-	 * (When using an unsynchronized map, we can't even call get unsyncrhonized in a fast path since the map might be in an invalid state,
+	 * (When using an unsynchronized map, we can't even call get unsynchronized in a fast path since the map might be in an invalid state,
 	 * or worse, change state while get is running.)
 	 * So, we use a {@link ConcurrentHashMap} (concurrent)
-	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak).
+	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak values).
 	 */
 	private final ConcurrentHashMap<IdentityObjectContainer,
 			WeakReferenceWithAttachment<IdentityObjectContainer, Ref<Object, REFERRER>>> cachedRefs;
@@ -37,6 +37,7 @@ public final class WeakDirectRefManager<REFERRER> implements DirectRefManager<RE
 		if(obj == null)
 			return null;
 
+		//TODO Calling this really doesn't belong in pack()...
 		pollAndHandleQueue();
 
 		// ouch... but see comment on cachedRefs

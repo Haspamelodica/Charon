@@ -4,8 +4,7 @@ import java.util.Arrays;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-//TODO this type bound is wrong: IDManager only cares for / works for ForwardRefs
-public class IDManager<REF extends Ref<?, IDReferrer, ?, ?, ?, ?>>
+public class IDManager<REF extends Ref<?, IDReferrer>>
 {
 	/** Since 0 represents <code>null</code>, <code>refs[0]</code> is always <code>null</code> */
 	private REF[]	refs;

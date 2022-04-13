@@ -30,7 +30,7 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public final class StudentSideInstanceBuilder<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>, SI extends StudentSideInstance>
+public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI extends StudentSideInstance>
 {
 	public final StudentSideCommunicatorClientSide<REF>	communicator;
 	public final Class<SI>								instanceClass;
@@ -94,7 +94,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, ?, ?, StudentSi
 			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
-	private record MethodWithHandler<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>> (
+	private record MethodWithHandler<REF extends Ref<?, Object>> (
 			Method method, InstanceMethodHandler<REF> handler)
 	{}
 	private Map<Method, InstanceMethodHandler<REF>> createMethodHandlers()

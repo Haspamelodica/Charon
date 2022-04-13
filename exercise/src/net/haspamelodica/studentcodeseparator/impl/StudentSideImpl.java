@@ -30,7 +30,7 @@ import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public class StudentSideImpl<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>> implements StudentSide
+public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
 	private final SerializationHandler<REF>					globalSerializer;
@@ -42,7 +42,7 @@ public class StudentSideImpl<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>
 	public StudentSideImpl(StudentSideCommunicatorClientSide<REF> communicator)
 	{
 		this.communicator = communicator;
-		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::studentSideInstanceForRef,
+		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::createStudentSideInstanceForRef,
 				PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
@@ -104,13 +104,8 @@ public class StudentSideImpl<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>
 		return invocationHandlerCasted.getRef();
 	}
 
-	private StudentSideInstance studentSideInstanceForRef(REF ref)
+	private StudentSideInstance createStudentSideInstanceForRef(REF ref)
 	{
-		// fast path
-		StudentSideInstance studentSideInstance = ref.referrer();
-		if(studentSideInstance != null)
-			return studentSideInstance;
-
 		//TODO if we support inheritance, we need to check super-class-names too
 		String studentSideCN = communicator.getStudentSideClassname(ref);
 		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);

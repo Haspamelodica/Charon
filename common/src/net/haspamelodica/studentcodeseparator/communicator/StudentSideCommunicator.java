@@ -4,7 +4,7 @@ import java.util.List;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public interface StudentSideCommunicator<REF extends Ref<?, ?, ?, ?, ?, ?>>
+public interface StudentSideCommunicator<REF extends Ref<?, ?>>
 {
 	public String getStudentSideClassname(REF ref);
 

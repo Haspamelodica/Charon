@@ -31,7 +31,7 @@ import net.haspamelodica.studentcodeseparator.serialization.Serializer;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?, ?, ?, ?, ?>> extends DirectSameJVMCommunicator<REF>
+public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?>> extends DirectSameJVMCommunicator<REF>
 		implements StudentSideCommunicatorClientSide<REF>
 {
 	public DirectSameJVMCommunicatorClientSide(DirectRefManager<REF> refManager)

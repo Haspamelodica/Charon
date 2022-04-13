@@ -41,7 +41,7 @@ public class ExampleExerciseServer
 		{
 			DataCommunicatorServer<?> server = new DataCommunicatorServer<>(sock.getInputStream(), sock.getOutputStream(),
 					maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<
-							Ref<Object, IDReferrer, Object, ?, ?, ?>>()), LOGGING));
+							Ref<Object, IDReferrer>>()), LOGGING));
 			server.run();
 		}
 

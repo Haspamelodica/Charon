@@ -48,7 +48,7 @@ import net.haspamelodica.studentcodeseparator.refs.intref.renter.IntRefManager;
 import net.haspamelodica.studentcodeseparator.refs.intref.renter.IntRefManager.DeletedRef;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient<REF extends Ref<Integer, ?, Integer, ?, ?, ?>> implements StudentSideCommunicatorClientSide<REF>
+public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements StudentSideCommunicatorClientSide<REF>
 {
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;

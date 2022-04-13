@@ -7,7 +7,7 @@ import net.haspamelodica.studentcodeseparator.communicator.Callback;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicator;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicator<REF extends Ref<?, ?, ?, ?, ?, ?>, COMM extends StudentSideCommunicator<REF>>
+public class LoggingCommunicator<REF extends Ref<?, ?>, COMM extends StudentSideCommunicator<REF>>
 		implements StudentSideCommunicator<REF>
 {
 	protected final COMM communicator;
@@ -24,14 +24,14 @@ public class LoggingCommunicator<REF extends Ref<?, ?, ?, ?, ?, ?>, COMM extends
 		this.prefix = prefix;
 	}
 
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicator<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicator<REF>
 			maybeWrapLogging(StudentSideCommunicator<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicator<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicator<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicator<REF>
 			maybeWrapLogging(StudentSideCommunicator<REF> communicator, boolean logging)
 	{
 		if(logging)

@@ -8,7 +8,7 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IO
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicatorClientSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
+public class LoggingCommunicatorClientSide<REF extends Ref<?, ?>>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorClientSide<REF>>
 		implements StudentSideCommunicatorClientSide<REF>
 {
@@ -21,14 +21,14 @@ public class LoggingCommunicatorClientSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
 		super(communicator, prefix);
 	}
 
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorClientSide<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicatorClientSide<REF>
 			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorClientSide<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorClientSide<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicatorClientSide<REF>
 			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, boolean logging)
 	{
 		if(logging)

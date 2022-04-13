@@ -5,7 +5,6 @@ import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCo
 import java.io.IOException;
 import java.net.Socket;
 
-import net.haspamelodica.studentcodeseparator.StudentSideInstance;
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
@@ -21,7 +20,7 @@ public class SorterExerciseClient
 		// This code will eventually be moved to the framework.
 		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient<Ref<Integer, ?, Integer, StudentSideInstance, ?, ?>> client = new DataCommunicatorClient<>(
+			DataCommunicatorClient<Ref<Integer, Object>> client = new DataCommunicatorClient<>(
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{

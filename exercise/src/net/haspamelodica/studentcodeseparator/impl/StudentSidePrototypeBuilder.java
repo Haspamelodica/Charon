@@ -27,7 +27,7 @@ import net.haspamelodica.studentcodeseparator.exceptions.InconsistentHierarchyEx
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.serialization.SerializationHandler;
 
-public final class StudentSidePrototypeBuilder<REF extends Ref<?, ?, ?, StudentSideInstance, ?, ?>,
+public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final StudentSideCommunicatorClientSide<REF>	communicator;

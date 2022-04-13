@@ -52,7 +52,7 @@ public class ExampleExerciseClient
 	private static void runDirect()
 	{
 		run(new StudentSideImpl<>(maybeWrapLoggingC(new DirectSameJVMCommunicatorClientSide<>(new WeakDirectRefManager<
-				Ref<Object, ?, Object, StudentSideInstance, ?, ?>>()), LOGGING)));
+				Ref<Object, Object>>()), LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -67,7 +67,7 @@ public class ExampleExerciseClient
 					serverConnected.release();
 					DataCommunicatorServer<?> server = new DataCommunicatorServer<>(serverIn, serverOut,
 							maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<
-									Ref<Object, IDReferrer, Object, ?, ?, ?>>()), "SERVER: ", LOGGING));
+									Ref<Object, IDReferrer>>()), "SERVER: ", LOGGING));
 					server.run();
 				} catch(IOException e)
 				{
@@ -80,7 +80,7 @@ public class ExampleExerciseClient
 			}).start();
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
-			DataCommunicatorClient<Ref<Integer, ?, Integer, StudentSideInstance, ?, ?>> client = new DataCommunicatorClient<>(clientIn, clientOut);
+			DataCommunicatorClient<Ref<Integer, Object>> client = new DataCommunicatorClient<>(clientIn, clientOut);
 			run(new StudentSideImpl<>(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
@@ -90,7 +90,7 @@ public class ExampleExerciseClient
 	{
 		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient<Ref<Integer, ?, Integer, StudentSideInstance, ?, ?>> client = new DataCommunicatorClient<>(
+			DataCommunicatorClient<Ref<Integer, Object>> client = new DataCommunicatorClient<>(
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{

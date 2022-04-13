@@ -9,7 +9,7 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicatorServerSide<REF extends Ref<Object, ?, ?, ?, ?, ?>>
+public class DirectSameJVMCommunicatorServerSide<REF extends Ref<Object, ?>>
 		extends DirectSameJVMCommunicator<REF>
 		implements StudentSideCommunicatorServerSide<REF>
 {

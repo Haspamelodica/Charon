@@ -7,7 +7,7 @@ import java.io.IOException;
 import net.haspamelodica.studentcodeseparator.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class LoggingCommunicatorServerSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
+public class LoggingCommunicatorServerSide<REF extends Ref<?, ?>>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorServerSide<REF>>
 		implements StudentSideCommunicatorServerSide<REF>
 {
@@ -20,14 +20,14 @@ public class LoggingCommunicatorServerSide<REF extends Ref<?, ?, ?, ?, ?, ?>>
 		super(communicator, prefix);
 	}
 
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorServerSide<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicatorServerSide<REF>
 			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorServerSide<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REF extends Ref<?, ?, ?, ?, ?, ?>> StudentSideCommunicatorServerSide<REF>
+	public static <REF extends Ref<?, ?>> StudentSideCommunicatorServerSide<REF>
 			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, boolean logging)
 	{
 		if(logging)

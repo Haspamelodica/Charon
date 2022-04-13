@@ -15,7 +15,7 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.DirectRefManager;
 import net.haspamelodica.studentcodeseparator.serialization.Serializer;
 
-public class DirectSameJVMCommunicator<REF extends Ref<Object, ?, ?, ?, ?, ?>>
+public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 		implements StudentSideCommunicatorServerSide<REF>
 {
 	protected final DirectRefManager<REF> refManager;

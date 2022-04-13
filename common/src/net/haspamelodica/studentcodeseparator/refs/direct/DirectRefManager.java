@@ -5,7 +5,7 @@ import java.util.function.Function;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public interface DirectRefManager<REF extends Ref<Object, ?, ?, ?, ?, ?>>
+public interface DirectRefManager<REF extends Ref<Object, ?>>
 {
 	public default List<Object> unpack(List<REF> refs)
 	{

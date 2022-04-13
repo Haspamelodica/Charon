@@ -6,10 +6,9 @@ import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 
-import net.haspamelodica.studentcodeseparator.refs.ForwardRef;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public final class WeakDirectRefManager<REF extends Ref<Object, ?, Object, ?, ?, ?>> implements DirectRefManager<REF>
+public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements DirectRefManager<REF>
 {
 	/**
 	 * We want need a concurrent identity-based map with weak values.
@@ -75,8 +74,8 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?, Object, ?, ?,
 
 			// No ref for that object anymore. Create a new one.
 			//TODO to fix this unchecked cast, we either have to replace all uses of REF in all classes with Ref<concrete type arguments...>
-			// or pass ForwardRef constructors down the entire hierarchy. Same in IntRefManager.
-			REF ref = (REF) new ForwardRef<>(obj);
+			// or pass Ref constructors down the entire hierarchy. Same in IntRefManager.
+			REF ref = (REF) new Ref<>(obj);
 			cachedRefs.put(container, new WeakReferenceWithAttachment<>(ref, container, queue));
 			return ref;
 		}

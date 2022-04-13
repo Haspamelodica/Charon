@@ -17,11 +17,11 @@ import net.haspamelodica.studentcodeseparator.exceptions.MissingSerializerExcept
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class SerializationHandler<REF extends Ref<?, ?, ?, ?, ?, ?>>
+public class SerializationHandler<REF extends Ref<?, ?>>
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
 	private final Function<StudentSideInstance, REF>		refForStudentSideInstance;
-	private final Function<REF, StudentSideInstance>		studentSideInstanceForRef;
+	private final Function<REF, StudentSideInstance>		createStudentSideInstanceForRef;
 	private final List<Class<? extends Serializer<?>>>		serializerClasses;
 
 	private final ConcurrentMap<Class<? extends Serializer<?>>, InitializedSerializer<REF, ?>> initializedSerializersBySerializerClass;
@@ -29,11 +29,11 @@ public class SerializationHandler<REF extends Ref<?, ?, ?, ?, ?, ?>>
 	private final Map<Class<?>, InitializedSerializer<REF, ?>> initializedSerializersByInstanceClass;
 
 	public SerializationHandler(StudentSideCommunicatorClientSide<REF> communicator, Function<StudentSideInstance, REF> refForStudentSideInstance,
-			Function<REF, StudentSideInstance> studentSideInstanceForRef, List<Class<? extends Serializer<?>>> serializerClasses)
+			Function<REF, StudentSideInstance> createStudentSideInstanceForRef, List<Class<? extends Serializer<?>>> serializerClasses)
 	{
 		this.communicator = communicator;
 		this.refForStudentSideInstance = refForStudentSideInstance;
-		this.studentSideInstanceForRef = studentSideInstanceForRef;
+		this.createStudentSideInstanceForRef = createStudentSideInstanceForRef;
 		this.serializerClasses = List.copyOf(serializerClasses);
 
 		this.initializedSerializersBySerializerClass = new ConcurrentHashMap<>();
@@ -43,7 +43,7 @@ public class SerializationHandler<REF extends Ref<?, ?, ?, ?, ?, ?>>
 	{
 		this.communicator = base.communicator;
 		this.refForStudentSideInstance = base.refForStudentSideInstance;
-		this.studentSideInstanceForRef = base.studentSideInstanceForRef;
+		this.createStudentSideInstanceForRef = base.createStudentSideInstanceForRef;
 		this.serializerClasses = List.copyOf(serializerClasses);
 
 		this.initializedSerializersBySerializerClass = base.initializedSerializersBySerializerClass;
@@ -103,10 +103,24 @@ public class SerializationHandler<REF extends Ref<?, ?, ?, ?, ?, ?>>
 		if(objRef == null)
 			return null;
 
+		// If the ref already has a referrer set, use it.
+		// This is important to ensure == works on SSIs, and to catch backward references.
+		// Unsynchronized fast path: catches all backward references and most already-created SSIs.
+		Object referrer = objRef.referrer();
+		if(referrer != null)
+			return referrer;
+
+		// objRef is a forward reference: backward references always have a referrer set.
+
 		//TODO not pretty
 		if(StudentSideInstance.class.isAssignableFrom(clazz))
-			return studentSideInstanceForRef.apply(objRef);
+			synchronized(objRef)
+			{
+				// Re-get referrer: another thread might have been faster
+				return createStudentSideInstanceForRef.apply(objRef);
+			}
 
+		// Don't write deserialized object into referrer: object might change; then we want to reserialize.
 		//TODO maybe choose serializer based on dynamic class instead?
 		InitializedSerializer<REF, T> serializer = getSerializerForObjectClass(clazz);
 		return communicator.receive(serializer.studentSideSerializerRef(), serializer.serializer()::deserialize, objRef);
@@ -141,7 +155,7 @@ public class SerializationHandler<REF extends Ref<?, ?, ?, ?, ?, ?>>
 		});
 	}
 
-	private static record InitializedSerializer<REF extends Ref<?, ?, ?, ?, ?, ?>, T> (
+	private static record InitializedSerializer<REF extends Ref<?, ?>, T> (
 			Serializer<T> serializer, REF studentSideSerializerRef)
 	{}
 }

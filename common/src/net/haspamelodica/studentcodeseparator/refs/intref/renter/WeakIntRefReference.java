@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class WeakIntRefReference<REF extends Ref<Integer, ?, ?, ?, ?, ?>> extends WeakReference<REF>
+public class WeakIntRefReference<REF extends Ref<Integer, ?>> extends WeakReference<REF>
 {
 	private final int			id;
 	private final AtomicInteger	receivedCount;

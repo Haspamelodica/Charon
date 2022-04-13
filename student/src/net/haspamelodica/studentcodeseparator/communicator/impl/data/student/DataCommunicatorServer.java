@@ -28,7 +28,7 @@ import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDManager;
 import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDReferrer;
 
-public class DataCommunicatorServer<REF extends Ref<?, IDReferrer, ?, ?, ?, ?>>
+public class DataCommunicatorServer<REF extends Ref<?, IDReferrer>>
 {
 	protected final DataStreamMultiplexer multiplexer;
 

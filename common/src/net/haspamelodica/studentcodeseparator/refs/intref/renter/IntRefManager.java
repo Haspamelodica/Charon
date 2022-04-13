@@ -4,11 +4,10 @@ import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.util.Arrays;
 
-import net.haspamelodica.studentcodeseparator.refs.ForwardRef;
 import net.haspamelodica.studentcodeseparator.refs.IllegalRefException;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
-public class IntRefManager<REF extends Ref<Integer, ?, Integer, ?, ?, ?>>
+public class IntRefManager<REF extends Ref<Integer, ?>>
 {
 	/**
 	 * We need to guarantee only one Ref exists for every student-side object, for comparing SSIs with '=='.
@@ -90,8 +89,8 @@ public class IntRefManager<REF extends Ref<Integer, ?, Integer, ?, ?, ?>>
 				growRefsToFitID(refID);
 			// Here we know the ID is new, allocatedRefs is high enough, and the array is big enough.
 			//TODO to fix this unchecked cast, we either have to replace all uses of REF in all classes with Ref<concrete type arguments...>
-			// or pass ForwardRef constructors down the entire hierarchy. Same in WeakDirectRefManager.
-			REF ref = (REF) new ForwardRef<>(refID);
+			// or pass Ref constructors down the entire hierarchy. Same in WeakDirectRefManager.
+			REF ref = (REF) new Ref<>(refID);
 			refs[refID] = new WeakIntRefReference<>(ref, refQueue);
 			// No need to explicitly increment received count: it starts at 1.
 

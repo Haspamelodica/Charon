@@ -1,9 +1,0 @@
-Manifest-Version: 1.0
-Bundle-ManifestVersion: 2
-Bundle-Name: Exercise
-Bundle-SymbolicName: net.haspamelodica.studentcodeseparator.examples.testing.exercise
-Bundle-Version: 1.0.0.qualifier
-Automatic-Module-Name: net.haspamelodica.studentcodeseparator.example.exercise
-Bundle-RequiredExecutionEnvironment: JavaSE-17
-Require-Bundle: net.haspamelodica.studentcodeseparator.exercise;bundle-version="1.0.0"
-Export-Package: net.haspamelodica.studentcodeseparator

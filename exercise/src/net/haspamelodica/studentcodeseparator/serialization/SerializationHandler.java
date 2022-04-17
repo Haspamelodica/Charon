@@ -17,6 +17,7 @@ import net.haspamelodica.studentcodeseparator.exceptions.MissingSerializerExcept
 import net.haspamelodica.studentcodeseparator.reflection.ReflectionUtils;
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 
+//TODO SerializationHandler is misnomer, also package doesn't fit
 public class SerializationHandler<REF extends Ref<?, ?>>
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;

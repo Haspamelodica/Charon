@@ -142,7 +142,6 @@ public class CommunicatingSideRunner
 				.replace("INVOKE", "java " + mainClass.getName());
 	}
 
-	//TODO Der Name ist Programm
 	public static interface CommunicatingSide
 	{
 		public void run(InputStream in, OutputStream out, boolean logging) throws IOException;

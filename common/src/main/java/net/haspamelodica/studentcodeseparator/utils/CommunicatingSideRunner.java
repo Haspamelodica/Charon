@@ -73,34 +73,34 @@ public class CommunicatingSideRunner
 	}
 	private void runFifo() throws IOException
 	{
-		String infile;
-		String outfile;
-
 		String firstGivenFifoDirection = args.consume();
 		switch(firstGivenFifoDirection)
 		{
 			case "in" ->
 			{
-				infile = args.consume();
+				String infile = args.consume();
 				args.expect("out");
-				outfile = args.consume();
+				String outfile = args.consume();
+				args.expectEnd();
+
+				try(InputStream in = Files.newInputStream(Path.of(infile)); OutputStream out = Files.newOutputStream(Path.of(outfile)))
+				{
+					run(in, out);
+				}
 			}
 			case "out" ->
 			{
-				outfile = args.consume();
+				String outfile = args.consume();
 				args.expect("in");
-				infile = args.consume();
+				String infile = args.consume();
+				args.expectEnd();
+
+				try(OutputStream out = Files.newOutputStream(Path.of(outfile)); InputStream in = Files.newInputStream(Path.of(infile)))
+				{
+					run(in, out);
+				}
 			}
-			// Setting infile and outfile so the compiler doesn't complain about uninitialized variables later.
-			// throwUsage will never return normally.
-			default -> infile = outfile = args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
-		}
-
-		args.expectEnd();
-
-		try(InputStream in = Files.newInputStream(Path.of(infile)); OutputStream out = Files.newOutputStream(Path.of(outfile)))
-		{
-			run(in, out);
+			default -> args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
 		}
 	}
 	private void runStdio() throws IOException

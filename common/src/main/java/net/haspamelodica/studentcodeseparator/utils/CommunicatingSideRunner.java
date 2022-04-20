@@ -34,13 +34,14 @@ public class CommunicatingSideRunner
 	{
 		logging = args.consumeIfEqual("-l") || args.consumeIfEqual("--logging");
 
-		switch(args.consume())
+		String mode = args.consume();
+		switch(mode)
 		{
 			case "listen" -> runListen();
 			case "socket" -> runSocket();
 			case "fifo" -> runFifo();
 			case "stdio" -> runStdio();
-			default -> args.throwUsage();
+			default -> args.throwUsage("Unknown mode: " + mode);
 		}
 	}
 
@@ -72,11 +73,32 @@ public class CommunicatingSideRunner
 	}
 	private void runFifo() throws IOException
 	{
-		String infile = args.consume();
-		String outfile = args.consume();
+		String infile;
+		String outfile;
+
+		String firstGivenFifoDirection = args.consume();
+		switch(firstGivenFifoDirection)
+		{
+			case "in" ->
+			{
+				infile = args.consume();
+				args.expect("out");
+				outfile = args.consume();
+			}
+			case "out" ->
+			{
+				outfile = args.consume();
+				args.expect("in");
+				infile = args.consume();
+			}
+			// Setting infile and outfile so the compiler doesn't complain about uninitialized variables later.
+			// throwUsage will never return normally.
+			default -> infile = outfile = args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
+		}
+
 		args.expectEnd();
 
-		try(InputStream in = Files.newInputStream(Path.of((infile))); OutputStream out = Files.newOutputStream(Path.of(outfile)))
+		try(InputStream in = Files.newInputStream(Path.of(infile)); OutputStream out = Files.newOutputStream(Path.of(outfile)))
 		{
 			run(in, out);
 		}
@@ -100,8 +122,9 @@ public class CommunicatingSideRunner
 					INVOKE [--logging | -l] {
 						listen [<host>] <port>  |
 						socket <host> <port>  |
-						fifo <infile> <outfile>  |
-						stdio  }
+						fifo { in <infile> out <outfile> | out <outfile> in <infile> }  |
+						stdio
+					}
 
 				-l / --logging:
 					Enables logging. Logs will appear on stderr / System.err.
@@ -111,6 +134,7 @@ public class CommunicatingSideRunner
 					Connects to a socket on the given host and port.
 				fifo:
 					Reads input from file <infile> and writes output to file <outfile>. Meant to be used with *nix fifos.
+					The fifo given first will be opened first. This is important because opening a *nix fifo only finishes when the other end opens the fifo as well.
 				stdio:
 					Reads input from stdin / System.in and writes output to stdout / System.out.
 					Does not (yet) work if any other part of the program uses stdin/out.

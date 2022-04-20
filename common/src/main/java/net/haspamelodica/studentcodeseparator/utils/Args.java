@@ -13,14 +13,6 @@ public class Args
 		this.nextArgIndex = 0;
 	}
 
-	public int remaining()
-	{
-		return args.length - nextArgIndex;
-	}
-	public boolean hasNext()
-	{
-		return remaining() > 0;
-	}
 	public String consume()
 	{
 		checkHasNext();
@@ -47,29 +39,40 @@ public class Args
 			nextArgIndex ++;
 		return match;
 	}
+	public void expect(String expected)
+	{
+		String actual = consume();
+		if(!actual.equals(expected))
+			throwUsage("Expected " + expected + ", but was " + actual);
+	}
 	public String peek()
 	{
 		checkHasNext();
 		return args[nextArgIndex];
 	}
+
+	public int remaining()
+	{
+		return args.length - nextArgIndex;
+	}
+	public boolean hasNext()
+	{
+		return remaining() > 0;
+	}
 	public void expectEnd()
 	{
 		if(hasNext())
-			throwUsage();
+			throwUsage("Too many arguments given");
 	}
 
 	private void checkHasNext()
 	{
 		if(!hasNext())
-			throwUsage();
+			throwUsage("Too few arguments given");
 	}
 
-	public <R> R throwUsage()
-	{
-		return throwUsage(null);
-	}
 	public <R> R throwUsage(String detail)
 	{
-		throw new IllegalArgumentException((detail != null ? detail + "\n" : "") + usage);
+		throw new IllegalArgumentException(detail + "\n" + usage);
 	}
 }

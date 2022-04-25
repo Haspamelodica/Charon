@@ -49,8 +49,6 @@ public class SorterTest
 		String[] sortedStrings = Arrays.copyOf(STRINGS, STRINGS.length);
 		Arrays.sort(sortedStrings);
 		checkListElements(sortedStrings, sortedList);
-
-		System.out.println("All tests successful!");
 	}
 
 	private static void checkListElements(String[] expected, StringArrayList actualList)

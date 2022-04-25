@@ -16,7 +16,7 @@ public class SorterTest
 
 	//TODO split into multiple methods / classes
 	@Test
-	public void test(StudentSide studentSide)
+	public void testAll(StudentSide studentSide)
 	{
 		// The framework provides an instance of StudentSide.
 		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.

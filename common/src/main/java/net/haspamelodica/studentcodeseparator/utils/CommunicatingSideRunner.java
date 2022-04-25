@@ -12,9 +12,10 @@ import java.nio.file.Path;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
-public class CommunicatingSideRunner
+//TODO split args parsing to separate class; replace with AutoCloseable wrapper around Input- and OutputStream pair
+public class CommunicatingSideRunner<X extends Throwable>
 {
-	private final CommunicatingSide action;
+	private final CommunicatingSide<X> action;
 
 	private final Args args;
 
@@ -22,19 +23,19 @@ public class CommunicatingSideRunner
 	private int			timeout;
 	private Semaphore	communicationInitialized;
 
-	public static void run(CommunicatingSide action, Class<?> mainClass, String... args)
-			throws IOException, InterruptedException
+	public static <X extends Throwable> void run(CommunicatingSide<X> action, Class<?> mainClass, String... args)
+			throws IOException, InterruptedException, X
 	{
-		new CommunicatingSideRunner(action, mainClass, args).run();
+		new CommunicatingSideRunner<>(action, mainClass, args).run();
 	}
 
-	private CommunicatingSideRunner(CommunicatingSide action, Class<?> mainClass, String... args)
+	private CommunicatingSideRunner(CommunicatingSide<X> action, Class<?> mainClass, String... args)
 	{
 		this.action = action;
 		this.args = new Args(usage(mainClass), args);
 	}
 
-	private void run() throws IOException, InterruptedException
+	private void run() throws IOException, InterruptedException, X
 	{
 		logging = args.consumeIfEqual("--logging") || args.consumeIfEqual("-l");
 
@@ -57,7 +58,7 @@ public class CommunicatingSideRunner
 		}
 	}
 
-	private void runListen() throws IOException, UnknownHostException
+	private void runListen() throws IOException, UnknownHostException, X
 	{
 		String host = args.remaining() == 2 ? args.consume() : null;
 		int port = args.consumeInteger();
@@ -74,7 +75,7 @@ public class CommunicatingSideRunner
 		}
 	}
 
-	private void runSocket() throws IOException, UnknownHostException
+	private void runSocket() throws IOException, UnknownHostException, X
 	{
 		String host = args.consume();
 		int port = args.consumeInteger();
@@ -86,7 +87,7 @@ public class CommunicatingSideRunner
 			run(sock.getInputStream(), sock.getOutputStream());
 		}
 	}
-	private void runFifo() throws IOException
+	private void runFifo() throws IOException, X
 	{
 		String firstGivenFifoDirection = args.consume();
 		switch(firstGivenFifoDirection)
@@ -120,7 +121,7 @@ public class CommunicatingSideRunner
 			default -> args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
 		}
 	}
-	private void runStdio() throws IOException
+	private void runStdio() throws IOException, X
 	{
 		args.expectEnd();
 
@@ -155,7 +156,7 @@ public class CommunicatingSideRunner
 		timeoutThread.start();
 	}
 
-	private void run(InputStream in, OutputStream out) throws IOException
+	private void run(InputStream in, OutputStream out) throws IOException, X
 	{
 		if(timeout > 0)
 			communicationInitialized.release();
@@ -194,8 +195,8 @@ public class CommunicatingSideRunner
 				.replace("INVOKE", "java " + mainClass.getName());
 	}
 
-	public static interface CommunicatingSide
+	public static interface CommunicatingSide<X extends Throwable>
 	{
-		public void run(InputStream in, OutputStream out, boolean logging) throws IOException;
+		public void run(InputStream in, OutputStream out, boolean logging) throws IOException, X;
 	}
 }

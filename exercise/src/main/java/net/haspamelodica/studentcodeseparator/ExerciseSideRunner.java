@@ -5,7 +5,6 @@ import static net.haspamelodica.studentcodeseparator.communicator.impl.LoggingCo
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.util.function.Consumer;
 
 import net.haspamelodica.studentcodeseparator.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.studentcodeseparator.impl.StudentSideImpl;
@@ -14,13 +13,14 @@ import net.haspamelodica.studentcodeseparator.utils.CommunicatingSideRunner;
 
 public class ExerciseSideRunner
 {
-	public static void run(Consumer<StudentSide> exerciseSide, Class<?> mainClass, String... args)
-			throws IOException, InterruptedException
+	public static <X extends Throwable> void run(ThrowingConsumer<StudentSide, X> exerciseSide, Class<?> mainClass, String... args)
+			throws IOException, InterruptedException, X
 	{
 		CommunicatingSideRunner.run((in, out, logging) -> run(exerciseSide, in, out, logging), mainClass, args);
 	}
 
-	public static void run(Consumer<StudentSide> exerciseSide, InputStream in, OutputStream out, boolean logging)
+	public static <X extends Throwable> void run(ThrowingConsumer<StudentSide, X> exerciseSide,
+			InputStream in, OutputStream out, boolean logging) throws X
 	{
 		DataCommunicatorClient<Ref<Integer, Object>> client = new DataCommunicatorClient<>(in, out);
 		try
@@ -30,5 +30,10 @@ public class ExerciseSideRunner
 		{
 			client.shutdown();
 		}
+	}
+
+	public static interface ThrowingConsumer<T, X extends Throwable>
+	{
+		public void accept(T t) throws X;
 	}
 }

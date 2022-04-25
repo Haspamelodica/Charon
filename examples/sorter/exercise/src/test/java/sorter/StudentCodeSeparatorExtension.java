@@ -91,8 +91,6 @@ public class StudentCodeSeparatorExtension extends TypeBasedParameterResolver<St
 
 	public <R> R invokeWithStudentSide(Invocation<R> invocation) throws IOException, InterruptedException, Throwable
 	{
-		System.out.println("invokeWithStudentSide");
-		new Exception().printStackTrace(System.out);
 		@SuppressWarnings("unchecked")
 		R[] result = (R[]) new Object[1];
 

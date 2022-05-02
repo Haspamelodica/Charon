@@ -76,7 +76,7 @@ public class CommunicationArgsParser
 				Path outfile = Path.of(args.consume());
 				args.expectEnd();
 
-				yield new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Fifo(infile, outfile));
+				yield new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Fifo(true, infile, outfile));
 			}
 			case "out" ->
 			{
@@ -85,7 +85,7 @@ public class CommunicationArgsParser
 				Path infile = Path.of(args.consume());
 				args.expectEnd();
 
-				yield new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Fifo(infile, outfile));
+				yield new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Fifo(false, infile, outfile));
 			}
 			default -> args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
 		};

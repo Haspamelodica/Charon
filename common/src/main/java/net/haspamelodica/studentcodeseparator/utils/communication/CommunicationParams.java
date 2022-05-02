@@ -17,7 +17,7 @@ public record CommunicationParams(boolean logging, OptionalInt timeout, Communic
 		{}
 		public static record Socket(String host, int port) implements Mode
 		{}
-		public static record Fifo(Path infile, Path outfile) implements Mode
+		public static record Fifo(boolean inFirst, Path infile, Path outfile) implements Mode
 		{}
 		public static record Stdio() implements Mode
 		{}

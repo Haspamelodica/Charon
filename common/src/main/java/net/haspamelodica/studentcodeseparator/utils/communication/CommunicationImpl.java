@@ -68,8 +68,17 @@ public class CommunicationImpl implements Communication
 	}
 	private InputOutputStreamPair openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
 	{
-		InputStream in = Files.newInputStream(mode.infile());
-		OutputStream out = Files.newOutputStream(mode.outfile());
+		InputStream in;
+		OutputStream out;
+		if(mode.inFirst())
+		{
+			in = Files.newInputStream(mode.infile());
+			out = Files.newOutputStream(mode.outfile());
+		} else
+		{
+			out = Files.newOutputStream(mode.outfile());
+			in = Files.newInputStream(mode.infile());
+		}
 
 		return new InputOutputStreamPair(in, out);
 	}

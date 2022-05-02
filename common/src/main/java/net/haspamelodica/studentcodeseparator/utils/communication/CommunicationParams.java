@@ -1,13 +1,13 @@
-package net.haspamelodica.studentcodeseparator.utils;
+package net.haspamelodica.studentcodeseparator.utils.communication;
 
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalInt;
 
-import net.haspamelodica.studentcodeseparator.utils.CommunicationParams.Mode.Fifo;
-import net.haspamelodica.studentcodeseparator.utils.CommunicationParams.Mode.Listen;
-import net.haspamelodica.studentcodeseparator.utils.CommunicationParams.Mode.Socket;
-import net.haspamelodica.studentcodeseparator.utils.CommunicationParams.Mode.Stdio;
+import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationParams.Mode.Fifo;
+import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationParams.Mode.Listen;
+import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationParams.Mode.Socket;
+import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationParams.Mode.Stdio;
 
 public record CommunicationParams(boolean logging, OptionalInt timeout, CommunicationParams.Mode mode)
 {

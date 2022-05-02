@@ -1,22 +1,18 @@
-package sorter;
-
-import static org.junit.jupiter.api.Assertions.assertEquals;
+package sorter.plainjavatests;
 
 import java.util.Arrays;
-
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
+import java.util.Objects;
 
 import net.haspamelodica.studentcodeseparator.StudentSide;
+import sorter.Sorter;
+import sorter.StringArrayList;
 
-@ExtendWith(StudentCodeSeparatorExtension.class)
-public class SorterTest
+public class SorterExercisePlainJavaTests
 {
 	private static final String[] STRINGS = {"Hello", "ABC", "DEF", "DE", "XYZ", "Xyz", "xyz", "xYZ"};
 
-	//TODO split into multiple methods / classes
-	@Test
-	public void testAll(StudentSide studentSide)
+	// To run, use SorterExercisePlainJavaTestsRunner, but start StudentSideRunner in examples.sorter.studentrunner first.
+	public static void run(StudentSide studentSide)
 	{
 		// The framework provides an instance of StudentSide.
 		// The StudentSide can (only) be used to obtain instances (implementations) of Prototypes.
@@ -49,13 +45,29 @@ public class SorterTest
 		String[] sortedStrings = Arrays.copyOf(STRINGS, STRINGS.length);
 		Arrays.sort(sortedStrings);
 		checkListElements(sortedStrings, sortedList);
+
+		System.out.println("All tests successful!");
 	}
 
 	private static void checkListElements(String[] expected, StringArrayList actualList)
 	{
-		assertEquals(expected.length, actualList.length(), "list length mismatched");
+		assertEquals("list length", expected.length, actualList.length());
 		for(int i = 0; i < expected.length; i ++)
-			assertEquals(expected[i], actualList.get(i), "index " + i + " mismatched");
+			assertEquals("index " + i, expected[i], actualList.get(i));
 	}
 
+	// A real exercise would probably use a proper testing framework like JUnit.
+	// Unfortunately, JUnit so far doesn't integrate well.
+	private static <T> void assertEquals(T expected, T actual)
+	{
+		assertEquals(null, expected, actual);
+	}
+
+	// A real exercise would probably use a proper testing framework like JUnit.
+	// Unfortunately, JUnit so far doesn't integrate well.
+	private static <T> void assertEquals(String context, T expected, T actual)
+	{
+		if(!Objects.equals(expected, actual))
+			throw new RuntimeException((context != null ? context + ": " : "") + "Expected: " + expected + ", actual " + actual);
+	}
 }

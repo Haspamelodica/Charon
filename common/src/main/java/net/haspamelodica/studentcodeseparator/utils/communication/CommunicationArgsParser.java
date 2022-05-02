@@ -1,8 +1,5 @@
-package net.haspamelodica.studentcodeseparator.utils;
+package net.haspamelodica.studentcodeseparator.utils.communication;
 
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalInt;
@@ -11,17 +8,21 @@ public class CommunicationArgsParser
 {
 	private final Args args;
 
-	public static CommunicationParams parse(Class<?> mainClass, String... args)
+	public static CommunicationParams parseSpaceSeparated(String s) throws IncorrectUsageException
 	{
-		return new CommunicationArgsParser(mainClass, args).parse();
+		return parse(s.split(" "));
+	}
+	public static CommunicationParams parse(String... args) throws IncorrectUsageException
+	{
+		return new CommunicationArgsParser(args).parse();
 	}
 
-	private CommunicationArgsParser(Class<?> mainClass, String... args)
+	private CommunicationArgsParser(String... args)
 	{
-		this.args = new Args(usage(mainClass), args);
+		this.args = new Args(args);
 	}
 
-	private CommunicationParams parse()
+	private CommunicationParams parse() throws IncorrectUsageException
 	{
 		final boolean logging = args.consumeIfEqual("--logging") || args.consumeIfEqual("-l");
 
@@ -46,7 +47,7 @@ public class CommunicationArgsParser
 		};
 	}
 
-	private CommunicationParams parseListen(boolean logging, OptionalInt timeout)
+	private CommunicationParams parseListen(boolean logging, OptionalInt timeout) throws IncorrectUsageException
 	{
 		final Optional<String> host = args.remaining() == 2 ? Optional.of(args.consume()) : Optional.empty();
 		final int port = args.consumeInteger();
@@ -55,7 +56,7 @@ public class CommunicationArgsParser
 		return new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Listen(host, port));
 	}
 
-	private CommunicationParams parseSocket(boolean logging, OptionalInt timeout)
+	private CommunicationParams parseSocket(boolean logging, OptionalInt timeout) throws IncorrectUsageException
 	{
 		String host = args.consume();
 		int port = args.consumeInteger();
@@ -63,7 +64,7 @@ public class CommunicationArgsParser
 
 		return new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Socket(host, port));
 	}
-	private CommunicationParams parseFifo(boolean logging, OptionalInt timeout)
+	private CommunicationParams parseFifo(boolean logging, OptionalInt timeout) throws IncorrectUsageException
 	{
 		String firstGivenFifoDirection = args.consume();
 		return switch(firstGivenFifoDirection)
@@ -89,18 +90,17 @@ public class CommunicationArgsParser
 			default -> args.throwUsage("Unknown fifo direction: " + firstGivenFifoDirection);
 		};
 	}
-	private CommunicationParams parseStdio(boolean logging, OptionalInt timeout)
+	private CommunicationParams parseStdio(boolean logging, OptionalInt timeout) throws IncorrectUsageException
 	{
 		args.expectEnd();
 
 		return new CommunicationParams(logging, timeout, new CommunicationParams.Mode.Stdio());
 	}
 
-	private static String usage(Class<?> mainClass)
+	public static String argsSyntax()
 	{
 		return """
-				Usage:
-					INVOKE  [--logging | -l]  { [--timeout | -t ] <timeout> }  {
+				[--logging | -l]  { [--timeout | -t ] <timeout> }  {
 						listen [<host>] <port>  |
 						socket <host> <port>  |
 						fifo { in <infile> out <outfile> | out <outfile> in <infile> }  |
@@ -112,7 +112,6 @@ public class CommunicationArgsParser
 				-t / --timeout:
 					<timeout> must an integer >= 0.
 					If a non-zero <timeout> is given, waits at most <timeout> millis for communication to initialize.
-					If the initialization times out, the entire JVM is terminated with exit code 1.
 				listen:
 					Listens for one incoming socket connection on <port> on interface <host>, or on all interfaces if no host is given.
 				socket:
@@ -124,12 +123,6 @@ public class CommunicationArgsParser
 				stdio:
 					Reads input from stdin / System.in and writes output to stdout / System.out.
 					Does not (yet) work if any other part of the program uses stdin/out.
-				"""
-				.replace("INVOKE", "java " + mainClass.getName());
-	}
-
-	public static interface CommunicatingSide<X extends Throwable>
-	{
-		public void run(InputStream in, OutputStream out, boolean logging) throws IOException, X;
+				""";
 	}
 }

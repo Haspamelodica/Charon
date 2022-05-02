@@ -319,6 +319,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 				MultiplexedDataInputStream in0 = multiplexer.getIn(0);
 				out0.writeByte(command.encode());
 				sendCommand.accept(out0);
+				//TODO this spuriously throws "another thread is currently writing"
 				out0.flush();
 				return parseResponse.apply(in0);
 			} catch(UnexpectedResponseException e)

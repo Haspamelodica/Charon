@@ -11,13 +11,27 @@ import net.haspamelodica.studentcodeseparator.communicator.impl.samejvm.DirectSa
 import net.haspamelodica.studentcodeseparator.refs.Ref;
 import net.haspamelodica.studentcodeseparator.refs.direct.WeakDirectRefManager;
 import net.haspamelodica.studentcodeseparator.refs.intref.owner.IDReferrer;
-import net.haspamelodica.studentcodeseparator.utils.CommunicatingSideRunner;
+import net.haspamelodica.studentcodeseparator.utils.communication.Communication;
+import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationArgsParser;
+import net.haspamelodica.studentcodeseparator.utils.communication.IncorrectUsageException;
 
 public class StudentSideRunner
 {
 	public static void main(String[] args) throws IOException, InterruptedException
 	{
-		CommunicatingSideRunner.run(StudentSideRunner::run, StudentSideRunner.class, args);
+		try(Communication communication = Communication.open(CommunicationArgsParser.parse(args)))
+		{
+			run(communication);
+		} catch(IncorrectUsageException e)
+		{
+			e.printStackTrace();
+			System.err.println("Usage: java " + StudentSideRunner.class.getName() + CommunicationArgsParser.argsSyntax());
+		}
+	}
+
+	public static void run(Communication communication) throws IOException
+	{
+		run(communication.getIn(), communication.getOut(), communication.getLogging());
 	}
 
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException

@@ -1,24 +1,22 @@
-package net.haspamelodica.studentcodeseparator.utils;
+package net.haspamelodica.studentcodeseparator.utils.communication;
 
 public class Args
 {
-	private final String	usage;
 	private final String[]	args;
 	private int				nextArgIndex;
 
-	public Args(String usage, String[] args)
+	public Args(String[] args)
 	{
-		this.usage = usage;
 		this.args = args;
 		this.nextArgIndex = 0;
 	}
 
-	public String consume()
+	public String consume() throws IncorrectUsageException
 	{
 		checkHasNext();
 		return args[nextArgIndex ++];
 	}
-	public int consumeInteger()
+	public int consumeInteger() throws IncorrectUsageException
 	{
 		String string = consume();
 		try
@@ -39,13 +37,13 @@ public class Args
 			nextArgIndex ++;
 		return match;
 	}
-	public void expect(String expected)
+	public void expect(String expected) throws IncorrectUsageException
 	{
 		String actual = consume();
 		if(!actual.equals(expected))
 			throwUsage("Expected " + expected + ", but was " + actual);
 	}
-	public String peek()
+	public String peek() throws IncorrectUsageException
 	{
 		checkHasNext();
 		return args[nextArgIndex];
@@ -59,20 +57,20 @@ public class Args
 	{
 		return remaining() > 0;
 	}
-	public void expectEnd()
+	public void expectEnd() throws IncorrectUsageException
 	{
 		if(hasNext())
 			throwUsage("Too many arguments given");
 	}
 
-	private void checkHasNext()
+	private void checkHasNext() throws IncorrectUsageException
 	{
 		if(!hasNext())
 			throwUsage("Too few arguments given");
 	}
 
-	public <R> R throwUsage(String detail)
+	public <R> R throwUsage(String detail) throws IncorrectUsageException
 	{
-		throw new IllegalArgumentException(detail + "\n" + usage);
+		throw new IncorrectUsageException(detail);
 	}
 }

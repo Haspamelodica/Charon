@@ -2,10 +2,10 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>net.haspamelodica.studentcodeseparator</groupId>
+	<groupId>net.haspamelodica.charon</groupId>
 	<artifactId>exercise</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>studentcodeseparator.exercise</name>
+	<name>charon.exercise</name>
 	<description>Code only used by the exercise side</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -13,7 +13,7 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>net.haspamelodica.studentcodeseparator</groupId>
+			<groupId>net.haspamelodica.charon</groupId>
 			<artifactId>common</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>

@@ -2,9 +2,9 @@ package sorter.plainjavatests;
 
 import java.io.IOException;
 
-import net.haspamelodica.studentcodeseparator.WrappedStudentSide;
-import net.haspamelodica.studentcodeseparator.utils.communication.CommunicationArgsParser;
-import net.haspamelodica.studentcodeseparator.utils.communication.IncorrectUsageException;
+import net.haspamelodica.charon.WrappedStudentSide;
+import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
+import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class SorterExercisePlainJavaTestsRunner
 {

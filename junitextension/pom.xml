@@ -1,17 +1,17 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>net.haspamelodica.studentcodeseparator</groupId>
+	<groupId>net.haspamelodica.charon</groupId>
 	<artifactId>junitextension</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>studentcodeseparator.junitextension</name>
-	<description>A JUnit5 extension for making the StudentCodeSeparator easier to use</description>
+	<name>charon.junitextension</name>
+	<description>A JUnit5 extension for making Charon easier to use</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>net.haspamelodica.studentcodeseparator</groupId>
+			<groupId>net.haspamelodica.charon</groupId>
 			<artifactId>exercise</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>

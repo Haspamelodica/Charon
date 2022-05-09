@@ -3,7 +3,7 @@ package sorter.plainjavatests;
 import java.util.Arrays;
 import java.util.Objects;
 
-import net.haspamelodica.studentcodeseparator.StudentSide;
+import net.haspamelodica.charon.StudentSide;
 import sorter.Sorter;
 import sorter.StringArrayList;
 

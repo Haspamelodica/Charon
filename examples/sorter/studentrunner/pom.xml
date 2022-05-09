@@ -2,10 +2,10 @@
 	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-	<groupId>net.haspamelodica.studentcodeseparator</groupId>
+	<groupId>net.haspamelodica.charon</groupId>
 	<artifactId>examples.sorter.studentrunner</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>studentcodeseparator.examples.sorter.studentrunner</name>
+	<name>charon.examples.sorter.studentrunner</name>
 	<description>Runner for the student side of the Sorter example</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -13,12 +13,12 @@
 	</properties>
 	<dependencies>
 		<dependency>
-			<groupId>net.haspamelodica.studentcodeseparator</groupId>
+			<groupId>net.haspamelodica.charon</groupId>
 			<artifactId>student</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>net.haspamelodica.studentcodeseparator</groupId>
+			<groupId>net.haspamelodica.charon</groupId>
 			<artifactId>examples.sorter.student</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>

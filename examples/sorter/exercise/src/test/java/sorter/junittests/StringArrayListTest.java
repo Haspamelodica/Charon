@@ -6,11 +6,11 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
-import net.haspamelodica.studentcodeseparator.StudentSide;
-import net.haspamelodica.studentcodeseparator.junitextension.StudentCodeSeparatorExtension;
+import net.haspamelodica.charon.StudentSide;
+import net.haspamelodica.charon.junitextension.CharonExtension;
 import sorter.StringArrayList;
 
-@ExtendWith(StudentCodeSeparatorExtension.class)
+@ExtendWith(CharonExtension.class)
 public class StringArrayListTest
 {
 	private static final String[] STRINGS = {"Hello", "ABC", "DEF", "DE", "XYZ", "Xyz", "xyz", "xYZ"};

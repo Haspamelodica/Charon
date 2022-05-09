@@ -1,4 +1,4 @@
-# StudentCodeSeparator
+# Charon
 
 Work-in-progress.
 

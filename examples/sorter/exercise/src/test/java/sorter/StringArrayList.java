@@ -1,17 +1,17 @@
 package sorter;
 
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind.Kind.CLASS;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_FIELD_GETTER;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_METHOD;
-import static net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind.Kind.CONSTRUCTOR;
+import static net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind.CLASS;
+import static net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_FIELD_GETTER;
+import static net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind.Kind.INSTANCE_METHOD;
+import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind.Kind.CONSTRUCTOR;
 
-import net.haspamelodica.studentcodeseparator.StudentSideInstance;
-import net.haspamelodica.studentcodeseparator.StudentSidePrototype;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceKind;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSideInstanceMethodKind;
-import net.haspamelodica.studentcodeseparator.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.studentcodeseparator.annotations.UseSerializer;
-import net.haspamelodica.studentcodeseparator.serialization.StringSerializer;
+import net.haspamelodica.charon.StudentSideInstance;
+import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
+import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
+import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.charon.annotations.UseSerializer;
+import net.haspamelodica.charon.serialization.StringSerializer;
 
 @StudentSideInstanceKind(CLASS)
 public interface StringArrayList extends StudentSideInstance

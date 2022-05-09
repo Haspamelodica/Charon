@@ -5,7 +5,6 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.charon.communicator.impl.LoggingCommunicator;
 import net.haspamelodica.charon.refs.Ref;
 
 public class LoggingCommunicatorServerSide<REF extends Ref<?, ?>>

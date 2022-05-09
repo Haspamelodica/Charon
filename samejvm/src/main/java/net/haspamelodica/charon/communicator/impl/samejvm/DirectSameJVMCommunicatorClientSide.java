@@ -16,7 +16,6 @@ import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicator
 import net.haspamelodica.charon.communicator.impl.data.exercise.IOBiConsumer;
 import net.haspamelodica.charon.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicator;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;

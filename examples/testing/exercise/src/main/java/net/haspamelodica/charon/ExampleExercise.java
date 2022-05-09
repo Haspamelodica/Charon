@@ -3,8 +3,6 @@ package net.haspamelodica.charon;
 import java.util.ArrayList;
 import java.util.List;
 
-import net.haspamelodica.charon.StudentSide;
-
 public class ExampleExercise
 {
 	// To run, use ExampleExerciseClient in example.runner.

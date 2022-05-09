@@ -16,7 +16,6 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.MissingSerializerException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.Serializer;
 
 //TODO SerializationHandler is misnomer, also package doesn't fit
 public class SerializationHandler<REF extends Ref<?, ?>>

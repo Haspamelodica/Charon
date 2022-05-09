@@ -4,7 +4,6 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.refs.Ref;
 
 public interface StudentSideCommunicatorServerSide<REF extends Ref<?, ?>> extends StudentSideCommunicator<REF>

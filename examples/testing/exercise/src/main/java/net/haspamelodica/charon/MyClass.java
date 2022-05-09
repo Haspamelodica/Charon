@@ -9,8 +9,6 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_FIELD_SETTER;
 import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_METHOD;
 
-import net.haspamelodica.charon.StudentSideInstance;
-import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;

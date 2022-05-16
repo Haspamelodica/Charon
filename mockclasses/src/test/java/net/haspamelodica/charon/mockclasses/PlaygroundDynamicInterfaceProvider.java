@@ -7,12 +7,12 @@ import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.scaffold.InstrumentedType;
 
-public class PlaygroundExpectedInterfaceProvider implements ExpectedInterfaceProvider
+public class PlaygroundDynamicInterfaceProvider implements DynamicInterfaceProvider
 {
 	private static final String PACKAGE = "net.haspamelodica.charon.mockclasses.";
 
 	@Override
-	public ClassInterface expectedInterfaceFor(String name)
+	public ClassInterface interfaceFor(String name)
 	{
 		TypeDescription typeSupplier = TypeDescription.ForLoadedType.of(Supplier.class);
 		TypeDescription typeA = InstrumentedType.Default.of(PACKAGE + "A", TypeDescription.Generic.OBJECT, Visibility.PUBLIC);

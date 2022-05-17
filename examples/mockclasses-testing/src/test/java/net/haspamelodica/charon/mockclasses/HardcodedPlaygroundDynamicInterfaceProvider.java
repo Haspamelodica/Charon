@@ -7,19 +7,19 @@ import net.bytebuddy.description.modifier.Visibility;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.scaffold.InstrumentedType;
 
-public class PlaygroundDynamicInterfaceProvider implements DynamicInterfaceProvider
+public class HardcodedPlaygroundDynamicInterfaceProvider implements DynamicInterfaceProvider
 {
 	private static final String PACKAGE = "net.haspamelodica.charon.mockclasses.";
 
 	@Override
-	public ClassInterface interfaceFor(String name)
+	public ClassInterface interfaceForClass(String classname)
 	{
 		TypeDescription typeSupplier = TypeDescription.ForLoadedType.of(Supplier.class);
 		TypeDescription typeA = InstrumentedType.Default.of(PACKAGE + "A", TypeDescription.Generic.OBJECT, Visibility.PUBLIC);
 		TypeDescription typeB = InstrumentedType.Default.of(PACKAGE + "B", TypeDescription.Generic.OBJECT, Visibility.PUBLIC);
 		TypeDescription.Generic typeSupplierOfA = TypeDescription.Generic.Builder.parameterizedType(typeSupplier, typeA).build();
 		TypeDescription.Generic typeSupplierOfB = TypeDescription.Generic.Builder.parameterizedType(typeSupplier, typeB).build();
-		return switch(name)
+		return switch(classname)
 		{
 			case PACKAGE + "Transformed" -> new ClassInterface(PACKAGE + "Transformed",
 					List.of(

@@ -61,6 +61,8 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		// Otherwise, we get weird ClassCastExceptions.
 		//TODO not pretty; feels very hardcoded. Also, this could cause problems if users (Charon-side or called code) use other classes.
 		// Maybe discern by using originalClassfileURL? Or package name (don't redefine any Charon classes)?
+		//TODO instead of preventing delegating to parent, just load all user classes (called code) through the DynamicClassLoader,
+		// or through an even "lower" classloader.
 		if(name.equals(StaticMethodHandler.class.getName()) ||
 				name.equals(InstanceMethodHandler.class.getName()))
 			try
@@ -89,7 +91,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 
 	private Class<?> mockClassOrNull(String name)
 	{
-		ClassInterface classInterface = interfaceProvider.interfaceFor(name);
+		ClassInterface classInterface = interfaceProvider.interfaceForClass(name);
 		return classInterface == null ? null : mockClassWithInterface(name, classInterface);
 	}
 

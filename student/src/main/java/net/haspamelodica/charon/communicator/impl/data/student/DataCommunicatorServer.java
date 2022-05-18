@@ -1,7 +1,7 @@
 package net.haspamelodica.charon.communicator.impl.data.student;
 
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse.SHUTDOWN_FINISHED;
-import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.SERIALIZER_READY;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.SERDES_OUT_READY;
 
 import java.io.DataInput;
 import java.io.DataInputStream;
@@ -207,22 +207,22 @@ public class DataCommunicatorServer<REF extends Ref<?, IDReferrer>>
 
 	private void respondSend(DataInput in, DataOutput out) throws IOException
 	{
-		REF serializerRef = readRef(in);
-		int serializerInID = in.readInt();
+		REF serdesRef = readRef(in);
+		int serdesInID = in.readInt();
 
-		writeRef(out, communicator.send(serializerRef, multiplexer.getIn(serializerInID)));
+		writeRef(out, communicator.send(serdesRef, multiplexer.getIn(serdesInID)));
 	}
 
 	private void respondReceive(DataInput in, DataOutputStream out) throws IOException
 	{
-		REF serializerRef = readRef(in);
+		REF serdesRef = readRef(in);
 		REF objRef = readRef(in);
-		MultiplexedDataOutputStream serializerOut = multiplexer.getOut(in.readInt());
+		MultiplexedDataOutputStream serdesOut = multiplexer.getOut(in.readInt());
 
-		out.writeByte(SERIALIZER_READY.encode());
+		out.writeByte(SERDES_OUT_READY.encode());
 		out.flush();
-		communicator.receive(serializerRef, objRef, serializerOut);
-		serializerOut.flush();
+		communicator.receive(serdesRef, objRef, serdesOut);
+		serdesOut.flush();
 	}
 
 	private void respondNewThread(MultiplexedDataInputStream in0) throws ClosedException, IOException

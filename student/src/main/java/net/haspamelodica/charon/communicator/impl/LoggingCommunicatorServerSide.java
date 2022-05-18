@@ -36,15 +36,15 @@ public class LoggingCommunicatorServerSide<REF extends Ref<?, ?>>
 	}
 
 	@Override
-	public REF send(REF serializerRef, DataInput objIn) throws IOException
+	public REF send(REF serdesRef, DataInput objIn) throws IOException
 	{
-		log("send " + serializerRef + ", " + objIn);
-		return communicator.send(serializerRef, objIn);
+		log("send " + serdesRef + ", " + objIn);
+		return communicator.send(serdesRef, objIn);
 	}
 	@Override
-	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException
+	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException
 	{
-		log("receive " + serializerRef + ", " + objRef + ", " + objOut);
-		communicator.receive(serializerRef, objRef, objOut);
+		log("receive " + serdesRef + ", " + objRef + ", " + objOut);
+		communicator.receive(serdesRef, objRef, objOut);
 	}
 }

@@ -4,7 +4,6 @@ import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorClie
 
 import java.io.IOException;
 
-import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.utils.communication.Communication;
@@ -13,9 +12,8 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedStudentSide implements AutoCloseable
 {
-	private final Communication	communication;
-	DataCommunicatorClient<?>	client;
-	private final StudentSide	studentSide;
+	private final WrappedCommunicator<?>	communicator;
+	private final StudentSide				studentSide;
 
 	public WrappedStudentSide(String... args) throws IOException, InterruptedException, IncorrectUsageException
 	{
@@ -24,10 +22,9 @@ public class WrappedStudentSide implements AutoCloseable
 
 	public WrappedStudentSide(Communication communication)
 	{
-		this.communication = communication;
-		DataCommunicatorClient<Ref<Integer, Object>> client = new DataCommunicatorClient<>(communication.getIn(), communication.getOut());
-		this.client = client;
-		this.studentSide = new StudentSideImpl<>(maybeWrapLoggingC(client, communication.getLogging()));
+		WrappedCommunicator<Ref<Integer, Object>> communicator = new WrappedCommunicator<>(communication);
+		this.communicator = communicator;
+		this.studentSide = new StudentSideImpl<>(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
 	}
 
 	public StudentSide getStudentSide()
@@ -38,12 +35,6 @@ public class WrappedStudentSide implements AutoCloseable
 	@Override
 	public void close() throws IOException
 	{
-		try
-		{
-			client.shutdown();
-		} finally
-		{
-			communication.close();
-		}
+		communicator.close();
 	}
 }

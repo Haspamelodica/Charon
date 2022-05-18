@@ -10,9 +10,9 @@ import java.lang.annotation.Target;
 @Retention(RUNTIME)
 @Target({TYPE, METHOD})
 /**
- * See {@link UseSerializer}
+ * See {@link UseSerDes}
  */
-public @interface UseSerializers
+public @interface UseSerDeses
 {
-	public UseSerializer[] value();
+	public UseSerDes[] value();
 }

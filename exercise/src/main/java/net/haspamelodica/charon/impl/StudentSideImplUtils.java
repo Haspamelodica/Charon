@@ -15,10 +15,10 @@ import java.util.stream.Stream;
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
-import net.haspamelodica.charon.annotations.UseSerializer;
+import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.Serializer;
+import net.haspamelodica.charon.serialization.SerDes;
 
 public class StudentSideImplUtils
 {
@@ -75,11 +75,11 @@ public class StudentSideImplUtils
 		return args == null ? List.of() : Arrays.asList(args);
 	}
 
-	public static List<Class<? extends Serializer<?>>> getSerializers(AnnotatedElement element)
+	public static List<Class<? extends SerDes<?>>> getSerDeses(AnnotatedElement element)
 	{
-		// This also catches uses of UseSerializers
-		return Arrays.stream(element.getAnnotationsByType(UseSerializer.class))
-				.map((Function<UseSerializer, Class<? extends Serializer<?>>>) UseSerializer::value).toList();
+		// This also catches uses of UseSerDeses
+		return Arrays.stream(element.getAnnotationsByType(UseSerDes.class))
+				.map((Function<UseSerDes, Class<? extends SerDes<?>>>) UseSerDes::value).toList();
 	}
 
 	public static List<String> mapToStudentSide(Class<?>[] classes)

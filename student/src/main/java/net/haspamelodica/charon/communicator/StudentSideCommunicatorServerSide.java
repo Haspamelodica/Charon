@@ -8,6 +8,6 @@ import net.haspamelodica.charon.refs.Ref;
 
 public interface StudentSideCommunicatorServerSide<REF extends Ref<?, ?>> extends StudentSideCommunicator<REF>
 {
-	public REF send(REF serializerRef, DataInput objIn) throws IOException;
-	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException;
+	public REF send(REF serdesRef, DataInput objIn) throws IOException;
+	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException;
 }

@@ -1,7 +1,7 @@
 package net.haspamelodica.charon;
 
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
-import net.haspamelodica.charon.exceptions.MissingSerializerException;
+import net.haspamelodica.charon.exceptions.MissingSerDesException;
 
 /**
  * Test code has access to one instance of {@link StudentSide}. TODO how?
@@ -11,5 +11,5 @@ import net.haspamelodica.charon.exceptions.MissingSerializerException;
 public interface StudentSide
 {
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP createPrototype(Class<SP> prototypeClass)
-			throws InconsistentHierarchyException, MissingSerializerException;
+			throws InconsistentHierarchyException, MissingSerDesException;
 }

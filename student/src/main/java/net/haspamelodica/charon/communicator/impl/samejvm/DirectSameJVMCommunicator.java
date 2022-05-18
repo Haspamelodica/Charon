@@ -13,7 +13,7 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
-import net.haspamelodica.charon.serialization.Serializer;
+import net.haspamelodica.charon.serialization.SerDes;
 
 public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 		implements StudentSideCommunicatorServerSide<REF>
@@ -118,25 +118,25 @@ public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 	}
 
 	@Override
-	public REF send(REF serializerRef, DataInput objIn) throws IOException
+	public REF send(REF serdesRef, DataInput objIn) throws IOException
 	{
-		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
-		Object result = serializer.deserialize(objIn);
+		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
+		Object result = serdes.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(REF serializerRef, REF objRef, DataOutput objOut) throws IOException
+	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException
 	{
-		Serializer<?> serializer = (Serializer<?>) refManager.unpack(serializerRef);
+		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
 		Object obj = refManager.unpack(objRef);
-		respondReceive(objOut, serializer, obj);
+		respondReceive(objOut, serdes, obj);
 	}
 
 	// extracted to own method so cast to T is expressible in Java
-	private <T> void respondReceive(DataOutput out, Serializer<T> serializer, Object obj) throws IOException
+	private <T> void respondReceive(DataOutput out, SerDes<T> serdes, Object obj) throws IOException
 	{
 		@SuppressWarnings("unchecked") // responsibility of server
 		T objCasted = (T) obj;
-		serializer.serialize(out, objCasted);
+		serdes.serialize(out, objCasted);
 	}
 }

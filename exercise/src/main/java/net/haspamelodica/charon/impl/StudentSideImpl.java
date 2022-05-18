@@ -11,8 +11,8 @@ import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.PrimitiveSerializer;
-import net.haspamelodica.charon.serialization.SerializationHandler;
+import net.haspamelodica.charon.serialization.Marshaler;
+import net.haspamelodica.charon.serialization.PrimitiveSerDes;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
 // TODO maybe provide syncWithStudentSide method for mutable serialized objects
@@ -25,7 +25,7 @@ import net.haspamelodica.charon.serialization.SerializationHandler;
 // ...Sub-problem: What if the student instance should be passed to a standard library function (for example Collections.sort)?
 // ....Idea: Don't do that tester-side, but student-side.
 // Problem: Regular Java instances passed to student-side instances would have to be serialized. This shouldn't happen automatically.
-// .Idea: Specify serializers to use with annotations and provide default serializers for usual classes (String, List, Set, Map...)
+// .Idea: Specify SerDeses to use with annotations and provide default SerDeses for usual classes (String, List, Set, Map...)
 // ..Problem: what about non-immutable datastructures?
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
@@ -33,7 +33,7 @@ import net.haspamelodica.charon.serialization.SerializationHandler;
 public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final SerializationHandler<REF>					globalSerializer;
+	private final Marshaler<REF>							globalMarshaler;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
@@ -42,8 +42,8 @@ public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 	public StudentSideImpl(StudentSideCommunicatorClientSide<REF> communicator)
 	{
 		this.communicator = communicator;
-		this.globalSerializer = new SerializationHandler<>(communicator, this::refForStudentSideInstance, this::createStudentSideInstanceForRef,
-				PrimitiveSerializer.PRIMITIVE_SERIALIZERS);
+		this.globalMarshaler = new Marshaler<>(communicator, this::refForStudentSideInstance, this::createStudentSideInstanceForRef,
+				PrimitiveSerDes.PRIMITIVE_SERDESES);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
 	}
@@ -58,7 +58,7 @@ public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalSerializer, prototypeClass);
+		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
 
 		synchronized(prototypes)
 		{

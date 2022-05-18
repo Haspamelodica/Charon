@@ -41,7 +41,7 @@ public class ExampleExercise
 		// They can be overridden (exercise-side) using an annotation.
 		System.out.println("EXERCISE: thirdMethod(\"test\") returned " + instance.thirdMethod("test"));
 
-		// Apart from primitive types and types for which a serializer has been specified explicitly,
+		// Apart from primitive types and types for which a SerDes has been specified explicitly,
 		// only SSIs can be passed directly to and returned from methods, since they represent student-side objects.
 		// If you try to define a method with a parameter or return type which doesn't fall into these categories,
 		// you will get a runtime exception.

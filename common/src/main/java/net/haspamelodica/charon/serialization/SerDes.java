@@ -12,12 +12,12 @@ import java.io.IOException;
  * Student code can obtain full control over the student side, and by extension all communication between
  * tester and student side.
  * <p>
- * Each subclass of {@link Serializer} has to have a public constructor with no parameters.
+ * Each subclass of {@link SerDes} has to have a public constructor with no parameters.
  * <p>
  * {@link #deserialize(DataInput)} is recommended to, but not required to, return an immutable object
- * to avoid bugs.
+ * to help catch bugs.
  */
-public interface Serializer<T>
+public interface SerDes<T>
 {
 	public Class<T> getHandledClass();
 	public void serialize(DataOutput out, T obj) throws IOException;

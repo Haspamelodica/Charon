@@ -4,7 +4,7 @@ import static net.haspamelodica.charon.impl.StudentSideImplUtils.argsToList;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.createProxyInstance;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.defaultInstanceHandler;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerializers;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.mapToStudentSide;
 
@@ -20,14 +20,14 @@ import java.util.stream.Stream;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
+import net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.SerializationHandler;
+import net.haspamelodica.charon.serialization.Marshaler;
 
 // TODO type bound is wrong: StudentSideInstance only for forward refs
 public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI extends StudentSideInstance>
@@ -36,7 +36,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	public final Class<SI>								instanceClass;
 	public final String									studentSideCN;
 
-	public final SerializationHandler<REF> instanceWideSerializer;
+	public final Marshaler<REF> instanceWideMarshaler;
 
 	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
@@ -46,7 +46,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		this.instanceClass = prototypeBuilder.instanceClass;
 		this.studentSideCN = prototypeBuilder.studentSideCN;
 
-		this.instanceWideSerializer = prototypeBuilder.prototypeWideSerializer;
+		this.instanceWideMarshaler = prototypeBuilder.prototypeWideMarshaler;
 
 		checkInstanceClass();
 		this.methodHandlers = createMethodHandlers();
@@ -114,13 +114,13 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 				.filter(method -> !Modifier.isFinal(method.getModifiers()))
 				.map(method -> switch(method.getName())
 				{
-				case "toString" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, String.class),
-						(ref, proxy, args) -> "StudentSideInstance[" + ref + "]");
-				case "hashCode" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, int.class),
-						(ref, proxy, args) -> System.identityHashCode(proxy));
-				case "equals" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, boolean.class, Object.class),
-						(ref, proxy, args) -> proxy == args[0]);
-				default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
+					case "toString" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, String.class),
+							(ref, proxy, args) -> "StudentSideInstance[" + ref + "]");
+					case "hashCode" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, int.class),
+							(ref, proxy, args) -> System.identityHashCode(proxy));
+					case "equals" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, boolean.class, Object.class),
+							(ref, proxy, args) -> proxy == args[0]);
+					default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
 				});
 	}
 
@@ -137,19 +137,19 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-		SerializationHandler<REF> serializerMethod = instanceWideSerializer.withAdditionalSerializers(getSerializers(method));
+		Marshaler<REF> methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
 		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
-				case INSTANCE_METHOD -> methodHandler(serializerMethod, method, name);
-				case INSTANCE_FIELD_GETTER -> fieldGetterHandler(serializerMethod, method, name);
-				case INSTANCE_FIELD_SETTER -> fieldSetterHandler(serializerMethod, method, name);
+					case INSTANCE_METHOD -> methodHandler(methodWideMarshaler, method, name);
+					case INSTANCE_FIELD_GETTER -> fieldGetterHandler(methodWideMarshaler, method, name);
+					case INSTANCE_FIELD_SETTER -> fieldSetterHandler(methodWideMarshaler, method, name);
 				});
 	}
 
-	private InstanceMethodHandler<REF> methodHandler(SerializationHandler<REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> methodHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -159,13 +159,13 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 
 		return (ref, proxy, args) ->
 		{
-			List<REF> argRefs = serializer.send(paramTypes, argsToList(args));
+			List<REF> argRefs = marshaler.send(paramTypes, argsToList(args));
 			REF resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
-			return serializer.receive(returnType, resultRef);
+			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldGetterHandler(SerializationHandler<REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> fieldGetterHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -179,11 +179,11 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		return (ref, proxy, args) ->
 		{
 			REF resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
-			return serializer.receive(returnType, resultRef);
+			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldSetterHandler(SerializationHandler<REF> serializer, Method method, String name)
+	private InstanceMethodHandler<REF> fieldSetterHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
@@ -194,11 +194,11 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 
 		Class<?> paramType = paramTypes[0];
 
-		return fieldSetterHandlerChecked(serializer, name, paramType);
+		return fieldSetterHandlerChecked(marshaler, name, paramType);
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(SerializationHandler<REF> serializer, String name, Class<F> fieldType)
+	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(Marshaler<REF> marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 
@@ -206,7 +206,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		{
 			@SuppressWarnings("unchecked") // We could
 			F argCasted = (F) args[0];
-			REF valRef = serializer.send(fieldType, argCasted);
+			REF valRef = marshaler.send(fieldType, argCasted);
 			communicator.setInstanceField(studentSideCN, name, fieldCN, ref, valRef);
 			return null;
 		};

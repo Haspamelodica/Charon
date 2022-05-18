@@ -10,6 +10,6 @@ import net.haspamelodica.charon.refs.Ref;
 public interface StudentSideCommunicatorClientSide<REF extends Ref<?, ?>>
 		extends StudentSideCommunicator<REF>
 {
-	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj);
-	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef);
+	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj);
+	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef);
 }

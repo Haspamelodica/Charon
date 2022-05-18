@@ -5,13 +5,13 @@ import java.io.DataOutput;
 import java.io.IOException;
 import java.util.List;
 
-public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
+public sealed abstract class PrimitiveSerDes<T> implements SerDes<T>
 {
-	public final static List<Class<? extends Serializer<?>>> PRIMITIVE_SERIALIZERS = List.of(BooleanSerializer.class,
-			CharacterSerializer.class, ByteSerializer.class, ShortSerializer.class, IntegerSerializer.class, LongSerializer.class,
-			FloatSerializer.class, DoubleSerializer.class, VoidSerializer.class);
+	public final static List<Class<? extends SerDes<?>>> PRIMITIVE_SERDESES = List.of(BooleanSerDes.class,
+			CharSerDes.class, ByteSerDes.class, ShortSerDes.class, IntSerDes.class, LongSerDes.class,
+			FloatSerDes.class, DoubleSerDes.class, VoidSerDes.class);
 
-	public final static class BooleanSerializer extends PrimitiveSerializer<Boolean>
+	public final static class BooleanSerDes extends PrimitiveSerDes<Boolean>
 	{
 		@Override
 		public Class<Boolean> getHandledClass()
@@ -29,7 +29,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readBoolean();
 		}
 	}
-	public final static class CharacterSerializer extends PrimitiveSerializer<Character>
+	public final static class CharSerDes extends PrimitiveSerDes<Character>
 	{
 		@Override
 		public Class<Character> getHandledClass()
@@ -47,7 +47,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readChar();
 		}
 	}
-	public final static class ByteSerializer extends PrimitiveSerializer<Byte>
+	public final static class ByteSerDes extends PrimitiveSerDes<Byte>
 	{
 		@Override
 		public Class<Byte> getHandledClass()
@@ -65,7 +65,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readByte();
 		}
 	}
-	public final static class ShortSerializer extends PrimitiveSerializer<Short>
+	public final static class ShortSerDes extends PrimitiveSerDes<Short>
 	{
 		@Override
 		public Class<Short> getHandledClass()
@@ -83,7 +83,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readShort();
 		}
 	}
-	public final static class IntegerSerializer extends PrimitiveSerializer<Integer>
+	public final static class IntSerDes extends PrimitiveSerDes<Integer>
 	{
 		@Override
 		public Class<Integer> getHandledClass()
@@ -101,7 +101,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readInt();
 		}
 	}
-	public final static class LongSerializer extends PrimitiveSerializer<Long>
+	public final static class LongSerDes extends PrimitiveSerDes<Long>
 	{
 		@Override
 		public Class<Long> getHandledClass()
@@ -119,7 +119,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readLong();
 		}
 	}
-	public final static class FloatSerializer extends PrimitiveSerializer<Float>
+	public final static class FloatSerDes extends PrimitiveSerDes<Float>
 	{
 		@Override
 		public Class<Float> getHandledClass()
@@ -137,7 +137,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readFloat();
 		}
 	}
-	public final static class DoubleSerializer extends PrimitiveSerializer<Double>
+	public final static class DoubleSerDes extends PrimitiveSerDes<Double>
 	{
 		@Override
 		public Class<Double> getHandledClass()
@@ -155,7 +155,7 @@ public sealed abstract class PrimitiveSerializer<T> implements Serializer<T>
 			return in.readDouble();
 		}
 	}
-	public final static class VoidSerializer extends PrimitiveSerializer<Void>
+	public final static class VoidSerDes extends PrimitiveSerDes<Void>
 	{
 		@Override
 		public Class<Void> getHandledClass()

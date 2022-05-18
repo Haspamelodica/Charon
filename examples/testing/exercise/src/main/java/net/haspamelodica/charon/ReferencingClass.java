@@ -9,8 +9,8 @@ import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.charon.annotations.UseSerializer;
-import net.haspamelodica.charon.serialization.StringSerializer;
+import net.haspamelodica.charon.annotations.UseSerDes;
+import net.haspamelodica.charon.serialization.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
 @OverrideStudentSideName("net.haspamelodica.charon.ReferencingClassImpl")
@@ -28,7 +28,7 @@ public interface ReferencingClass extends StudentSideInstance
 		public MyClass createImpl();
 
 		@StudentSidePrototypeMethodKind(STATIC_METHOD)
-		@UseSerializer(StringSerializer.class)
+		@UseSerDes(StringSerDes.class)
 		public String myClassImplToString(MyClass impl);
 	}
 }

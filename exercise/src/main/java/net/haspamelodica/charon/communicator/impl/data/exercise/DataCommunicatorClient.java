@@ -124,45 +124,45 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
-			MultiplexedDataOutputStream serializerOut = freeStreamsForSending.poll();
-			if(serializerOut == null)
-				serializerOut = nextOutStream();
+			MultiplexedDataOutputStream serdesOut = freeStreamsForSending.poll();
+			if(serdesOut == null)
+				serdesOut = nextOutStream();
 
-			writeRef(out, serializerRef);
-			out.writeInt(serializerOut.getStreamID());
+			writeRef(out, serdesRef);
+			out.writeInt(serdesOut.getStreamID());
 			out.flush();
-			sendObj.accept(serializerOut, obj);
-			serializerOut.flush();
+			sendObj.accept(serdesOut, obj);
+			serdesOut.flush();
 
-			freeStreamsForSending.add(serializerOut);
+			freeStreamsForSending.add(serdesOut);
 		});
 	}
 	@Override
-	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
-			MultiplexedDataInputStream serializerIn = freeStreamsForReceiving.poll();
-			if(serializerIn == null)
-				serializerIn = nextInStream();
+			MultiplexedDataInputStream serdesIn = freeStreamsForReceiving.poll();
+			if(serdesIn == null)
+				serdesIn = nextInStream();
 
-			writeRef(out, serializerRef);
+			writeRef(out, serdesRef);
 			writeRef(out, objRef);
-			out.writeInt(serializerIn.getStreamID());
+			out.writeInt(serdesIn.getStreamID());
 
-			return serializerIn;
-		}, (in, serializerIn) ->
+			return serdesIn;
+		}, (in, serdesIn) ->
 		{
-			// The student side notifies us it is finished with createing the output stream behind serializerIn by sending SERIALIZER_READY.
+			// The student side notifies us it is finished with createing the output stream behind serdesIn by sending SERDES_OUT_READY.
 			// Neccessary because StreamMultiplexer requires the output stream to exist before the input stream is used.
-			if(ThreadResponse.decode(in.readByte()) != ThreadResponse.SERIALIZER_READY)
-				throw new IllegalBehaviourException("Expected SERIALIZER_READY");
-			T result = receiveObj.apply(serializerIn);
-			freeStreamsForReceiving.add(serializerIn);
+			if(ThreadResponse.decode(in.readByte()) != ThreadResponse.SERDES_OUT_READY)
+				throw new IllegalBehaviourException("Expected " + ThreadResponse.SERDES_OUT_READY);
+			T result = receiveObj.apply(serdesIn);
+			freeStreamsForReceiving.add(serdesIn);
 			return result;
 		});
 	}

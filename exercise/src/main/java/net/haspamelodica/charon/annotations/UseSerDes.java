@@ -8,18 +8,18 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import net.haspamelodica.charon.serialization.Serializer;
+import net.haspamelodica.charon.serialization.SerDes;
 
 @Retention(RUNTIME)
 @Target({TYPE, METHOD})
-@Repeatable(UseSerializers.class)
+@Repeatable(UseSerDeses.class)
 /**
  * TODO mention == won't work on deserialized objects
  * <p>
- * Used serializers are shared between a student-side instance and its prototype:
- * Adding {@link UseSerializer} (or {@link UseSerializers}) to either makes that serializer usable from the other as well.
+ * Used SerDeses are shared between a student-side instance and its prototype:
+ * Adding {@link UseSerDes} (or {@link UseSerDeses}) to either makes that {@link SerDes} usable from the other as well.
  */
-public @interface UseSerializer
+public @interface UseSerDes
 {
-	public Class<? extends Serializer<?>> value();
+	public Class<? extends SerDes<?>> value();
 }

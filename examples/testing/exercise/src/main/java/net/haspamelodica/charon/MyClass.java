@@ -13,14 +13,14 @@ import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.charon.annotations.UseSerializer;
-import net.haspamelodica.charon.serialization.StringSerializer;
+import net.haspamelodica.charon.annotations.UseSerDes;
+import net.haspamelodica.charon.serialization.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
 // In a real exercise, it wouldn't be neccessary to use a different name for student-side instance and implementation
 // because both classes never get loaded in the same JVM anyway.
 @OverrideStudentSideName("net.haspamelodica.charon.MyClassImpl")
-@UseSerializer(StringSerializer.class)
+@UseSerDes(StringSerDes.class)
 public interface MyClass extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)

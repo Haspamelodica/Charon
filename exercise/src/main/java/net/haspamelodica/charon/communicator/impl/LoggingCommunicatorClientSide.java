@@ -37,15 +37,15 @@ public class LoggingCommunicatorClientSide<REF extends Ref<?, ?>>
 	}
 
 	@Override
-	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
-		log("send " + serializerRef + ", " + sendObj + ", " + obj);
-		return communicator.send(serializerRef, sendObj, obj);
+		log("send " + serdesRef + ", " + sendObj + ", " + obj);
+		return communicator.send(serdesRef, sendObj, obj);
 	}
 	@Override
-	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
 	{
-		log("send " + serializerRef + ", " + receiveObj + ", " + objRef);
-		return communicator.receive(serializerRef, receiveObj, objRef);
+		log("send " + serdesRef + ", " + receiveObj + ", " + objRef);
+		return communicator.receive(serdesRef, receiveObj, objRef);
 	}
 }

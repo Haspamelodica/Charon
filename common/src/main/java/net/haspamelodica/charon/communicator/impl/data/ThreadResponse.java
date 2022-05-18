@@ -4,7 +4,7 @@ public enum ThreadResponse
 {
 	RETURNED,
 	CALLBACK,
-	SERIALIZER_READY,
+	SERDES_OUT_READY,
 	;
 
 	public byte encode()

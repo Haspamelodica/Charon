@@ -19,7 +19,7 @@ import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorS
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
-import net.haspamelodica.charon.serialization.Serializer;
+import net.haspamelodica.charon.serialization.SerDes;
 
 /**
  * <b>Using this class in the tester JVM to create a {@link StudentSideImpl} is not safe
@@ -40,33 +40,33 @@ public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?>> ext
 	}
 
 	@Override
-	public <T> REF send(REF serializerRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
-		return refManager.pack(sendAndReceive(sendObj, studentSideSerializer::deserialize, obj));
+		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);
+		return refManager.pack(sendAndReceive(sendObj, serdes::deserialize, obj));
 	}
 	@Override
-	public <T> T receive(REF serializerRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		Serializer<T> studentSideSerializer = (Serializer<T>) refManager.unpack(serializerRef);
+		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		T obj = (T) refManager.unpack(objRef);
-		return sendAndReceive(studentSideSerializer::serialize, receiveObj, obj);
+		return sendAndReceive(serdes::serialize, receiveObj, obj);
 	}
 	private <T> T sendAndReceive(IOBiConsumer<DataOutput, T> sender, IOFunction<DataInput, T> receiver, T obj)
 	{
 		// We have to actually serialize and deserialize the object to be compatible with a "real" communicator
 		// in case the passed object is mutable or if any code relies on object identity.
-		Thread serializerThread = null;
+		Thread serdesThread = null;
 		AtomicReference<IOException> serializationIOExceptionA = new AtomicReference<>();
 		AtomicReference<RuntimeException> serializationExceptionA = new AtomicReference<>();
 		try(PipedInputStream pipeIn = new PipedInputStream(); DataInputStream in = new DataInputStream(pipeIn))
 		{
 			Semaphore pipeOutCreated = new Semaphore(0);
 			// serialize in other thread to avoid blocking indefinitely if pipeOut buffer run out
-			serializerThread = new Thread(() ->
+			serdesThread = new Thread(() ->
 			{
 				try(PipedOutputStream pipeOut = new PipedOutputStream(pipeIn); DataOutputStream out = new DataOutputStream(pipeOut))
 				{
@@ -84,12 +84,12 @@ public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?>> ext
 					pipeOutCreated.release();
 				}
 			});
-			serializerThread.start();
+			serdesThread.start();
 
 			pipeOutCreated.acquireUninterruptibly();
 			T result = receiver.apply(in);
 
-			doUninterruptible(serializerThread::join);
+			doUninterruptible(serdesThread::join);
 
 			IOException serializationIOException = serializationIOExceptionA.get();
 			RuntimeException serializationException = serializationExceptionA.get();
@@ -105,7 +105,7 @@ public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?>> ext
 			return result;
 		} catch(IOException e)
 		{
-			doUninterruptible(serializerThread::join);
+			doUninterruptible(serdesThread::join);
 			IOException serializationIOException = serializationIOExceptionA.get();
 			RuntimeException serializationException = serializationExceptionA.get();
 			if(serializationException != null)

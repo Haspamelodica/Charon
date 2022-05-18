@@ -4,7 +4,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class StringSerializer implements Serializer<String>
+public class StringSerDes implements SerDes<String>
 {
 	@Override
 	public Class<String> getHandledClass()

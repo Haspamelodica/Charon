@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.serialization;
+package net.haspamelodica.charon.marshaling;
 
 import java.io.DataInput;
 import java.io.DataOutput;

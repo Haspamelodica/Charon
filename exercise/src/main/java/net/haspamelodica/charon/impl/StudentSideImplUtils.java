@@ -17,8 +17,8 @@ import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.SerDes;
 
 public class StudentSideImplUtils
 {

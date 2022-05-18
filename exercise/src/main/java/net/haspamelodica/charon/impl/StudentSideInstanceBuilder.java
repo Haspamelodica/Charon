@@ -26,8 +26,8 @@ import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.Marshaler;
 
 // TODO type bound is wrong: StudentSideInstance only for forward refs
 public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI extends StudentSideInstance>

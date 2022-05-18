@@ -5,9 +5,9 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
-import net.haspamelodica.charon.serialization.SerDes;
 
 public class DirectSameJVMCommunicatorServerSide<REF extends Ref<Object, ?>>
 		extends DirectSameJVMCommunicator<REF>

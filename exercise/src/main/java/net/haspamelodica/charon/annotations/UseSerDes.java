@@ -8,7 +8,7 @@ import java.lang.annotation.Repeatable;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import net.haspamelodica.charon.serialization.SerDes;
+import net.haspamelodica.charon.marshaling.SerDes;
 
 @Retention(RUNTIME)
 @Target({TYPE, METHOD})

@@ -10,10 +10,10 @@ import java.util.List;
 
 import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
-import net.haspamelodica.charon.serialization.SerDes;
 
 public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 		implements StudentSideCommunicatorServerSide<REF>

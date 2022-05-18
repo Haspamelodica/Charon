@@ -10,9 +10,9 @@ import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.charon.marshaling.Marshaler;
+import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.serialization.Marshaler;
-import net.haspamelodica.charon.serialization.PrimitiveSerDes;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
 // TODO maybe provide syncWithStudentSide method for mutable serialized objects

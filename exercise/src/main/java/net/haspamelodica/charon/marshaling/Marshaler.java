@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.serialization;
+package net.haspamelodica.charon.marshaling;
 
 import static net.haspamelodica.charon.reflection.ReflectionUtils.castOrPrimitive;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;

@@ -11,7 +11,7 @@ import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.annotations.UseSerDes;
-import net.haspamelodica.charon.serialization.StringSerDes;
+import net.haspamelodica.charon.marshaling.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
 public interface StringArrayList extends StudentSideInstance

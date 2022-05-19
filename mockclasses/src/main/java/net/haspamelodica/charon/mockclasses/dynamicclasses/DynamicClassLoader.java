@@ -20,8 +20,8 @@ import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.DynamicType.Builder.MethodDefinition.ReceiverTypeDefinition;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
-import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
+import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
@@ -37,6 +37,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 
 	public static final Constructor<?>	Object_new;
 	private static final Method			StaticMethodHandler_call;
+	private static final Method			ConstructorMethodHandler_call;
 	private static final Method			InstanceMethodHandler_call;
 	static
 	{
@@ -44,6 +45,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		{
 			Object_new = Object.class.getConstructor();
 			StaticMethodHandler_call = StaticMethodHandler.class.getMethod("call", Object[].class);
+			ConstructorMethodHandler_call = ConstructorMethodHandler.class.getMethod("call", Object.class, Object[].class);
 			// second argument is an unbounded type parameter, so its erased type is Object
 			InstanceMethodHandler_call = InstanceMethodHandler.class.getMethod("call", Object.class, Object.class, Object[].class);
 		} catch(NoSuchMethodException e)
@@ -78,6 +80,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		//TODO this shouldn't have anything to do with Mockclass, but Mockclass is needed because created classes extend it.
 		if(name.equals(Mockclass.class.getName()) ||
 				name.equals(StaticMethodHandler.class.getName()) ||
+				name.equals(ConstructorMethodHandler.class.getName()) ||
 				name.equals(InstanceMethodHandler.class.getName()))
 			try
 			{
@@ -160,14 +163,16 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 			MethodDescription constructor)
 	{
 		TCTX constructorContext = invocationHandler.createConstructorContext(classContext, constructor);
-		StaticMethodHandler target = args -> invocationHandler.invokeConstructor(classContext, constructorContext, args);
+		ConstructorMethodHandler target = (receiver, args) -> invocationHandler.invokeConstructor(
+				classContext, constructorContext, receiver, args);
 
 		return builder
 				.defineConstructor()
 				.withParameters(constructor.getParameters().asTypeList())
 				.intercept(MethodCall.invoke(Object_new).andThen(MethodCall
-						.invoke(StaticMethodHandler_call)
-						.on(target, StaticMethodHandler.class)
+						.invoke(ConstructorMethodHandler_call)
+						.on(target, ConstructorMethodHandler.class)
+						.withThis()
 						.withArgumentArray()
 						.setsField(INSTANCE_CONTEXT_FIELD_MATCHER)));
 	}
@@ -210,6 +215,14 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 	{
 		// When renaming this method or changing its interface, remember to adjust corresponding Method constant
 		public Object call(Object[] args);
+	}
+	/**
+	 * See {@link StaticMethodHandler}
+	 */
+	public static interface ConstructorMethodHandler
+	{
+		// When renaming this method or changing its interface, remember to adjust corresponding Method constant
+		public Object call(Object receiver, Object[] args);
 	}
 	/**
 	 * See {@link StaticMethodHandler}

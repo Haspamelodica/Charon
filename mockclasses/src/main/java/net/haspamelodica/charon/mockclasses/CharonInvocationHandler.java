@@ -68,7 +68,7 @@ public class CharonInvocationHandler<REF extends Ref<?, Object>>
 		return marshaler.receive(toClass(methodContext.getReturnType()), result);
 	}
 	@Override
-	public REF invokeConstructor(String classContext, MethodDescription constructorContext, Object[] args)
+	public REF invokeConstructor(String classContext, MethodDescription constructorContext, Object receiver, Object[] args)
 	{
 		TypeList.Generic parameterTypes = constructorContext.getParameters().asTypeList();
 		List<REF> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
@@ -77,6 +77,8 @@ public class CharonInvocationHandler<REF extends Ref<?, Object>>
 				classContext,
 				toClassnames(parameterTypes),
 				argsRefs);
+		
+		result.setReferrer(receiver);
 
 		return result;
 	}

@@ -108,7 +108,10 @@ public class CharonClassTransformer<REF extends Ref<?, Object>> implements Dynam
 	{
 		try
 		{
-			return refBasedConstructorsByClassname.get(communicator.getStudentSideClassname(objRef)).newInstance(objRef);
+			String cn = communicator.getStudentSideClassname(objRef);
+			Mockclass<REF> mock = refBasedConstructorsByClassname.get(cn).newInstance(objRef);
+			objRef.setReferrer(mock);
+			return mock;
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)
 		{
 			throw new RuntimeException("Error invoking generated constructor", e);

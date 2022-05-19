@@ -36,7 +36,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	public final Class<SI>								instanceClass;
 	public final String									studentSideCN;
 
-	public final Marshaler<REF> instanceWideMarshaler;
+	public final Marshaler<?, ?, REF> instanceWideMarshaler;
 
 	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
@@ -137,7 +137,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-		Marshaler<REF> methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
+		Marshaler<?, ?, REF> methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
 		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
@@ -149,7 +149,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 				});
 	}
 
-	private InstanceMethodHandler<REF> methodHandler(Marshaler<REF> marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> methodHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -165,7 +165,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldGetterHandler(Marshaler<REF> marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> fieldGetterHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -183,7 +183,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldSetterHandler(Marshaler<REF> marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> fieldSetterHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
@@ -198,7 +198,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(Marshaler<REF> marshaler, String name, Class<F> fieldType)
+	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(Marshaler<?, ?, REF> marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 

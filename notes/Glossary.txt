@@ -1,10 +1,15 @@
-Exercise code            : Code created specifically for an exercise; assumed to be trustworthy; running in exercise JVM
+Callback                 : Student-side, framework-generated instance of an interface.
+                            Can only be created by exercise code. The methods of a callback delegate to a specific exercise-side object.
+Exercise code            : Code created specifically for an exercise; assumed to be trustworthy; running in exercise JVM.
                             (mostly - maybe there'll be a mechanism for exercise creators to define student-side classes).
-Exercise-side XYZ        : XYZ happens in / lives in / is associated with the exercise JVM
+Exercise-side XYZ        : XYZ happens in / lives in / is associated with the exercise JVM.
 SSI                      : see StudentSideInstance
 Student code             : Code submitted by a student as the solution for an exercise; not trustworthy; running in student JVM.
 StudentSideInstance / SSI: Instance of (a subinterface of) the interface StudentSideInstance, living in the exercise JVM.
 Student-side XYZ         : XYZ happens in / lives in / is associated with the student JVM.
                             Exception: StudentSideInstance and StudentSidePrototype. Those live in the exercise JVM
                             and only refer to objects in the student JVM.
-Ref                      : Handle for an object in one JVM by the other JVM.
+Ref                      : Exercise-side handle for an object in the student JVM.
+Referrer                 : Exercise-side "attachment" of a Ref. Either a representation object or a callback.
+Representation object    : Exercise-side, framework-generated objects representing student-side objects.
+                            When using SSIs, the SSIs are representation objects; when using mock classes, the mock instances are representation objects.

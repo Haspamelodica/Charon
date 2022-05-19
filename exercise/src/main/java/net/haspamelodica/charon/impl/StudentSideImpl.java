@@ -12,6 +12,7 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
+import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
 import net.haspamelodica.charon.refs.Ref;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
@@ -33,7 +34,7 @@ import net.haspamelodica.charon.refs.Ref;
 public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final Marshaler<REF>							globalMarshaler;
+	private final Marshaler<?, ?, REF>						globalMarshaler;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
@@ -42,7 +43,7 @@ public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 	public StudentSideImpl(StudentSideCommunicatorClientSide<REF> communicator)
 	{
 		this.communicator = communicator;
-		this.globalMarshaler = new Marshaler<>(communicator, this::refForStudentSideInstance, this::createStudentSideInstanceForRef,
+		this.globalMarshaler = new Marshaler<>(communicator, new StudentSideImplRepresentationObjectMarshaler(),
 				PrimitiveSerDes.PRIMITIVE_SERDESES);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
@@ -95,23 +96,33 @@ public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 		return prototype;
 	}
 
-	private REF refForStudentSideInstance(StudentSideInstance studentSideInstance)
+	private class StudentSideImplRepresentationObjectMarshaler implements RepresentationObjectMarshaler<Object, StudentSideInstance, REF>
 	{
-		// Guaranteed by StudentSidePrototypeBuilder#getPrototype
-		InvocationHandler invocationHandler = Proxy.getInvocationHandler(studentSideInstance);
-		@SuppressWarnings("unchecked") // Guaranteed by StudentSidePrototypeBuilder#getPrototype
-		StudentSideInstanceInvocationHandler<REF> invocationHandlerCasted = (StudentSideInstanceInvocationHandler<REF>) invocationHandler;
-		return invocationHandlerCasted.getRef();
-	}
+		@Override
+		public Class<StudentSideInstance> representationObjectClass()
+		{
+			return StudentSideInstance.class;
+		}
 
-	private StudentSideInstance createStudentSideInstanceForRef(REF ref)
-	{
-		//TODO if we support inheritance, we need to check super-class-names too
-		String studentSideCN = communicator.getStudentSideClassname(ref);
-		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
-		if(prototypeBuilder == null)
-			return null;
+		@Override
+		public REF marshal(StudentSideInstance obj)
+		{
+			// Guaranteed by StudentSidePrototypeBuilder#getPrototype
+			InvocationHandler invocationHandler = Proxy.getInvocationHandler(obj);
+			@SuppressWarnings("unchecked") // Guaranteed by StudentSidePrototypeBuilder#getPrototype
+			StudentSideInstanceInvocationHandler<REF> invocationHandlerCasted = (StudentSideInstanceInvocationHandler<REF>) invocationHandler;
+			return invocationHandlerCasted.getRef();
+		}
 
-		return prototypeBuilder.instanceBuilder.createInstance(ref);
+		@Override
+		public StudentSideInstance unmarshal(REF ref)
+		{
+			//TODO if we support inheritance, we need to check super-class-names too
+			String studentSideCN = communicator.getStudentSideClassname(ref);
+			StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+			if(prototypeBuilder == null)
+				return null;
+			return prototypeBuilder.instanceBuilder.createInstance(ref);
+		}
 	}
 }

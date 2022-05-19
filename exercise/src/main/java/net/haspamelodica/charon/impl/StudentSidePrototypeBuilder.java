@@ -31,12 +31,12 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final StudentSideCommunicatorClientSide<REF>	communicator;
-	public final Marshaler<REF>							globalMarshaler;
+	public final Marshaler<?, ?, REF>					globalMarshaler;
 	public final Class<SP>								prototypeClass;
 
-	public final Class<SI>		instanceClass;
-	public final String			studentSideCN;
-	public final Marshaler<REF>	prototypeWideMarshaler;
+	public final Class<SI>				instanceClass;
+	public final String					studentSideCN;
+	public final Marshaler<?, ?, REF>	prototypeWideMarshaler;
 
 	public final StudentSideInstanceBuilder<REF, SI> instanceBuilder;
 
@@ -45,7 +45,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 	private final SP prototype;
 
 	public StudentSidePrototypeBuilder(StudentSideCommunicatorClientSide<REF> communicator,
-			Marshaler<REF> globalMarshaler,
+			Marshaler<?, ?, REF> globalMarshaler,
 			Class<SP> prototypeClass)
 	{
 		this.communicator = communicator;
@@ -103,7 +103,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
 	}
 
-	private Marshaler<REF> createPrototypeWideMarshaler()
+	private Marshaler<?, ?, REF> createPrototypeWideMarshaler()
 	{
 		return globalMarshaler
 				.withAdditionalSerDeses(getSerDeses(prototypeClass))
@@ -126,7 +126,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
-		Marshaler<REF> methodWideMarshaler = prototypeWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
+		Marshaler<?, ?, REF> methodWideMarshaler = prototypeWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 		{
@@ -137,7 +137,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		});
 	}
 
-	private MethodHandler constructorHandler(Method method, Marshaler<REF> marshaler,
+	private MethodHandler constructorHandler(Method method, Marshaler<?, ?, REF> marshaler,
 			boolean nameOverridden)
 	{
 		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
@@ -165,7 +165,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		};
 	}
 
-	private MethodHandler staticMethodHandler(Method method, Marshaler<REF> marshaler, String name)
+	private MethodHandler staticMethodHandler(Method method, Marshaler<?, ?, REF> marshaler, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 
@@ -181,7 +181,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		};
 	}
 
-	private MethodHandler staticFieldGetterHandler(Method method, Marshaler<REF> marshaler, String name)
+	private MethodHandler staticFieldGetterHandler(Method method, Marshaler<?, ?, REF> marshaler, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -199,7 +199,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 		};
 	}
 
-	private MethodHandler staticFieldSetterHandler(Method method, Marshaler<REF> marshaler, String name)
+	private MethodHandler staticFieldSetterHandler(Method method, Marshaler<?, ?, REF> marshaler, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method);
@@ -214,7 +214,7 @@ public final class StudentSidePrototypeBuilder<REF extends Ref<?, Object>,
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> MethodHandler staticFieldSetterHandlerChecked(Marshaler<REF> marshaler, String name, Class<F> fieldType)
+	private <F> MethodHandler staticFieldSetterHandlerChecked(Marshaler<?, ?, REF> marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 

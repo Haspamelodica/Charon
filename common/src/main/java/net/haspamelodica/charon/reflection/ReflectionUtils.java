@@ -166,10 +166,15 @@ public class ReflectionUtils
 	}
 	public static Class<?> nameToClass(String classname)
 	{
+		return nameToClass(classname, null);
+	}
+	public static Class<?> nameToClass(String classname, ClassLoader classloader)
+	{
 		return doChecked(n ->
 		{
 			Class<?> primitiveClass = PRIMITIVE_CLASSES_BY_NAME.get(n);
-			return primitiveClass != null ? primitiveClass : Class.forName(n);
+			return primitiveClass != null ? primitiveClass : Class.forName(classname, true,
+					classloader != null ? classloader : ReflectionUtils.class.getClassLoader());
 		}, classname);
 	}
 

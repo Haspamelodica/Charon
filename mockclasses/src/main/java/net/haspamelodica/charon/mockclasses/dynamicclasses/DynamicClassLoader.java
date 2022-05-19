@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses;
+package net.haspamelodica.charon.mockclasses.dynamicclasses;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
@@ -9,22 +9,33 @@ import java.util.Map.Entry;
 import java.util.stream.Collectors;
 
 import net.bytebuddy.ByteBuddy;
+import net.bytebuddy.description.field.FieldDescription;
+import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.modifier.FieldManifestation;
 import net.bytebuddy.description.modifier.Ownership;
 import net.bytebuddy.description.modifier.Visibility;
+import net.bytebuddy.description.type.TypeDefinition;
 import net.bytebuddy.description.type.TypeDescription;
 import net.bytebuddy.dynamic.DynamicType;
 import net.bytebuddy.dynamic.DynamicType.Builder.MethodDefinition.ReceiverTypeDefinition;
 import net.bytebuddy.dynamic.loading.ClassLoadingStrategy;
 import net.bytebuddy.dynamic.scaffold.subclass.ConstructorStrategy;
 import net.bytebuddy.implementation.MethodCall;
+import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
+import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
+import net.haspamelodica.charon.mockclasses.Mockclass;
 
+// TODO split not redirecting to parent from dynamically defining classes.
+// Relatedly, make not redirecting to parent optional.
 public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends TransformingClassLoader
 {
-	private static final String			RECEIVER_CONTEXT_FIELD_NAME	= "receiverContext";
-	private static final Constructor<?>	Object_new;
+	private static final String								INSTANCE_CONTEXT_FIELD_NAME				= "instanceContext";
+	private static final ElementMatcher<FieldDescription>	INSTANCE_CONTEXT_FIELD_MATCHER			= ElementMatchers.named(INSTANCE_CONTEXT_FIELD_NAME);
+	private static final FieldNameExtractor					INSTANCE_CONTEXT_FIELD_NAME_EXTRACTOR	= method -> INSTANCE_CONTEXT_FIELD_NAME;
+
+	public static final Constructor<?>	Object_new;
 	private static final Method			StaticMethodHandler_call;
 	private static final Method			InstanceMethodHandler_call;
 	static
@@ -42,13 +53,15 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 	}
 
 	private final DynamicInterfaceProvider									interfaceProvider;
+	private final DynamicClassTransformer									transformer;
 	private final DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX>	invocationHandler;
 	private final boolean													preferOriginalClasses;
 
-	public DynamicClassLoader(DynamicInterfaceProvider interfaceProvider,
+	public DynamicClassLoader(DynamicInterfaceProvider interfaceProvider, DynamicClassTransformer transformer,
 			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler, boolean preferOriginalClasses)
 	{
 		this.interfaceProvider = interfaceProvider;
+		this.transformer = transformer;
 		this.invocationHandler = invocationHandler;
 		this.preferOriginalClasses = preferOriginalClasses;
 	}
@@ -56,14 +69,15 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 	@Override
 	protected Class<?> defineTransformedClass(String name, byte[] originalClassfile, URL originalClassfileURL)
 	{
-		System.out.println("Loading " + name);
 		// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself:
 		// Otherwise, we get weird ClassCastExceptions.
 		//TODO not pretty; feels very hardcoded. Also, this could cause problems if users (Charon-side or called code) use other classes.
 		// Maybe discern by using originalClassfileURL? Or package name (don't redefine any Charon classes)?
 		//TODO instead of preventing delegating to parent, just load all user classes (called code) through the DynamicClassLoader,
 		// or through an even "lower" classloader.
-		if(name.equals(StaticMethodHandler.class.getName()) ||
+		//TODO this shouldn't have anything to do with Mockclass, but Mockclass is needed because created classes extend it.
+		if(name.equals(Mockclass.class.getName()) ||
+				name.equals(StaticMethodHandler.class.getName()) ||
 				name.equals(InstanceMethodHandler.class.getName()))
 			try
 			{
@@ -91,8 +105,8 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 
 	private Class<?> mockClassOrNull(String name)
 	{
-		ClassInterface classInterface = interfaceProvider.interfaceForClass(name);
-		return classInterface == null ? null : mockClassWithInterface(name, classInterface);
+		TypeDefinition typeDefinition = interfaceProvider.typeDefinitionFor(name);
+		return typeDefinition == null ? null : mockType(name, typeDefinition);
 	}
 
 	private Class<?> defineClassOrNull(String name, byte[] bytes) throws ClassFormatError
@@ -100,26 +114,34 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		return bytes == null ? null : defineClass(name, bytes, 0, bytes.length);
 	}
 
-	private Class<?> mockClassWithInterface(String name, ClassInterface classInterface)
+	private Class<?> mockType(String name, TypeDefinition typeDefinition)
 	{
-		CCTX classContext = invocationHandler.createClassContext(classInterface);
+		if(typeDefinition.isInterface())
+			throw new UnsupportedOperationException("not implemented yet");
+		return mockClass(name, typeDefinition);
+	}
+	private Class<?> mockClass(String name, TypeDefinition typeDefinition)
+	{
+		CCTX classContext = invocationHandler.createClassContext(typeDefinition);
 
 		DynamicType.Builder<?> builder = new ByteBuddy()
 				//TODO modify here if we support inheritance
 				.subclass(Object.class, ConstructorStrategy.Default.NO_CONSTRUCTORS)
+				.implement(typeDefinition.getInterfaces())
 				.name(name)
-				.defineField(RECEIVER_CONTEXT_FIELD_NAME, Object.class, Visibility.PRIVATE, FieldManifestation.FINAL);
+				.defineField(INSTANCE_CONTEXT_FIELD_NAME, Object.class, Visibility.PRIVATE, FieldManifestation.FINAL);
 
-		for(ConstructorInterface constructor : classInterface.constructors())
-			builder = defineDynamicConstructor(builder, classContext, constructor);
+		for(MethodDescription method : typeDefinition.getDeclaredMethods())
+			builder = method.isConstructor()
+					? defineDynamicConstructor(builder, classContext, method)
+					: defineDynamicMethod(builder, classContext, method);
 
-		for(MethodInterface method : classInterface.methods())
-			builder = defineDynamicMethod(builder, classContext, method);
+		builder = transformer.transform(builder, INSTANCE_CONTEXT_FIELD_MATCHER, INSTANCE_CONTEXT_FIELD_NAME_EXTRACTOR);
 
-		DynamicType.Unloaded<?> unloaded = builder.make();
-		DynamicType.Loaded<?> dynamicType = unloaded.load(this, new ClassLoadingStrategy<>()
+		DynamicType.Loaded<?> dynamicType = builder.make().load(this, new ClassLoadingStrategy<>()
 		{
-			public Map<TypeDescription, Class<?>> load(DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> classLoader, Map<TypeDescription, byte[]> types)
+			public Map<TypeDescription, Class<?>> load(DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> classLoader,
+					Map<TypeDescription, byte[]> types)
 			{
 				return types
 						.entrySet()
@@ -127,25 +149,30 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 						.collect(Collectors.toMap(Entry::getKey, e -> classLoader.defineClass(name, e.getValue(), 0, e.getValue().length)));
 			}
 		});
-		return dynamicType.getLoaded();
+
+		Class<?> dynamicClass = dynamicType.getLoaded();
+		invocationHandler.registerDynamicClassCreated(classContext, dynamicClass);
+
+		return dynamicClass;
 	}
 
-	private DynamicType.Builder<?> defineDynamicConstructor(DynamicType.Builder<?> builder, CCTX classContext, ConstructorInterface constructor)
+	private DynamicType.Builder<?> defineDynamicConstructor(DynamicType.Builder<?> builder, CCTX classContext,
+			MethodDescription constructor)
 	{
 		TCTX constructorContext = invocationHandler.createConstructorContext(classContext, constructor);
 		StaticMethodHandler target = args -> invocationHandler.invokeConstructor(classContext, constructorContext, args);
 
 		return builder
 				.defineConstructor()
-				.withParameters(constructor.parameterTypes())
+				.withParameters(constructor.getParameters().asTypeList())
 				.intercept(MethodCall.invoke(Object_new).andThen(MethodCall
 						.invoke(StaticMethodHandler_call)
 						.on(target, StaticMethodHandler.class)
 						.withArgumentArray()
-						.setsField(ElementMatchers.named(RECEIVER_CONTEXT_FIELD_NAME))));
+						.setsField(INSTANCE_CONTEXT_FIELD_MATCHER)));
 	}
 
-	private ReceiverTypeDefinition<?> defineDynamicMethod(DynamicType.Builder<?> builder, CCTX classContext, MethodInterface method)
+	private ReceiverTypeDefinition<?> defineDynamicMethod(DynamicType.Builder<?> builder, CCTX classContext, MethodDescription method)
 	{
 		MethodCall implementation;
 		if(method.isStatic())
@@ -158,13 +185,13 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 			MCTX methodContext = invocationHandler.createInstanceMethodContext(classContext, method);
 			InstanceMethodHandler<ICTX> target = (receiver, receiverContext, args) -> invocationHandler.invokeInstanceMethod(
 					classContext, methodContext, receiver, receiverContext, args);
-			implementation = MethodCall.invoke(InstanceMethodHandler_call).on(target, InstanceMethodHandler.class).withThis().withField(RECEIVER_CONTEXT_FIELD_NAME);
+			implementation = MethodCall.invoke(InstanceMethodHandler_call).on(target, InstanceMethodHandler.class).withThis().withField(INSTANCE_CONTEXT_FIELD_NAME);
 		}
 
 		return builder
-				.defineMethod(method.name(), method.returnType(),
+				.defineMethod(method.getActualName(), method.getReturnType(),
 						method.isStatic() ? List.of(Visibility.PUBLIC, Ownership.STATIC) : List.of(Visibility.PUBLIC))
-				.withParameters(method.parameters())
+				.withParameters(method.getParameters().asTypeList())
 				.intercept(implementation
 						.withArgumentArray()
 						.withAssigner(Assigner.DEFAULT, Assigner.Typing.DYNAMIC));

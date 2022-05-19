@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses;
+package net.haspamelodica.charon.mockclasses.dynamicclasses;
 
 import java.io.IOException;
 import java.io.InputStream;

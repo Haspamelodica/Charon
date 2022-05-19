@@ -25,5 +25,5 @@ public interface RepresentationObjectMarshaler<REFR, REPR extends REFR, REF exte
 	 * This method is only called if the REF does not have a referrer;
 	 * after calling, the caller is responsible for setting the referrer to the returned representation object.
 	 */
-	public REPR unmarshal(REF ref);
+	public REPR unmarshal(REF objRef);
 }

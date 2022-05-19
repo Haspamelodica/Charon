@@ -1,7 +1,5 @@
 package net.haspamelodica.charon.mockclasses;
 
-import java.util.function.Supplier;
-
 public class Transformed
 {
 	public Transformed()
@@ -25,7 +23,7 @@ public class Transformed
 		System.out.println("Original instance method");
 	}
 
-	public A testCyclicType(Supplier<A> newA)
+	public A testCyclicType()
 	{
 		System.out.println("Transformed.testCyclicType");
 		return new A();

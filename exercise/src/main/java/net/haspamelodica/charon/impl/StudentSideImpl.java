@@ -115,14 +115,14 @@ public class StudentSideImpl<REF extends Ref<?, Object>> implements StudentSide
 		}
 
 		@Override
-		public StudentSideInstance unmarshal(REF ref)
+		public StudentSideInstance unmarshal(REF objRef)
 		{
 			//TODO if we support inheritance, we need to check super-class-names too
-			String studentSideCN = communicator.getStudentSideClassname(ref);
+			String studentSideCN = communicator.getStudentSideClassname(objRef);
 			StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 			if(prototypeBuilder == null)
 				return null;
-			return prototypeBuilder.instanceBuilder.createInstance(ref);
+			return prototypeBuilder.instanceBuilder.createInstance(objRef);
 		}
 	}
 }

@@ -37,3 +37,9 @@ For each class expected to be written by the staudent, the exercise creator need
 Based on them, one or more classes containing test code can be written: [`SorterExercise.java`](examples/sorter/exercise/src/sorter/SorterExercise.java).
 
 Students only need to create the classes required by the exercise: [`Sorter.java`](examples/sorter/student/src/sorter/Sorter.java), [`StringArrayList.java`](examples/sorter/student/src/sorter/StringArrayList.java).
+
+## Name
+
+Charon is named after the ferryman over the river Acheron in Greek mythology.
+This name was chosen because it is his duty to only allow souls to cross Acheron from the world of the living into the world of the dead, but not back,
+which is similar to what this framework does: it only allows commands from the exercise side to the student side, but not back.

@@ -3,10 +3,13 @@ package net.haspamelodica.charon.mockclasses.dynamicclasses;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
 import java.net.URL;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
@@ -25,7 +28,6 @@ import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
-import net.haspamelodica.charon.mockclasses.Mockclass;
 
 // TODO split not redirecting to parent from dynamically defining classes.
 // Relatedly, make not redirecting to parent optional.
@@ -54,14 +56,35 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		}
 	}
 
-	private final DynamicInterfaceProvider									interfaceProvider;
-	private final DynamicClassTransformer									transformer;
-	private final DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX>	invocationHandler;
-	private final boolean													preferOriginalClasses;
+	private final Set<String>				forceDelegationClassnames;
+	private final DynamicInterfaceProvider	interfaceProvider;
+	private final DynamicClassTransformer	transformer;
+	private final boolean					preferOriginalClasses;
 
-	public DynamicClassLoader(DynamicInterfaceProvider interfaceProvider, DynamicClassTransformer transformer,
-			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler, boolean preferOriginalClasses)
+	private final DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler;
+
+	public DynamicClassLoader(DynamicInterfaceProvider interfaceProvider,
+			DynamicClassTransformer transformer, boolean preferOriginalClasses,
+			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler, Class<?>... forceDelegationClasses)
 	{
+		this(Arrays.stream(forceDelegationClasses).map(Class::getName).collect(Collectors.toUnmodifiableSet()),
+				interfaceProvider, transformer, preferOriginalClasses, invocationHandler);
+	}
+	public DynamicClassLoader(Set<String> forceDelegationClassnames, DynamicInterfaceProvider interfaceProvider,
+			DynamicClassTransformer transformer, boolean preferOriginalClasses,
+			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler)
+	{
+		// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
+		// Otherwise, we get weird ClassCastExceptions.
+		//TODO not pretty; feels very hardcoded. Also, this could cause problems if users (Charon-side or called code)
+		// reference other classes in dynamically-generated classes.
+		// Maybe discern by using originalClassfileURL? Or package name (don't redefine any Charon classes)?
+		//TODO instead of preventing delegating to parent, just load all user classes (called code) through the DynamicClassLoader,
+		// or through an even "lower" classloader.
+		this.forceDelegationClassnames = Stream.concat(Stream.of(
+				StaticMethodHandler.class, ConstructorMethodHandler.class, InstanceMethodHandler.class)
+				.map(Class::getName),
+				forceDelegationClassnames.stream()).collect(Collectors.toUnmodifiableSet());
 		this.interfaceProvider = interfaceProvider;
 		this.transformer = transformer;
 		this.invocationHandler = invocationHandler;
@@ -71,17 +94,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 	@Override
 	protected Class<?> defineTransformedClass(String name, byte[] originalClassfile, URL originalClassfileURL)
 	{
-		// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself:
-		// Otherwise, we get weird ClassCastExceptions.
-		//TODO not pretty; feels very hardcoded. Also, this could cause problems if users (Charon-side or called code) use other classes.
-		// Maybe discern by using originalClassfileURL? Or package name (don't redefine any Charon classes)?
-		//TODO instead of preventing delegating to parent, just load all user classes (called code) through the DynamicClassLoader,
-		// or through an even "lower" classloader.
-		//TODO this shouldn't have anything to do with Mockclass, but Mockclass is needed because created classes extend it.
-		if(name.equals(Mockclass.class.getName()) ||
-				name.equals(StaticMethodHandler.class.getName()) ||
-				name.equals(ConstructorMethodHandler.class.getName()) ||
-				name.equals(InstanceMethodHandler.class.getName()))
+		if(forceDelegationClassnames.contains(name))
 			try
 			{
 				return getParent().loadClass(name);

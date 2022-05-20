@@ -16,7 +16,7 @@ public class MockclassesPlaygroundRunner
 
 		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(
 				new URL("file:target/classes/"));
-		try(WrappedClassLoaderForCharon wrappedClassloader = new WrappedClassLoaderForCharon(interfaceProvider, args))
+		try(WrappedMockclassesClassLoader wrappedClassloader = new WrappedMockclassesClassLoader(interfaceProvider, args))
 		{
 			Class<?> clazz = wrappedClassloader.getClassloader().loadClass(MockclassesPlayground.class.getName());
 			clazz.getMethod("main", String[].class).invoke(null, new Object[] {args});

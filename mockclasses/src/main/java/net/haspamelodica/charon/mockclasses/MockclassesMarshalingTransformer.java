@@ -21,8 +21,7 @@ import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicClassTransformer;
 import net.haspamelodica.charon.refs.Ref;
 
-// TODO this is more than just a ClassTransformer; reflect that in the name
-public class CharonClassTransformer<REF extends Ref<?, Object>> implements DynamicClassTransformer,
+public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implements DynamicClassTransformer,
 		RepresentationObjectMarshaler<Object, Mockclass<REF>, REF>
 {
 	private final StudentSideCommunicator<REF> communicator;
@@ -31,7 +30,7 @@ public class CharonClassTransformer<REF extends Ref<?, Object>> implements Dynam
 
 	private final Map<String, Constructor<? extends Mockclass<REF>>> refBasedConstructorsByClassname;
 
-	public CharonClassTransformer(StudentSideCommunicator<REF> communicator)
+	public MockclassesMarshalingTransformer(StudentSideCommunicator<REF> communicator)
 	{
 		this.communicator = communicator;
 		this.refBasedConstructorsByClassname = new HashMap<>();

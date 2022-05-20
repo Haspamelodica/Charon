@@ -12,17 +12,17 @@ import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicInvocationHand
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
-public class WrappedClassLoaderForCharon implements AutoCloseable
+public class WrappedMockclassesClassLoader implements AutoCloseable
 {
 	private final WrappedCommunicator<?>	communicator;
 	private final ClassLoader				classloader;
 
-	public WrappedClassLoaderForCharon(DynamicInterfaceProvider interfaceProvider, String... communicatorArgs)
+	public WrappedMockclassesClassLoader(DynamicInterfaceProvider interfaceProvider, String... communicatorArgs)
 			throws IOException, InterruptedException, IncorrectUsageException
 	{
 		this(interfaceProvider, new WrappedCommunicator<>(communicatorArgs));
 	}
-	public WrappedClassLoaderForCharon(DynamicInterfaceProvider interfaceProvider,
+	public WrappedMockclassesClassLoader(DynamicInterfaceProvider interfaceProvider,
 			WrappedCommunicator<Ref<Integer, Object>> communicator)
 	{
 		this.communicator = communicator;
@@ -43,11 +43,13 @@ public class WrappedClassLoaderForCharon implements AutoCloseable
 	public static ClassLoader createMockclassesClassloader(DynamicInterfaceProvider interfaceProvider,
 			StudentSideCommunicatorClientSide<Ref<Integer, Object>> communicator)
 	{
-		CharonClassTransformer<Ref<Integer, Object>> transformer = new CharonClassTransformer<>(communicator);
+		MockclassesMarshalingTransformer<Ref<Integer, Object>> transformer = new MockclassesMarshalingTransformer<>(communicator);
 		Marshaler<?, ?, Ref<Integer, Object>> marshaler = new Marshaler<>(communicator, transformer,
 				PrimitiveSerDes.PRIMITIVE_SERDESES);
-		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new CharonInvocationHandler<>(communicator, marshaler, transformer);
-		ClassLoader classloader = new DynamicClassLoader<>(interfaceProvider, transformer, invocationHandler, false);
+		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
+		// Mockclass has to be delegated because classes from the "outer" classloader
+		// need to cast mock classes to "their" Mockclass class.
+		ClassLoader classloader = new DynamicClassLoader<>(interfaceProvider, transformer, false, invocationHandler, Mockclass.class);
 		transformer.setClassloader(classloader);
 
 		return classloader;

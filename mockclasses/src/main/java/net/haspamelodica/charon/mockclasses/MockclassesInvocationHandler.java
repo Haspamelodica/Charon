@@ -12,14 +12,14 @@ import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicInvocationHand
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 
-public class CharonInvocationHandler<REF extends Ref<?, Object>>
+public class MockclassesInvocationHandler<REF extends Ref<?, Object>>
 		implements DynamicInvocationHandler<String, MethodDescription, MethodDescription, MethodDescription, REF>
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
 	private final Marshaler<?, ?, REF>						marshaler;
-	private final CharonClassTransformer<REF>				transformer;
+	private final MockclassesMarshalingTransformer<REF>				transformer;
 
-	public CharonInvocationHandler(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<?, ?, REF> marshaler, CharonClassTransformer<REF> transformer)
+	public MockclassesInvocationHandler(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<?, ?, REF> marshaler, MockclassesMarshalingTransformer<REF> transformer)
 	{
 		this.communicator = communicator;
 		this.marshaler = marshaler;
@@ -104,7 +104,7 @@ public class CharonInvocationHandler<REF extends Ref<?, Object>>
 	}
 	private static List<String> toClassnames(List<? extends TypeDefinition> typeDefinitions)
 	{
-		return typeDefinitions.stream().map(CharonInvocationHandler::toClassname).toList();
+		return typeDefinitions.stream().map(MockclassesInvocationHandler::toClassname).toList();
 	}
 	private Class<?> toClass(TypeDefinition typeDefinition)
 	{

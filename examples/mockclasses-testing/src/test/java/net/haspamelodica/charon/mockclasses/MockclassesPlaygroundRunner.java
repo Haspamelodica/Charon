@@ -12,7 +12,7 @@ public class MockclassesPlaygroundRunner
 	public static void main(String[] args) throws ClassNotFoundException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException, IOException, InterruptedException, IncorrectUsageException
 	{
-		System.out.println("--- With mockclasses---");
+		System.out.println("--- With mockclasses ---");
 
 		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(
 				new URL("file:target/classes/"));

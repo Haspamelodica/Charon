@@ -17,7 +17,7 @@ public class MockclassesInvocationHandler<REF extends Ref<?, Object>>
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
 	private final Marshaler<?, ?, REF>						marshaler;
-	private final MockclassesMarshalingTransformer<REF>				transformer;
+	private final MockclassesMarshalingTransformer<REF>		transformer;
 
 	public MockclassesInvocationHandler(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<?, ?, REF> marshaler, MockclassesMarshalingTransformer<REF> transformer)
 	{
@@ -77,7 +77,7 @@ public class MockclassesInvocationHandler<REF extends Ref<?, Object>>
 				classContext,
 				toClassnames(parameterTypes),
 				argsRefs);
-		
+
 		result.setReferrer(receiver);
 
 		return result;

@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import net.haspamelodica.charon.StudentSideRunner;
 
-public class MockclassesStudentSide
+public class MockclassesStudentSideRunner
 {
 	public static void main(String[] args) throws IOException, InterruptedException
 	{

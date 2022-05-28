@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses;
+package net.haspamelodica.charon.mockclasses.impl;
 
 import java.lang.reflect.Type;
 import java.net.URL;

@@ -5,6 +5,8 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URL;
 
 import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicInterfaceProvider;
+import net.haspamelodica.charon.mockclasses.impl.ClasspathBasedDynamicInterfaceProvider;
+import net.haspamelodica.charon.mockclasses.impl.WrappedMockclassStudentSide;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class MockclassesPlaygroundRunner
@@ -16,10 +18,9 @@ public class MockclassesPlaygroundRunner
 
 		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(
 				new URL("file:target/classes/"));
-		try(WrappedMockclassesClassLoader wrappedClassloader = new WrappedMockclassesClassLoader(interfaceProvider, args))
+		try(WrappedMockclassStudentSide wrappedStudentSide = new WrappedMockclassStudentSide(interfaceProvider, args))
 		{
-			Class<?> clazz = wrappedClassloader.getClassloader().loadClass(MockclassesPlayground.class.getName());
-			clazz.getMethod("main", String[].class).invoke(null, new Object[] {args});
+			wrappedStudentSide.getStudentSide().runWithMockclasses(MockclassesPlayground.class, null);
 		}
 
 

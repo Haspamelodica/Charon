@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses;
+package net.haspamelodica.charon.mockclasses.impl;
 
 import java.util.Arrays;
 import java.util.List;

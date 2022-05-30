@@ -1,21 +1,23 @@
 package net.haspamelodica.charon.mockclasses.impl;
 
-import static net.haspamelodica.charon.mockclasses.impl.ArrayUtils.pseudoAddAll;
+import static net.haspamelodica.charon.mockclasses.MockclassesUtils.pseudoAddAll;
 
 import java.io.IOException;
+import java.util.List;
 
 import net.haspamelodica.charon.WrappedCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
+import net.haspamelodica.charon.marshaling.StringSerDes;
 import net.haspamelodica.charon.mockclasses.classloaders.ClassSetClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
-import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
-import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
-import net.haspamelodica.charon.mockclasses.classloaders.RedefiningClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader.ConstructorMethodHandler;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader.InstanceMethodHandler;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader.StaticMethodHandler;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
+import net.haspamelodica.charon.mockclasses.classloaders.RedefiningClassLoader;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
@@ -52,8 +54,9 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 			StudentSideCommunicatorClientSide<Ref<Integer, Object>> communicator, Class<?>... forceDelegationClasses)
 	{
 		MockclassesMarshalingTransformer<Ref<Integer, Object>> transformer = new MockclassesMarshalingTransformer<>(communicator);
+		// TODO make Serdeses configurable
 		Marshaler<?, ?, Ref<Integer, Object>> marshaler = new Marshaler<>(communicator, transformer,
-				PrimitiveSerDes.PRIMITIVE_SERDESES);
+				PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
 		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
 
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.

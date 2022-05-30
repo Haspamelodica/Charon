@@ -9,13 +9,13 @@ import net.haspamelodica.charon.mockclasses.impl.ClasspathBasedDynamicInterfaceP
 import net.haspamelodica.charon.mockclasses.impl.WrappedMockclassStudentSide;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
-public class MockclassesPlaygroundRunner
+public class MockclassesPlaygroundRunnerManual
 {
 	public static void main(String[] args) throws ClassNotFoundException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException, IOException, InterruptedException, IncorrectUsageException
 	{
 		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(new URL("file:target/classes/"));
-		try(WrappedMockclassStudentSide wrappedStudentSide = new WrappedMockclassStudentSide(MockclassesPlaygroundRunner.class.getClassLoader(),
+		try(WrappedMockclassStudentSide wrappedStudentSide = new WrappedMockclassStudentSide(MockclassesPlaygroundRunnerManual.class.getClassLoader(),
 				interfaceProvider, args, MockclassesPlayground.class))
 		{
 			MockclassStudentSide studentSide = wrappedStudentSide.getStudentSide();

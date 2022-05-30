@@ -2,6 +2,7 @@ package net.haspamelodica.charon.mockclasses.impl;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
 
 import net.haspamelodica.charon.mockclasses.MockclassStudentSide;
 
@@ -14,47 +15,55 @@ public class MockclassStudentSideImpl implements MockclassStudentSide
 		this.classloader = classloader;
 	}
 
-	/**
-	 * Runs the specified action with the given parameters with mockclasses enabled.
-	 * The specified action class has to have a public constructor with no parameters.
-	 * The parameter and return classes have to be forced to be delegated.
-	 */
 	@Override
-	public <P, R, X extends Exception> R runWithMockclasses(Class<? extends MockclassesFunction<P, R, X>> actionClass,
-			P params) throws X
+	public <INTERFACE, IMPL extends INTERFACE, X extends Exception> INTERFACE
+			createInstanceWithMockclasses(Class<INTERFACE> interfaceClass, Class<IMPL> implementationClass,
+					List<Class<?>> parameterClasses, Object... arguments) throws X
 	{
-		Class<MockclassesFunction<P, R, X>> actionClassWithMockclasses;
+		// This is not Class<IMPL>, but Class<other class with same name and interface as IMPL>.
+		// At compile-time, those are indistinguishable, and at runtime, types are erased, so it wouldn't matter,
+		// but this way is cleaner.
+		Class<? extends INTERFACE> implClassWithMockclasses;
 		try
 		{
 			// assume the classfile found "inside" the classloader matches the class outside.
-			// Also, MockclassesRunnable is forced to be delegated.
+			// Also, INTERFACE is forced to be delegated, as per method contract.
 			@SuppressWarnings("unchecked")
-			Class<MockclassesFunction<P, R, X>> actionClassWithMockclassesCasted =
-					(Class<MockclassesFunction<P, R, X>>) classloader.loadClass(actionClass.getName());
-			actionClassWithMockclasses = actionClassWithMockclassesCasted;
+			Class<? extends INTERFACE> implClassWithMockclassesCasted =
+					(Class<? extends INTERFACE>) classloader.loadClass(implementationClass.getName());
+			implClassWithMockclasses = implClassWithMockclassesCasted;
 		} catch(ClassNotFoundException e)
 		{
-			throw new RuntimeException("Action class not found withing mockclasses classloader", e);
+			//TODO better exception type
+			throw new RuntimeException("Implementation class not found within mockclasses classloader", e);
 		}
 
-		Constructor<MockclassesFunction<P, R, X>> constructor;
+		Constructor<? extends INTERFACE> constructor;
 		try
 		{
-			constructor = actionClassWithMockclasses.getConstructor();
+			constructor = implClassWithMockclasses.getConstructor();
 		} catch(NoSuchMethodException e)
 		{
-			throw new RuntimeException("Constructor with no parameters doesn't exist or isn't visible", e);
+			//TODO better exception type
+			throw new RuntimeException("Constructor with given parameters doesn't exist or isn't visible", e);
 		}
 
-		MockclassesFunction<P, R, X> actionInstance;
+		INTERFACE instance;
 		try
 		{
-			actionInstance = constructor.newInstance();
+			instance = constructor.newInstance();
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)
 		{
+			//TODO better exception type
 			throw new RuntimeException("Instance creation failed", e);
 		}
 
-		return actionInstance.apply(params);
+		// catch user errors
+		if(!interfaceClass.isInstance(instance))
+			//TODO better exception type
+			throw new RuntimeException("Created instance is not an instance of the given interface; "
+					+ "is the interface forced to be delegated?");
+
+		return instance;
 	}
 }

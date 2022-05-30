@@ -14,19 +14,26 @@ public class MockclassesPlaygroundRunner
 	public static void main(String[] args) throws ClassNotFoundException, IllegalAccessException,
 			InvocationTargetException, NoSuchMethodException, IOException, InterruptedException, IncorrectUsageException
 	{
-		System.out.println("--- With mockclasses ---");
-
-		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(
-				new URL("file:target/classes/"));
-		try(WrappedMockclassStudentSide wrappedStudentSide = new WrappedMockclassStudentSide(interfaceProvider, args))
+		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(new URL("file:target/classes/"));
+		try(WrappedMockclassStudentSide wrappedStudentSide = new WrappedMockclassStudentSide(interfaceProvider, args, MockclassesPlayground.class))
 		{
-			wrappedStudentSide.getStudentSide().runWithMockclasses(MockclassesPlayground.class, null);
+			MockclassStudentSide studentSide = wrappedStudentSide.getStudentSide();
+
+			System.out.println("--- With mockclasses ---");
+
+			MockclassesPlayground playground = studentSide.createInstanceWithMockclasses(MockclassesPlayground.class, MockclassesPlaygroundImpl.class);
+			runPlayground(playground);
+
+
+			System.out.println();
+			System.out.println("--- With system classloader ---");
+
+			runPlayground(new MockclassesPlaygroundImpl());
 		}
+	}
 
-
-		System.out.println();
-		System.out.println("--- With system classloader ---");
-
-		MockclassesPlayground.main(args);
+	private static void runPlayground(MockclassesPlayground playground)
+	{
+		playground.run();
 	}
 }

@@ -28,4 +28,9 @@ public class Transformed
 		System.out.println("Transformed.testCyclicType");
 		return new A();
 	}
+
+	public void printA(A a)
+	{
+		System.out.println(a);
+	}
 }

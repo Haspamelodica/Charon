@@ -56,13 +56,16 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 				PrimitiveSerDes.PRIMITIVE_SERDESES);
 		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
 
-		// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
-		// Otherwise, we get weird ClassCastExceptions.
-		// Mockclass has to be delegated because classes from the "outer" classloader
-		// need to cast mock classes to "their" Mockclass class.
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
-				Mockclass.class, StaticMethodHandler.class, ConstructorMethodHandler.class, InstanceMethodHandler.class);
+				// Delegate Ref because of the getRef method of Mockclass
+				Ref.class,
+				// Mockclass has to be delegated
+				// because classes from the "outer" classloader need to cast mock classes to "their" Mockclass class.
+				Mockclass.class,
+				// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
+				// Otherwise, we get weird ClassCastExceptions.
+				StaticMethodHandler.class, ConstructorMethodHandler.class, InstanceMethodHandler.class);
 
 		//TODO rename forceDelegationClasses everywhere
 		// Pass null as the parent to prevent delegating.

@@ -14,6 +14,6 @@ public class MockclassesPlaygroundImpl implements MockclassesPlayground
 		Transformed.run();
 		Transformed transformed = new Transformed();
 		transformed.runInstanceMethod();
-		transformed.testCyclicType().testCyclicType().testCyclicType().testCyclicType();
+		transformed.printA(transformed.testCyclicType().testCyclicType().testCyclicType().testCyclicType().testCyclicType());
 	}
 }

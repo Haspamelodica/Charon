@@ -1,11 +1,10 @@
 package net.haspamelodica.charon.mockclasses.impl;
 
-import java.lang.reflect.Type;
 import java.net.URL;
 import java.net.URLClassLoader;
 
 import net.bytebuddy.description.type.TypeDefinition;
-import net.bytebuddy.description.type.TypeDefinition.Sort;
+import net.haspamelodica.charon.mockclasses.MockclassesUtils;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
 
 public class ClasspathBasedDynamicInterfaceProvider implements DynamicInterfaceProvider
@@ -31,11 +30,6 @@ public class ClasspathBasedDynamicInterfaceProvider implements DynamicInterfaceP
 			return null;
 		}
 
-		return typeDescriptionFor(clazz);
-	}
-
-	public static TypeDefinition typeDescriptionFor(Type type)
-	{
-		return Sort.describe(type);
+		return MockclassesUtils.typeDefinitionFor(clazz);
 	}
 }

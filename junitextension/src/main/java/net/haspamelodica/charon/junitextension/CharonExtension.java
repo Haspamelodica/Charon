@@ -27,7 +27,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 /**
  * A JUnit 5 {@link ParameterResolver} and {@link InvocationInterceptor} extension
  * making an instance of {@link StudentSide} accessible to test code.
- * The extension connects with the student side according to the JUnit5 configuration parameter {@value #CONFIGURATION_PARAMETER_NAME}.
+ * The extension connects with the student side according to the JUnit5 configuration parameter {@value #COMMUNICATIONARGS_PARAM_NAME}.
  */
 public class CharonExtension extends TypeBasedParameterResolver<StudentSide> implements InvocationInterceptor
 {

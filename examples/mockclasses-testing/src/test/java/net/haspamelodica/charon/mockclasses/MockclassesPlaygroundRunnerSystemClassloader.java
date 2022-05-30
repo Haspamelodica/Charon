@@ -1,6 +1,6 @@
 package net.haspamelodica.charon.mockclasses;
 
-public class MockclassesPlaygroundRunnerManualSystemClassloader
+public class MockclassesPlaygroundRunnerSystemClassloader
 {
 	public static void main(String[] args)
 	{

@@ -2,11 +2,8 @@ package net.haspamelodica.charon.junitextension;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.Method;
 import java.util.Optional;
 
-import org.junit.jupiter.api.extension.DynamicTestInvocationContext;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
 import org.junit.jupiter.api.extension.ExtensionContext.Store;
@@ -15,7 +12,6 @@ import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.junit.jupiter.api.extension.ReflectiveInvocationContext;
 import org.junit.jupiter.api.extension.support.TypeBasedParameterResolver;
 
 import net.haspamelodica.charon.StudentSide;
@@ -29,7 +25,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
  * making an instance of {@link StudentSide} accessible to test code.
  * The extension connects with the student side according to the JUnit5 configuration parameter {@value #COMMUNICATIONARGS_PARAM_NAME}.
  */
-public class CharonExtension extends TypeBasedParameterResolver<StudentSide> implements InvocationInterceptor
+public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 {
 	public static final String	CONFIGURATION_PARAMETER_NAME_BASE	= "net.haspamelodica.charon.";
 	public static final String	COMMUNICATIONARGS_PARAM_NAME		= CONFIGURATION_PARAMETER_NAME_BASE + "communicationargs";
@@ -41,58 +37,6 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide> imp
 	public StudentSide resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
 	{
 		return getStudentSide(extensionContext);
-	}
-
-	@Override
-	public <T> T interceptTestClassConstructor(Invocation<T> invocation, ReflectiveInvocationContext<Constructor<T>> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		return invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptBeforeAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptBeforeEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptTestMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public <T> T interceptTestFactoryMethod(Invocation<T> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		return invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptTestTemplateMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptDynamicTest(Invocation<Void> invocation, DynamicTestInvocationContext invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptAfterEachMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-	@Override
-	public void interceptAfterAllMethod(Invocation<Void> invocation, ReflectiveInvocationContext<Method> invocationContext, ExtensionContext extensionContext) throws Throwable
-	{
-		invokeWithStudentSide(invocation);
-	}
-
-	public <R> R invokeWithStudentSide(Invocation<R> invocation) throws Throwable
-	{
-		//here is the place to inject a custom ClassLoader when we support faked student classes
-		return invocation.proceed();
 	}
 
 	private StudentSide getStudentSide(ExtensionContext extensionContext)

@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses.dynamicclasses;
+package net.haspamelodica.charon.mockclasses.classloaders;
 
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;

@@ -8,7 +8,7 @@ import net.bytebuddy.description.type.TypeDefinition;
 import net.bytebuddy.description.type.TypeList;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.marshaling.Marshaler;
-import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicInvocationHandler;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 

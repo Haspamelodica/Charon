@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.mockclasses.dynamicclasses;
+package net.haspamelodica.charon.mockclasses.classloaders;
 
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.dynamic.DynamicType.Builder;

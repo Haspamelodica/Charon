@@ -1,15 +1,11 @@
-package net.haspamelodica.charon.mockclasses.dynamicclasses;
+package net.haspamelodica.charon.mockclasses.classloaders;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
-import java.net.URL;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
-import java.util.Set;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import net.bytebuddy.ByteBuddy;
 import net.bytebuddy.description.field.FieldDescription;
@@ -29,9 +25,7 @@ import net.bytebuddy.implementation.bytecode.assign.Assigner;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
 
-// TODO split not redirecting to parent from dynamically defining classes.
-// Relatedly, make not redirecting to parent optional.
-public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends TransformingClassLoader
+public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends ClassLoader
 {
 	private static final String								INSTANCE_CONTEXT_FIELD_NAME				= "instanceContext";
 	private static final ElementMatcher<FieldDescription>	INSTANCE_CONTEXT_FIELD_MATCHER			= ElementMatchers.named(INSTANCE_CONTEXT_FIELD_NAME);
@@ -56,78 +50,28 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 		}
 	}
 
-	private final Set<String>				forceDelegationClassnames;
 	private final DynamicInterfaceProvider	interfaceProvider;
 	private final DynamicClassTransformer	transformer;
-	private final boolean					preferOriginalClasses;
 
 	private final DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler;
 
-	public DynamicClassLoader(DynamicInterfaceProvider interfaceProvider,
-			DynamicClassTransformer transformer, boolean preferOriginalClasses,
-			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler, Class<?>... forceDelegationClasses)
+	public DynamicClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
+			DynamicClassTransformer transformer, DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler)
 	{
-		this(Arrays.stream(forceDelegationClasses).map(Class::getName).collect(Collectors.toUnmodifiableSet()),
-				interfaceProvider, transformer, preferOriginalClasses, invocationHandler);
-	}
-	public DynamicClassLoader(Set<String> forceDelegationClassnames, DynamicInterfaceProvider interfaceProvider,
-			DynamicClassTransformer transformer, boolean preferOriginalClasses,
-			DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX> invocationHandler)
-	{
-		// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
-		// Otherwise, we get weird ClassCastExceptions.
-		//TODO not pretty; feels very hardcoded. Also, this could cause problems if users (Charon-side or called code)
-		// reference other classes in dynamically-generated classes.
-		// Maybe discern by using originalClassfileURL? Or package name (don't redefine any Charon classes)?
-		//TODO instead of preventing delegating to parent, just load all user classes (called code) through the DynamicClassLoader,
-		// or through an even "lower" classloader.
-		this.forceDelegationClassnames = Stream.concat(Stream.of(
-				StaticMethodHandler.class, ConstructorMethodHandler.class, InstanceMethodHandler.class)
-				.map(Class::getName),
-				forceDelegationClassnames.stream()).collect(Collectors.toUnmodifiableSet());
+		super(parent);
 		this.interfaceProvider = interfaceProvider;
 		this.transformer = transformer;
 		this.invocationHandler = invocationHandler;
-		this.preferOriginalClasses = preferOriginalClasses;
 	}
+
 
 	@Override
-	protected Class<?> defineTransformedClass(String name, byte[] originalClassfile, URL originalClassfileURL)
-	{
-		if(forceDelegationClassnames.contains(name))
-			try
-			{
-				return getParent().loadClass(name);
-			} catch(ClassNotFoundException e)
-			{
-				return null;
-			}
-
-		Class<?> clazz = null;
-
-		if(preferOriginalClasses)
-			if(clazz == null)
-				clazz = defineClassOrNull(name, originalClassfile);
-
-		if(clazz == null)
-			clazz = mockClassOrNull(name);
-
-		if(!preferOriginalClasses)
-			if(clazz == null)
-				clazz = defineClassOrNull(name, originalClassfile);
-
-		return clazz;
-	}
-
-	private Class<?> mockClassOrNull(String name)
+	protected Class<?> findClass(String name) throws ClassNotFoundException
 	{
 		TypeDefinition typeDefinition = interfaceProvider.typeDefinitionFor(name);
-		return typeDefinition == null ? null : mockType(name, typeDefinition);
-	}
-
-	private Class<?> defineClassOrNull(String name, byte[] bytes) throws ClassFormatError
-	{
-		return bytes == null ? null : defineClass(name, bytes, 0, bytes.length);
+		if(typeDefinition == null)
+			throw new ClassNotFoundException(name);
+		return mockType(name, typeDefinition);
 	}
 
 	private Class<?> mockType(String name, TypeDefinition typeDefinition)
@@ -180,7 +124,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends Transformi
 				classContext, constructorContext, receiver, args);
 
 		return builder
-				.defineConstructor()
+				.defineConstructor(Visibility.PUBLIC)
 				.withParameters(constructor.getParameters().asTypeList())
 				.intercept(MethodCall.invoke(Object_new).andThen(MethodCall
 						.invoke(ConstructorMethodHandler_call)

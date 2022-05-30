@@ -6,7 +6,7 @@ import java.net.URLClassLoader;
 
 import net.bytebuddy.description.type.TypeDefinition;
 import net.bytebuddy.description.type.TypeDefinition.Sort;
-import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicInterfaceProvider;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
 
 public class ClasspathBasedDynamicInterfaceProvider implements DynamicInterfaceProvider
 {

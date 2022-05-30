@@ -17,8 +17,8 @@ import net.bytebuddy.matcher.ElementMatcher;
 import net.bytebuddy.matcher.ElementMatchers;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
-import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicClassLoader;
-import net.haspamelodica.charon.mockclasses.dynamicclasses.DynamicClassTransformer;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
+import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 import net.haspamelodica.charon.refs.Ref;
 
 public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implements DynamicClassTransformer,

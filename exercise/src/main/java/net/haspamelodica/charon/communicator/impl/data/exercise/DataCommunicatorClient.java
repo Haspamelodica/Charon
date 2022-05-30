@@ -82,6 +82,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		this.refManager = new IntRefManager<>();
 		this.running = new AtomicBoolean(true);
 		this.refCleanupThread = new Thread(this::refCleanupThread);
+		refCleanupThread.setDaemon(true);
 		refCleanupThread.start();
 	}
 

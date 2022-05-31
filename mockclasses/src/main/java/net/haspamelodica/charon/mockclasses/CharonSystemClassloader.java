@@ -91,7 +91,7 @@ public class CharonSystemClassloader extends URLClassLoader
 		if(communicatorArgsString == null)
 		{
 			System.err.println("Set the property \"" + COMMUNICATIONARGS_PARAM_NAME + "\": " + CommunicationArgsParser.argsSyntax());
-			throw new IncorrectUsageException();
+			throw new IncorrectUsageException("Property " + COMMUNICATIONARGS_PARAM_NAME + " not set");
 		}
 		String[] communicatorArgs = communicatorArgsString.split(" ");
 
@@ -103,7 +103,7 @@ public class CharonSystemClassloader extends URLClassLoader
 			wrappedMockclassesClassLoader = new WrappedMockclassesClassLoader(parent, interfaceProvider, communicatorArgs);
 		} catch(IncorrectUsageException e)
 		{
-			System.err.println("Set the property \"" + COMMUNICATIONARGS_PARAM_NAME + "\": " + CommunicationArgsParser.argsSyntax());
+			System.err.println("Incorrect syntax of \"" + COMMUNICATIONARGS_PARAM_NAME + "\": " + e.getMessage());
 			throw e;
 		}
 

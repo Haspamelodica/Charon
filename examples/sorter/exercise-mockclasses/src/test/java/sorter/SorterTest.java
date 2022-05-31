@@ -7,7 +7,7 @@ import java.util.Arrays;
 import org.junit.jupiter.api.Test;
 
 /**
- * Usage: Run this class as a JUnit test with the following arguments:
+ * Usage: Either use this project's POM file, or run this class as a JUnit test from your favourite IDE with the following arguments:
  * 
  * <pre>
  * -Djava.system.class.loader=net.haspamelodica.charon.mockclasses.CharonSystemClassloader

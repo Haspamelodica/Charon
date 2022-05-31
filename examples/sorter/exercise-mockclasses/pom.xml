@@ -37,6 +37,18 @@
 					<release>17</release>
 				</configuration>
 			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-surefire-plugin</artifactId>
+				<version>3.0.0-M6</version>
+				<configuration>
+					<!-- For some reason, the communicationargs must be on the same line as templatecode.classes -->
+					<argLine>
+						-Djava.system.class.loader=net.haspamelodica.charon.mockclasses.CharonSystemClassloader
+						-Dnet.haspamelodica.charon.templatecode.classes=sorter.Sorter -Dnet.haspamelodica.charon.communicationargs="socket localhost 1337"
+					</argLine>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 </project>

@@ -1,5 +1,7 @@
 package net.haspamelodica.charon.mockclasses;
 
+import static net.haspamelodica.charon.mockclasses.MockclassesUtils.classpathUrlForClass;
+
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
@@ -16,7 +18,6 @@ import net.haspamelodica.charon.mockclasses.impl.ClasspathBasedDynamicInterfaceP
 import net.haspamelodica.charon.mockclasses.impl.WrappedMockclassesClassLoader;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
-import static net.haspamelodica.charon.mockclasses.MockclassesUtils.*;
 
 public class CharonSystemClassloader extends URLClassLoader
 {

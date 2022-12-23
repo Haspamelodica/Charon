@@ -35,6 +35,7 @@ public class IDManager<REF extends Ref<?, IDReferrer>>
 					return referrer.id();
 
 			// Create a new ID. _Don't_ reuse the old one if one exists.
+			//TODO why?
 			int id = nextFreeID;
 			if(id == Integer.MAX_VALUE)
 				//TODO better exception type

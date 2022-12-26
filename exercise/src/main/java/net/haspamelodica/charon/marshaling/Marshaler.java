@@ -15,18 +15,18 @@ import net.haspamelodica.charon.exceptions.MissingSerDesException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 
-public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
+public class Marshaler
 {
-	private final StudentSideCommunicatorClientSide<REF>			communicator;
-	private final RepresentationObjectMarshaler<REFR, REPR, REF>	representationObjectMarshaler;
-	private final List<Class<? extends SerDes<?>>>					serdesClasses;
+	private final StudentSideCommunicatorClientSide	communicator;
+	private final RepresentationObjectMarshaler<?>	representationObjectMarshaler;
+	private final List<Class<? extends SerDes<?>>>	serdesClasses;
 
-	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<REF, ?>> initializedSerDesesBySerDesClass;
+	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<?>> initializedSerDesesBySerDesClass;
 
-	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
+	private final Map<Class<?>, InitializedSerDes<?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator,
-			RepresentationObjectMarshaler<REFR, REPR, REF> representationObjectMarshaler, List<Class<? extends SerDes<?>>> serdesClasses)
+	public Marshaler(StudentSideCommunicatorClientSide communicator,
+			RepresentationObjectMarshaler<?> representationObjectMarshaler, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator;
 		this.representationObjectMarshaler = representationObjectMarshaler;
@@ -35,7 +35,7 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
-	private Marshaler(Marshaler<REFR, REPR, REF> base, List<Class<? extends SerDes<?>>> serdesClasses)
+	private Marshaler(Marshaler base, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = base.communicator;
 		this.representationObjectMarshaler = base.representationObjectMarshaler;
@@ -45,24 +45,24 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
 
-	public Marshaler<REFR, REPR, REF> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
+	public Marshaler withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		List<Class<? extends SerDes<?>>> mergedSerDesClasses = new ArrayList<>(serdesClasses);
 		if(mergedSerDesClasses.isEmpty())
 			return this;
 		// insert these after new classes to let new SerDes classes override old ones
 		mergedSerDesClasses.addAll(this.serdesClasses);
-		return new Marshaler<>(this, mergedSerDesClasses);
+		return new Marshaler(this, mergedSerDesClasses);
 	}
 
-	public List<REF> send(List<? extends Class<?>> classes, List<?> objs)
+	public List<Ref> send(List<? extends Class<?>> classes, List<?> objs)
 	{
-		List<REF> result = new ArrayList<>();
+		List<Ref> result = new ArrayList<>();
 		for(int i = 0; i < classes.size(); i ++)
 			result.add(send(classes.get(i), objs.get(i)));
 		return result;
 	}
-	public List<?> receive(List<Class<?>> classes, List<REF> objRefs)
+	public List<?> receive(List<Class<?>> classes, List<Ref> objRefs)
 	{
 		List<Object> result = new ArrayList<>();
 		for(int i = 0; i < classes.size(); i ++)
@@ -70,12 +70,16 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 		return result;
 	}
 
-	public <T> REF send(Class<T> clazz, Object obj)
+	public <T> Ref send(Class<T> clazz, Object obj)
 	{
 		return sendChecked(clazz, castOrPrimitive(clazz, obj));
 	}
 
-	private <T> REF sendChecked(Class<T> clazz, T obj)
+	private <T> Ref sendChecked(Class<T> clazz, T obj)
+	{
+		return sendChecked(clazz, obj, representationObjectMarshaler);
+	}
+	private <T, REPR> Ref sendChecked(Class<T> clazz, T obj, RepresentationObjectMarshaler<REPR> representationObjectMarshaler)
 	{
 		if(obj == null)
 			return null;
@@ -95,15 +99,19 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 		}
 
 		//TODO maybe choose SerDes based on dynamic class instead?
-		InitializedSerDes<REF, T> serdes = getSerDesForObjectClass(clazz);
+		InitializedSerDes<T> serdes = getSerDesForObjectClass(clazz);
 		return communicator.send(serdes.studentSideSerDesRef(), serdes.serdes()::serialize, obj);
 	}
 
-	public <T> T receive(Class<T> clazz, REF objRef)
+	public <T> T receive(Class<T> clazz, Ref objRef)
 	{
 		return castOrPrimitive(clazz, receiveUnchecked(clazz, objRef));
 	}
-	private <T> Object receiveUnchecked(Class<T> clazz, REF objRef)
+	private <T> Object receiveUnchecked(Class<T> clazz, Ref objRef)
+	{
+		return receiveUnchecked(clazz, objRef, representationObjectMarshaler);
+	}
+	private <T, REPR> Object receiveUnchecked(Class<T> clazz, Ref objRef, RepresentationObjectMarshaler<REPR> representationObjectMarshaler)
 	{
 		if(objRef == null)
 			return null;
@@ -131,7 +139,7 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 				Class<? extends REPR> representationObjectClass = (Class<? extends REPR>) clazz;
 				if(representationObjectMarshaler.isRepresentationObjectClass(representationObjectClass))
 				{
-					REFR representationObject = representationObjectMarshaler.unmarshal(objRef);
+					REPR representationObject = representationObjectMarshaler.unmarshal(objRef);
 					objRef.setReferrer(representationObject);
 					return representationObject;
 				}
@@ -141,17 +149,17 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 		// Don't write deserialized object into referrer: deserialized object is not a representation of the student-side object.
 		// This is because the student-side object might change; then we want to reserialize.
 		//TODO maybe choose SerDes based on dynamic class instead?
-		InitializedSerDes<REF, T> serdes = getSerDesForObjectClass(clazz);
+		InitializedSerDes<T> serdes = getSerDesForObjectClass(clazz);
 		return communicator.receive(serdes.studentSideSerDesRef(), serdes.serdes()::deserialize, objRef);
 	}
 
-	private <T> InitializedSerDes<REF, T> getSerDesForObjectClass(Class<T> clazz)
+	private <T> InitializedSerDes<T> getSerDesForObjectClass(Class<T> clazz)
 	{
-		InitializedSerDes<REF, ?> result = initializedSerDesesByInstanceClass.computeIfAbsent(clazz, c ->
+		InitializedSerDes<?> result = initializedSerDesesByInstanceClass.computeIfAbsent(clazz, c ->
 		{
 			for(Class<? extends SerDes<?>> serdesClass : serdesClasses)
 			{
-				InitializedSerDes<REF, ?> serdes = getSerDesFromSerDesClass(serdesClass);
+				InitializedSerDes<?> serdes = getSerDesFromSerDesClass(serdesClass);
 				if(serdes.serdes().getHandledClass().isAssignableFrom(clazz))
 					return serdes;
 			}
@@ -160,21 +168,20 @@ public class Marshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
 			throw new MissingSerDesException("No SerDes for class " + clazz);
 		});
 		@SuppressWarnings("unchecked") // this is guaranteed because we only put key-value pairs with matching T
-		InitializedSerDes<REF, T> resultCasted = (InitializedSerDes<REF, T>) result;
+		InitializedSerDes<T> resultCasted = (InitializedSerDes<T>) result;
 		return resultCasted;
 	}
 
-	private InitializedSerDes<REF, ?> getSerDesFromSerDesClass(Class<? extends SerDes<?>> serdesClass)
+	private InitializedSerDes<?> getSerDesFromSerDesClass(Class<? extends SerDes<?>> serdesClass)
 	{
 		return initializedSerDesesBySerDesClass.computeIfAbsent(serdesClass, c ->
 		{
 			SerDes<?> serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
-			REF serdesRef = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
+			Ref serdesRef = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
 			return new InitializedSerDes<>(serdes, serdesRef);
 		});
 	}
 
-	private static record InitializedSerDes<REF extends Ref<?, ?>, T> (
-			SerDes<T> serdes, REF studentSideSerDesRef)
+	private static record InitializedSerDes<T>(SerDes<T> serdes, Ref studentSideSerDesRef)
 	{}
 }

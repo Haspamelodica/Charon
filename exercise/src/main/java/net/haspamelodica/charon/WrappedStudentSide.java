@@ -5,15 +5,14 @@ import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorClie
 import java.io.IOException;
 
 import net.haspamelodica.charon.impl.StudentSideImpl;
-import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedStudentSide implements AutoCloseable
 {
-	private final WrappedCommunicator<?>	communicator;
-	private final StudentSide				studentSide;
+	private final WrappedCommunicator	communicator;
+	private final StudentSide			studentSide;
 
 	public WrappedStudentSide(String... args) throws IOException, InterruptedException, IncorrectUsageException
 	{
@@ -22,9 +21,9 @@ public class WrappedStudentSide implements AutoCloseable
 
 	public WrappedStudentSide(Communication communication)
 	{
-		WrappedCommunicator<Ref<Integer, Object>> communicator = new WrappedCommunicator<>(communication);
+		WrappedCommunicator communicator = new WrappedCommunicator(communication);
 		this.communicator = communicator;
-		this.studentSide = new StudentSideImpl<>(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
+		this.studentSide = new StudentSideImpl(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
 	}
 
 	public StudentSide getStudentSide()

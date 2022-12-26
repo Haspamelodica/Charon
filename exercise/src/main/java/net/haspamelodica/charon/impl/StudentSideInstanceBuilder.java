@@ -30,17 +30,17 @@ import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.refs.Ref;
 
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI extends StudentSideInstance>
+public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 {
-	public final StudentSideCommunicatorClientSide<REF>	communicator;
-	public final Class<SI>								instanceClass;
-	public final String									studentSideCN;
+	public final StudentSideCommunicatorClientSide	communicator;
+	public final Class<SI>							instanceClass;
+	public final String								studentSideCN;
 
-	public final Marshaler<?, ?, REF> instanceWideMarshaler;
+	public final Marshaler instanceWideMarshaler;
 
-	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
+	private final Map<Method, InstanceMethodHandler> methodHandlers;
 
-	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
+	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<SI, SP> prototypeBuilder)
 	{
 		this.communicator = prototypeBuilder.communicator;
 		this.instanceClass = prototypeBuilder.instanceClass;
@@ -56,7 +56,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	 * The returned object is guaranteed to be a proxy class (see {@link Proxy})
 	 * whose invocation handler is a {@link StudentSideInstanceInvocationHandler}.
 	 */
-	public SI createInstance(REF ref)
+	public SI createInstance(Ref ref)
 	{
 		// The access to referrer isn't synchronized here.
 		// However, the referrer field is volatile, so if we get a non-null value back,
@@ -76,7 +76,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 				// No need to use castOrPrimitive: StudentSideInstance is never primitive
 				return instanceClass.cast(studentSideInstance);
 
-			SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
+			SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler(methodHandlers, ref));
 			ref.setReferrer(newStudentSideInstance);
 			return newStudentSideInstance;
 		}
@@ -94,19 +94,18 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
-	private record MethodWithHandler<REF extends Ref<?, Object>> (
-			Method method, InstanceMethodHandler<REF> handler)
+	private record MethodWithHandler(Method method, InstanceMethodHandler handler)
 	{}
-	private Map<Method, InstanceMethodHandler<REF>> createMethodHandlers()
+	private Map<Method, InstanceMethodHandler> createMethodHandlers()
 	{
 		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
 		return Stream.concat(
 				Arrays.stream(instanceClass.getMethods())
-						.map(m -> new MethodWithHandler<>(m, methodHandlerFor(m))),
+						.map(m -> new MethodWithHandler(m, methodHandlerFor(m))),
 				objectMethodHandlers())
 				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
 	}
-	private Stream<MethodWithHandler<REF>> objectMethodHandlers()
+	private Stream<MethodWithHandler> objectMethodHandlers()
 	{
 		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
 		// So, throwing an exception (via checkReturnAndParameterTypes) is appropriate.
@@ -114,11 +113,11 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 				.filter(method -> !Modifier.isFinal(method.getModifiers()))
 				.map(method -> switch(method.getName())
 				{
-					case "toString" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, String.class),
+					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
 							(ref, proxy, args) -> "StudentSideInstance[" + ref + "]");
-					case "hashCode" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, int.class),
+					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
 							(ref, proxy, args) -> System.identityHashCode(proxy));
-					case "equals" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, boolean.class, Object.class),
+					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),
 							(ref, proxy, args) -> proxy == args[0]);
 					default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
 				});
@@ -133,13 +132,13 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		return method;
 	}
 
-	private InstanceMethodHandler<REF> methodHandlerFor(Method method)
+	private InstanceMethodHandler methodHandlerFor(Method method)
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-		Marshaler<?, ?, REF> methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
+		Marshaler methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
-		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
+		InstanceMethodHandler defaultHandler = defaultInstanceHandler(method);
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
@@ -149,7 +148,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 				});
 	}
 
-	private InstanceMethodHandler<REF> methodHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
+	private InstanceMethodHandler methodHandler(Marshaler marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -159,13 +158,13 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 
 		return (ref, proxy, args) ->
 		{
-			List<REF> argRefs = marshaler.send(paramTypes, argsToList(args));
-			REF resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
+			List<Ref> argRefs = marshaler.send(paramTypes, argsToList(args));
+			Ref resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldGetterHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
+	private InstanceMethodHandler fieldGetterHandler(Marshaler marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -178,12 +177,12 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 
 		return (ref, proxy, args) ->
 		{
-			REF resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
+			Ref resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler<REF> fieldSetterHandler(Marshaler<?, ?, REF> marshaler, Method method, String name)
+	private InstanceMethodHandler fieldSetterHandler(Marshaler marshaler, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
@@ -198,7 +197,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(Marshaler<?, ?, REF> marshaler, String name, Class<F> fieldType)
+	private <F> InstanceMethodHandler fieldSetterHandlerChecked(Marshaler marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 
@@ -206,7 +205,7 @@ public final class StudentSideInstanceBuilder<REF extends Ref<?, Object>, SI ext
 		{
 			@SuppressWarnings("unchecked") // We could
 			F argCasted = (F) args[0];
-			REF valRef = marshaler.send(fieldType, argCasted);
+			Ref valRef = marshaler.send(fieldType, argCasted);
 			communicator.setInstanceField(studentSideCN, name, fieldCN, ref, valRef);
 			return null;
 		};

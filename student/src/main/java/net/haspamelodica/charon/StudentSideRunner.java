@@ -8,9 +8,7 @@ import java.io.OutputStream;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.WeakDirectRefManager;
-import net.haspamelodica.charon.refs.intref.owner.IDReferrer;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
@@ -36,8 +34,8 @@ public class StudentSideRunner
 
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
-		DataCommunicatorServer<?> server = new DataCommunicatorServer<>(in, out,
-				maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<Ref<Object, IDReferrer>>()), logging));
+		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
+				maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide(new WeakDirectRefManager()), logging));
 		server.run();
 	}
 }

@@ -21,16 +21,16 @@ import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 import net.haspamelodica.charon.refs.Ref;
 
-public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implements DynamicClassTransformer,
-		RepresentationObjectMarshaler<Object, Mockclass<REF>, REF>
+public class MockclassesMarshalingTransformer implements DynamicClassTransformer,
+		RepresentationObjectMarshaler<Mockclass>
 {
-	private final StudentSideCommunicator<REF> communicator;
+	private final StudentSideCommunicator communicator;
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
 
-	private final Map<String, Constructor<? extends Mockclass<REF>>> refBasedConstructorsByClassname;
+	private final Map<String, Constructor<? extends Mockclass>> refBasedConstructorsByClassname;
 
-	public MockclassesMarshalingTransformer(StudentSideCommunicator<REF> communicator)
+	public MockclassesMarshalingTransformer(StudentSideCommunicator communicator)
 	{
 		this.communicator = communicator;
 		this.refBasedConstructorsByClassname = new HashMap<>();
@@ -48,7 +48,7 @@ public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implem
 	public void registerDynamicClass(Class<?> clazz)
 	{
 		@SuppressWarnings("unchecked") // Same reason as in representationObjectClass.
-		Class<? extends Mockclass<REF>> clazzCasted = (Class<? extends Mockclass<REF>>) clazz;
+		Class<? extends Mockclass> clazzCasted = (Class<? extends Mockclass>) clazz;
 		try
 		{
 			refBasedConstructorsByClassname.put(clazz.getName(), clazzCasted.getConstructor(Object.class));
@@ -81,14 +81,14 @@ public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implem
 	}
 
 	@Override
-	public Class<Mockclass<REF>> representationObjectClass()
+	public Class<Mockclass> representationObjectClass()
 	{
 		try
 		{
 			// Users are responsible to not mix mockclasses created for different Refs.
 			// So, it's fine to return a Class which isn't "wildcarded". (It only makes a compile-time difference anyway.)
 			@SuppressWarnings("unchecked")
-			Class<Mockclass<REF>> clazz = (Class<Mockclass<REF>>) Class.forName(Mockclass.class.getName(), true, classloader);
+			Class<Mockclass> clazz = (Class<Mockclass>) Class.forName(Mockclass.class.getName(), true, classloader);
 			return clazz;
 		} catch(ClassNotFoundException e)
 		{
@@ -97,18 +97,18 @@ public class MockclassesMarshalingTransformer<REF extends Ref<?, Object>> implem
 	}
 
 	@Override
-	public REF marshal(Mockclass<REF> obj)
+	public Ref marshal(Mockclass obj)
 	{
 		return obj.getRef();
 	}
 
 	@Override
-	public Mockclass<REF> unmarshal(REF objRef)
+	public Mockclass unmarshal(Ref objRef)
 	{
 		try
 		{
 			String cn = communicator.getStudentSideClassname(objRef);
-			Mockclass<REF> mock = refBasedConstructorsByClassname.get(cn).newInstance(objRef);
+			Mockclass mock = refBasedConstructorsByClassname.get(cn).newInstance(objRef);
 			objRef.setReferrer(mock);
 			return mock;
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)

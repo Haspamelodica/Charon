@@ -5,20 +5,20 @@ import java.util.function.Function;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public interface DirectRefManager<REF extends Ref<Object, ?>>
+public interface DirectRefManager
 {
-	public default List<Object> unpack(List<REF> refs)
+	public default List<Object> unpack(List<Ref> refs)
 	{
 		return refs.stream().map(this::unpack).toList();
 	}
-	public default List<REF> pack(List<?> objs)
+	public default List<Ref> pack(List<?> objs)
 	{
-		return objs.stream().map((Function<Object, REF>) this::pack).toList();
+		return objs.stream().map((Function<Object, Ref>) this::pack).toList();
 	}
 
-	public default Object unpack(REF ref)
+	public default Object unpack(Ref ref)
 	{
 		return ref == null ? null : ref.referent();
 	}
-	public REF pack(Object obj);
+	public Ref pack(Object obj);
 }

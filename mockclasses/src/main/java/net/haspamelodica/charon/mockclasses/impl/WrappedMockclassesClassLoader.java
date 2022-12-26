@@ -23,17 +23,17 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedMockclassesClassLoader implements AutoCloseable
 {
-	private final WrappedCommunicator<?>	communicator;
-	private final ClassLoader				classloader;
+	private final WrappedCommunicator	communicator;
+	private final ClassLoader			classloader;
 
 	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
 			Class<?>... forceDelegationClasses)
 			throws IOException, InterruptedException, IncorrectUsageException
 	{
-		this(parent, interfaceProvider, new WrappedCommunicator<>(communicatorArgs), forceDelegationClasses);
+		this(parent, interfaceProvider, new WrappedCommunicator(communicatorArgs), forceDelegationClasses);
 	}
 	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			WrappedCommunicator<Ref<Integer, Object>> communicator, Class<?>... forceDelegationClasses)
+			WrappedCommunicator communicator, Class<?>... forceDelegationClasses)
 	{
 		this.communicator = communicator;
 		this.classloader = createMockclassesClassloader(parent, interfaceProvider, communicator.getClient(), forceDelegationClasses);
@@ -51,13 +51,13 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 	}
 
 	public static ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			StudentSideCommunicatorClientSide<Ref<Integer, Object>> communicator, Class<?>... forceDelegationClasses)
+			StudentSideCommunicatorClientSide communicator, Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer<Ref<Integer, Object>> transformer = new MockclassesMarshalingTransformer<>(communicator);
+		MockclassesMarshalingTransformer transformer = new MockclassesMarshalingTransformer(communicator);
 		// TODO make Serdeses configurable
-		Marshaler<?, ?, Ref<Integer, Object>> marshaler = new Marshaler<>(communicator, transformer,
+		Marshaler marshaler = new Marshaler(communicator, transformer,
 				PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
-		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
+		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler(communicator, marshaler, transformer);
 
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,

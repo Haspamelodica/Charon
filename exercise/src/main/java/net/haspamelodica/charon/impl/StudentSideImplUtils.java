@@ -18,7 +18,6 @@ import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.refs.Ref;
 
 public class StudentSideImplUtils
 {
@@ -52,7 +51,7 @@ public class StudentSideImplUtils
 		return (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}
 
-	public static <REF extends Ref<?, ?>> InstanceMethodHandler<REF> defaultInstanceHandler(Method method)
+	public static InstanceMethodHandler defaultInstanceHandler(Method method)
 	{
 		return (ref, proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}

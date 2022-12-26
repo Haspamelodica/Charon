@@ -12,27 +12,22 @@ package net.haspamelodica.charon.refs;
  * Comparing REFs with {@link #equals(Object)} is equivalent to comparing with <code>==</code>
  * (except if the {@link Ref} <code>equals</code> is being called on is <code>null</code>, of course).
  */
-public class Ref<REFT, REFR>
+public class Ref
 {
-	private final REFT		referent;
-	private volatile REFR	referrer;
-
-	public Ref(REFT referent)
+	public Ref(Object object)
 	{
-		this.referent = referent;
+		throw new UnsupportedOperationException("outdated constructor");
 	}
-
-	public REFT referent()
+	public <T> T referrer()
 	{
-		return referent;
+		throw new UnsupportedOperationException("outdated method");
 	}
-
-	public void setReferrer(REFR referrer)
+	public void setReferrer(Object object)
 	{
-		this.referrer = referrer;
+		throw new UnsupportedOperationException("outdated method");
 	}
-	public REFR referrer()
+	public <T> T referent()
 	{
-		return referrer;
+		throw new UnsupportedOperationException("outdated method");
 	}
 }

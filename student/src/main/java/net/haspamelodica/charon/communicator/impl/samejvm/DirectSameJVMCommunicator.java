@@ -15,44 +15,43 @@ import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
 
-public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
-		implements StudentSideCommunicatorServerSide<REF>
+public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServerSide
 {
-	protected final DirectRefManager<REF> refManager;
+	protected final DirectRefManager refManager;
 
-	public DirectSameJVMCommunicator(DirectRefManager<REF> refManager)
+	public DirectSameJVMCommunicator(DirectRefManager refManager)
 	{
 		this.refManager = refManager;
 	}
 
 	@Override
-	public String getStudentSideClassname(REF ref)
+	public String getStudentSideClassname(Ref ref)
 	{
 		return classToName(refManager.unpack(ref).getClass());
 	}
 
 	@Override
-	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
+	public Ref callConstructor(String cn, List<String> params, List<Ref> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params,
-			List<REF> argRefs)
+	public Ref callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+			List<Ref> argRefs)
 	{
 		return refManager.pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(argRefs)));
 	}
 
 	@Override
-	public REF getStaticField(String cn, String name, String fieldClassname)
+	public Ref getStaticField(String cn, String name, String fieldClassname)
 	{
 		return refManager.pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, Ref valueRef)
 	{
 		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(valueRef));
 	}
@@ -65,8 +64,8 @@ public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 	}
 
 	@Override
-	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-			REF receiverRef, List<REF> argRefs)
+	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			Ref receiverRef, List<Ref> argRefs)
 	{
 		return refManager.pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				refManager.unpack(receiverRef), refManager.unpack(argRefs)));
@@ -81,7 +80,7 @@ public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 	}
 
 	@Override
-	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
+	public Ref getInstanceField(String cn, String name, String fieldClassname, Ref receiverRef)
 	{
 		return refManager.pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(receiverRef)));
 	}
@@ -95,7 +94,7 @@ public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname,
-			REF receiverRef, REF valueRef)
+			Ref receiverRef, Ref valueRef)
 	{
 		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname),
 				refManager.unpack(receiverRef), refManager.unpack(valueRef));
@@ -111,21 +110,21 @@ public class DirectSameJVMCommunicator<REF extends Ref<Object, ?>>
 	}
 
 	@Override
-	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
+	public Ref createCallbackInstance(String interfaceName, Callback callback)
 	{
 		//TODO create callback instance
 		return null;
 	}
 
 	@Override
-	public REF send(REF serdesRef, DataInput objIn) throws IOException
+	public Ref send(Ref serdesRef, DataInput objIn) throws IOException
 	{
 		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
 		Object result = serdes.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException
+	public void receive(Ref serdesRef, Ref objRef, DataOutput objOut) throws IOException
 	{
 		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
 		Object obj = refManager.unpack(objRef);

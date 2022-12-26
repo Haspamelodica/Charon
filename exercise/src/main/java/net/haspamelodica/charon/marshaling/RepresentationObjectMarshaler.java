@@ -2,7 +2,7 @@ package net.haspamelodica.charon.marshaling;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public interface RepresentationObjectMarshaler<REFR, REPR extends REFR, REF extends Ref<?, REFR>>
+public interface RepresentationObjectMarshaler<REPR>
 {
 	public Class<REPR> representationObjectClass();
 	/**
@@ -19,11 +19,11 @@ public interface RepresentationObjectMarshaler<REFR, REPR extends REFR, REF exte
 	 * Returns the REF for the given representation object.
 	 * The referrer of the returned REF should be the passed representation object.
 	 */
-	public REF marshal(REPR obj);
+	public Ref marshal(REPR obj);
 	/**
 	 * Creates and returns a representation object for the given REF.
 	 * This method is only called if the REF does not have a referrer;
 	 * after calling, the caller is responsible for setting the referrer to the returned representation object.
 	 */
-	public REPR unmarshal(REF objRef);
+	public REPR unmarshal(Ref objRef);
 }

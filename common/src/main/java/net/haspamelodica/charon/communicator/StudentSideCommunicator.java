@@ -4,19 +4,19 @@ import java.util.List;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public interface StudentSideCommunicator<REF extends Ref<?, ?>>
+public interface StudentSideCommunicator
 {
-	public String getStudentSideClassname(REF ref);
+	public String getStudentSideClassname(Ref ref);
 
-	public REF callConstructor(String cn, List<String> params, List<REF> argRefs);
+	public Ref callConstructor(String cn, List<String> params, List<Ref> argRefs);
 
-	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs);
-	public REF getStaticField(String cn, String name, String fieldClassname);
-	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef);
+	public Ref callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<Ref> argRefs);
+	public Ref getStaticField(String cn, String name, String fieldClassname);
+	public void setStaticField(String cn, String name, String fieldClassname, Ref valueRef);
 
-	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs);
-	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
-	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
+	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Ref receiverRef, List<Ref> argRefs);
+	public Ref getInstanceField(String cn, String name, String fieldClassname, Ref receiverRef);
+	public void setInstanceField(String cn, String name, String fieldClassname, Ref receiverRef, Ref valueRef);
 
-	public REF createCallbackInstance(String interfaceName, Callback<REF> callback);
+	public Ref createCallbackInstance(String interfaceName, Callback callback);
 }

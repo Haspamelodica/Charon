@@ -6,13 +6,13 @@ import java.util.Map;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public class StudentSideInstanceInvocationHandler<REF extends Ref<?, ?>> implements InvocationHandler
+public class StudentSideInstanceInvocationHandler implements InvocationHandler
 {
-	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
+	private final Map<Method, InstanceMethodHandler> methodHandlers;
 
-	private final REF ref;
+	private final Ref ref;
 
-	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler<REF>> methodHandlers, REF ref)
+	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler> methodHandlers, Ref ref)
 	{
 		this.methodHandlers = methodHandlers;
 		this.ref = ref;
@@ -24,7 +24,7 @@ public class StudentSideInstanceInvocationHandler<REF extends Ref<?, ?>> impleme
 		return methodHandlers.get(method).invoke(ref, proxy, args);
 	}
 
-	public REF getRef()
+	public Ref getRef()
 	{
 		return ref;
 	}

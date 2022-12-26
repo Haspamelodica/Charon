@@ -9,24 +9,24 @@ import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.DirectRefManager;
 
-public class DirectSameJVMCommunicatorServerSide<REF extends Ref<Object, ?>>
-		extends DirectSameJVMCommunicator<REF>
-		implements StudentSideCommunicatorServerSide<REF>
+public class DirectSameJVMCommunicatorServerSide
+		extends DirectSameJVMCommunicator
+		implements StudentSideCommunicatorServerSide
 {
-	public DirectSameJVMCommunicatorServerSide(DirectRefManager<REF> refManager)
+	public DirectSameJVMCommunicatorServerSide(DirectRefManager refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public REF send(REF serdesRef, DataInput objIn) throws IOException
+	public Ref send(Ref serdesRef, DataInput objIn) throws IOException
 	{
 		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
 		Object result = serdes.deserialize(objIn);
 		return refManager.pack(result);
 	}
 	@Override
-	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException
+	public void receive(Ref serdesRef, Ref objRef, DataOutput objOut) throws IOException
 	{
 		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
 		Object obj = refManager.unpack(objRef);

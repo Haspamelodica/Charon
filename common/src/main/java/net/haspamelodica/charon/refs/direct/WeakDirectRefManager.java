@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements DirectRefManager<REF>
+public final class WeakDirectRefManager implements DirectRefManager
 {
 	/**
 	 * We want need a concurrent identity-based map with weak values.
@@ -21,9 +21,9 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 	 * mapping {@link IdentityObjectContainer}(identity-based) to {@link WeakReference}s (weak values).
 	 */
 	private final ConcurrentHashMap<IdentityObjectContainer,
-			WeakReferenceWithAttachment<IdentityObjectContainer, REF>> cachedRefs;
+			WeakReferenceWithAttachment<IdentityObjectContainer, Ref>> cachedRefs;
 
-	private final ReferenceQueue<REF> queue;
+	private final ReferenceQueue<Ref> queue;
 
 	public WeakDirectRefManager()
 	{
@@ -32,7 +32,7 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 	}
 
 	@Override
-	public REF pack(Object obj)
+	public Ref pack(Object obj)
 	{
 		if(obj == null)
 			return null;
@@ -51,10 +51,10 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 		// The JVM could optimize this away to immediately delete the DirectRef if the mapping function finishes.
 
 		// fast path
-		WeakReferenceWithAttachment<IdentityObjectContainer, REF> weakRef = cachedRefs.get(container);
+		WeakReferenceWithAttachment<IdentityObjectContainer, Ref> weakRef = cachedRefs.get(container);
 		if(weakRef != null)
 		{
-			REF ref = weakRef.get();
+			Ref ref = weakRef.get();
 			// Yes, we polled the queue, but some object could have been cleared since then
 			if(ref != null)
 				return ref;
@@ -67,7 +67,7 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 			weakRef = cachedRefs.get(container);
 			if(weakRef != null)
 			{
-				REF ref = weakRef.get();
+				Ref ref = weakRef.get();
 				if(ref != null)
 					return ref;
 			}
@@ -75,7 +75,7 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 			// No ref for that object anymore. Create a new one.
 			//TODO to fix this unchecked cast, we either have to replace all uses of REF in all classes with Ref<concrete type arguments...>
 			// or pass Ref constructors down the entire hierarchy. Same in IntRefManager.
-			REF ref = (REF) new Ref<>(obj);
+			Ref ref = new Ref(obj);
 			cachedRefs.put(container, new WeakReferenceWithAttachment<>(ref, container, queue));
 			return ref;
 		}
@@ -86,8 +86,8 @@ public final class WeakDirectRefManager<REF extends Ref<Object, ?>> implements D
 		for(;;)
 		{
 			@SuppressWarnings("unchecked")
-			WeakReferenceWithAttachment<IdentityObjectContainer, REF> clearedRef =
-					(WeakReferenceWithAttachment<IdentityObjectContainer, REF>) queue.poll();
+			WeakReferenceWithAttachment<IdentityObjectContainer, Ref> clearedRef =
+					(WeakReferenceWithAttachment<IdentityObjectContainer, Ref>) queue.poll();
 			if(clearedRef == null)
 				break;
 			cachedRefs.remove(clearedRef.attachment());

@@ -48,7 +48,7 @@ import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements StudentSideCommunicatorClientSide<REF>
+public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 {
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
@@ -61,7 +61,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 
 	private final ThreadLocal<StudentSideThread> threads;
 
-	private final IntRefManager<REF> refManager;
+	private final IntRefManager refManager;
 
 	private final AtomicBoolean	running;
 	private final Thread		refCleanupThread;
@@ -79,7 +79,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 
 		this.out0Lock = new Object();
 
-		this.refManager = new IntRefManager<>();
+		this.refManager = new IntRefManager();
 		this.running = new AtomicBoolean(true);
 		this.refCleanupThread = new Thread(this::refCleanupThread);
 		refCleanupThread.setDaemon(true);
@@ -119,13 +119,13 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public String getStudentSideClassname(REF ref)
+	public String getStudentSideClassname(Ref ref)
 	{
 		return executeCommand(GET_CLASSNAME, out -> writeRef(out, ref), DataInput::readUTF);
 	}
 
 	@Override
-	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> Ref send(Ref serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
@@ -143,7 +143,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		});
 	}
 	@Override
-	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(Ref serdesRef, IOFunction<DataInput, T> receiveObj, Ref objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
@@ -169,7 +169,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
+	public Ref callConstructor(String cn, List<String> params, List<Ref> argRefs)
 	{
 		return executeRefCommand(CALL_CONSTRUCTOR, out ->
 		{
@@ -179,7 +179,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs)
+	public Ref callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<Ref> argRefs)
 	{
 		return executeRefCommand(CALL_STATIC_METHOD, out ->
 		{
@@ -190,7 +190,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		});
 	}
 	@Override
-	public REF getStaticField(String cn, String name, String fieldClassname)
+	public Ref getStaticField(String cn, String name, String fieldClassname)
 	{
 		return executeRefCommand(GET_STATIC_FIELD, out ->
 		{
@@ -200,7 +200,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		});
 	}
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, Ref valueRef)
 	{
 		executeVoidCommand(SET_STATIC_FIELD, out ->
 		{
@@ -212,7 +212,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Ref receiverRef, List<Ref> argRefs)
 	{
 		return executeRefCommand(CALL_INSTANCE_METHOD, out ->
 		{
@@ -224,7 +224,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		});
 	}
 	@Override
-	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
+	public Ref getInstanceField(String cn, String name, String fieldClassname, Ref receiverRef)
 	{
 		return executeRefCommand(GET_INSTANCE_FIELD, out ->
 		{
@@ -235,7 +235,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		});
 	}
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, Ref receiverRef, Ref valueRef)
 	{
 		executeVoidCommand(SET_INSTANCE_FIELD, out ->
 		{
@@ -248,7 +248,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	}
 
 	@Override
-	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
+	public Ref createCallbackInstance(String interfaceName, Callback callback)
 	{
 		//TODO do something with the passed callback
 		//TODO cache callbacks so that == works
@@ -272,7 +272,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private REF executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
+	private Ref executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
 	{
 		return executeCommand(command, sendParams, this::readRef);
 	}
@@ -371,7 +371,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		return new StudentSideThread(in, out);
 	}
 
-	private void writeArgs(DataOutput out, List<String> params, List<REF> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<String> params, List<Ref> argRefs) throws IOException
 	{
 		int paramCount = params.size();
 		if(paramCount != argRefs.size())
@@ -380,11 +380,11 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		out.writeInt(paramCount);
 		for(String param : params)
 			out.writeUTF(param);
-		for(REF argRef : argRefs)
+		for(Ref argRef : argRefs)
 			writeRef(out, argRef);
 	}
 
-	private REF readRef(DataInput in) throws IOException
+	private Ref readRef(DataInput in) throws IOException
 	{
 		try
 		{
@@ -395,7 +395,7 @@ public class DataCommunicatorClient<REF extends Ref<Integer, ?>> implements Stud
 		}
 	}
 
-	private void writeRef(DataOutput out, REF ref) throws IOException
+	private void writeRef(DataOutput out, Ref ref) throws IOException
 	{
 		out.writeInt(refManager.getID(ref));
 	}

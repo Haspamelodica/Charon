@@ -11,9 +11,7 @@ import java.net.Socket;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.refs.direct.WeakDirectRefManager;
-import net.haspamelodica.charon.refs.intref.owner.IDReferrer;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -39,9 +37,8 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			DataCommunicatorServer<?> server = new DataCommunicatorServer<>(sock.getInputStream(), sock.getOutputStream(),
-					maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide<>(new WeakDirectRefManager<
-							Ref<Object, IDReferrer>>()), LOGGING));
+			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
+					maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide(new WeakDirectRefManager()), LOGGING));
 			server.run();
 		}
 

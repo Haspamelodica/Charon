@@ -6,13 +6,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import net.haspamelodica.charon.refs.Ref;
 
-public class WeakIntRefReference<REF extends Ref<Integer, ?>> extends WeakReference<REF>
+public class WeakIntRefReference extends WeakReference<Ref>
 {
 	private final int			id;
 	private final AtomicInteger	receivedCount;
 
 	/** {@link #receivedCount} starts at 1. */
-	public WeakIntRefReference(REF referent, ReferenceQueue<REF> queue)
+	public WeakIntRefReference(Ref referent, ReferenceQueue<Ref> queue)
 	{
 		super(referent, queue);
 		this.id = referent.referent();

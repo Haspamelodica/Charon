@@ -31,23 +31,23 @@ import net.haspamelodica.charon.refs.direct.DirectRefManager;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide<REF extends Ref<Object, ?>> extends DirectSameJVMCommunicator<REF>
-		implements StudentSideCommunicatorClientSide<REF>
+public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicator
+		implements StudentSideCommunicatorClientSide
 {
-	public DirectSameJVMCommunicatorClientSide(DirectRefManager<REF> refManager)
+	public DirectSameJVMCommunicatorClientSide(DirectRefManager refManager)
 	{
 		super(refManager);
 	}
 
 	@Override
-	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> Ref send(Ref serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);
 		return refManager.pack(sendAndReceive(sendObj, serdes::deserialize, obj));
 	}
 	@Override
-	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(Ref serdesRef, IOFunction<DataInput, T> receiveObj, Ref objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);

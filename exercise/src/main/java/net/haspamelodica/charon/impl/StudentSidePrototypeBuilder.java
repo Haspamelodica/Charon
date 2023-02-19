@@ -25,26 +25,25 @@ import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.Marshaler;
-import net.haspamelodica.charon.refs.Ref;
 
-public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+public final class StudentSidePrototypeBuilder<REF, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
-	public final StudentSideCommunicatorClientSide	communicator;
-	public final Marshaler							globalMarshaler;
-	public final Class<SP>							prototypeClass;
+	public final StudentSideCommunicatorClientSide<REF>	communicator;
+	public final Marshaler<REF>							globalMarshaler;
+	public final Class<SP>								prototypeClass;
 
-	public final Class<SI>	instanceClass;
-	public final String		studentSideCN;
-	public final Marshaler	prototypeWideMarshaler;
+	public final Class<SI>		instanceClass;
+	public final String			studentSideCN;
+	public final Marshaler<REF>	prototypeWideMarshaler;
 
-	public final StudentSideInstanceBuilder<SI> instanceBuilder;
+	public final StudentSideInstanceBuilder<REF, SI> instanceBuilder;
 
 	private final Map<Method, MethodHandler> methodHandlers;
 
 	private final SP prototype;
 
-	public StudentSidePrototypeBuilder(StudentSideCommunicatorClientSide communicator,
-			Marshaler globalMarshaler,
+	public StudentSidePrototypeBuilder(StudentSideCommunicatorClientSide<REF> communicator,
+			Marshaler<REF> globalMarshaler,
 			Class<SP> prototypeClass)
 	{
 		this.communicator = communicator;
@@ -102,7 +101,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
 	}
 
-	private Marshaler createPrototypeWideMarshaler()
+	private Marshaler<REF> createPrototypeWideMarshaler()
 	{
 		return globalMarshaler
 				.withAdditionalSerDeses(getSerDeses(prototypeClass))
@@ -125,7 +124,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
-		Marshaler methodWideMarshaler = prototypeWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
+		Marshaler<REF> methodWideMarshaler = prototypeWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
 		{
@@ -136,7 +135,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		});
 	}
 
-	private MethodHandler constructorHandler(Method method, Marshaler marshaler, boolean nameOverridden)
+	private MethodHandler constructorHandler(Method method, Marshaler<REF> marshaler, boolean nameOverridden)
 	{
 		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
 		{
@@ -157,13 +156,13 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		List<String> constrParamCNs = mapToStudentSide(constrParamTypes);
 		return (proxy, args) ->
 		{
-			List<Ref> argRefs = marshaler.send(constrParamTypes, argsToList(args));
-			Ref instanceRef = communicator.callConstructor(studentSideCN, constrParamCNs, argRefs);
+			List<REF> argRefs = marshaler.send(constrParamTypes, argsToList(args));
+			REF instanceRef = communicator.callConstructor(studentSideCN, constrParamCNs, argRefs);
 			return instanceBuilder.createInstance(instanceRef);
 		};
 	}
 
-	private MethodHandler staticMethodHandler(Method method, Marshaler marshaler, String name)
+	private MethodHandler staticMethodHandler(Method method, Marshaler<REF> marshaler, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 
@@ -173,13 +172,13 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 
 		return (proxy, args) ->
 		{
-			List<Ref> argRefs = marshaler.send(paramClasses, argsToList(args));
-			Ref resultRef = communicator.callStaticMethod(studentSideCN, name, returnCN, paramCNs, argRefs);
+			List<REF> argRefs = marshaler.send(paramClasses, argsToList(args));
+			REF resultRef = communicator.callStaticMethod(studentSideCN, name, returnCN, paramCNs, argRefs);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private MethodHandler staticFieldGetterHandler(Method method, Marshaler marshaler, String name)
+	private MethodHandler staticFieldGetterHandler(Method method, Marshaler<REF> marshaler, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -192,12 +191,12 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 
 		return (proxy, args) ->
 		{
-			Ref resultRef = communicator.getStaticField(studentSideCN, name, returnCN);
+			REF resultRef = communicator.getStaticField(studentSideCN, name, returnCN);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private MethodHandler staticFieldSetterHandler(Method method, Marshaler marshaler, String name)
+	private MethodHandler staticFieldSetterHandler(Method method, Marshaler<REF> marshaler, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side static field setter return type wasn't void:" + method);
@@ -212,7 +211,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> MethodHandler staticFieldSetterHandlerChecked(Marshaler marshaler, String name, Class<F> fieldType)
+	private <F> MethodHandler staticFieldSetterHandlerChecked(Marshaler<REF> marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 
@@ -220,7 +219,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			Ref valRef = marshaler.send(fieldType, argCasted);
+			REF valRef = marshaler.send(fieldType, argCasted);
 			communicator.setStaticField(studentSideCN, name, fieldCN, valRef);
 			return null;
 		};

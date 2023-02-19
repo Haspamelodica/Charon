@@ -61,30 +61,59 @@ public interface BidirectionalMap<K, V>
 			valuesToKeysBuilder = UnidirectionalMap.builder();
 		}
 
-		public Builder identityMap()
+		public Builder identityKeys()
 		{
-			keyToValuesBuilder.identityMap();
-			valuesToKeysBuilder.identityMap();
+			return identityKeys(true);
+		}
+		public Builder identityKeys(boolean identityKeys)
+		{
+			keyToValuesBuilder.identityMap(identityKeys);
 			return this;
 		}
+
+		public Builder identityValues()
+		{
+			return identityValues(true);
+		}
+		public Builder identityValues(boolean identityValues)
+		{
+			valuesToKeysBuilder.identityMap(identityValues);
+			return this;
+		}
+
 		public Builder weakKeys()
 		{
+			return weakKeys(true);
+		}
+		public Builder weakKeys(boolean weakKeys)
+		{
 			//TODO debug if doing this separately in both uni maps causes problems
-			keyToValuesBuilder.weakKeys();
-			valuesToKeysBuilder.weakValues();
+			keyToValuesBuilder.weakKeys(weakKeys);
+			valuesToKeysBuilder.weakValues(weakKeys);
 			return this;
 		}
+
 		public Builder weakValues()
 		{
+			return weakValues(true);
+		}
+
+		public Builder weakValues(boolean weakValues)
+		{
 			//TODO debug if doing this separately in both uni maps causes problems
-			keyToValuesBuilder.weakValues();
-			valuesToKeysBuilder.weakKeys();
+			keyToValuesBuilder.weakValues(weakValues);
+			valuesToKeysBuilder.weakKeys(weakValues);
 			return this;
 		}
+
 		public Builder concurrent()
 		{
+			return concurrent(true);
+		}
+		public Builder concurrent(boolean concurrent)
+		{
 			// Don't delegate to "sub-maps".
-			concurrent = true;
+			this.concurrent |= concurrent;
 			return this;
 		}
 

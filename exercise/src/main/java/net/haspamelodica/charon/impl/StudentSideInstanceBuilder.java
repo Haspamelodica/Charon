@@ -27,20 +27,19 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.Marshaler;
-import net.haspamelodica.charon.refs.Ref;
 
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
+public final class StudentSideInstanceBuilder<REF, SI extends StudentSideInstance>
 {
-	public final StudentSideCommunicatorClientSide	communicator;
-	public final Class<SI>							instanceClass;
-	public final String								studentSideCN;
+	public final StudentSideCommunicatorClientSide<REF>	communicator;
+	public final Class<SI>								instanceClass;
+	public final String									studentSideCN;
 
-	public final Marshaler instanceWideMarshaler;
+	public final Marshaler<REF> instanceWideMarshaler;
 
-	private final Map<Method, InstanceMethodHandler> methodHandlers;
+	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
-	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<SI, SP> prototypeBuilder)
+	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder)
 	{
 		this.communicator = prototypeBuilder.communicator;
 		this.instanceClass = prototypeBuilder.instanceClass;
@@ -56,30 +55,9 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 	 * The returned object is guaranteed to be a proxy class (see {@link Proxy})
 	 * whose invocation handler is a {@link StudentSideInstanceInvocationHandler}.
 	 */
-	public SI createInstance(Ref ref)
+	public SI createInstance(REF ref)
 	{
-		// The access to referrer isn't synchronized here.
-		// However, the referrer field is volatile, so if we get a non-null value back,
-		// we are guaranteed it is fully initialized even when considering code reorderings
-		// (since every volatile write happens-before any subsequent volatile read, according to JLS).
-		Object studentSideInstance = ref.referrer();
-		if(studentSideInstance != null)
-			// Don't use a static cast to fail-fast
-			// No need to use castOrPrimitive: StudentSideInstance is never primitive
-			return instanceClass.cast(studentSideInstance);
-
-		synchronized(ref)
-		{
-			studentSideInstance = ref.referrer();
-			if(studentSideInstance != null)
-				// Don't use a static cast to fail-fast
-				// No need to use castOrPrimitive: StudentSideInstance is never primitive
-				return instanceClass.cast(studentSideInstance);
-
-			SI newStudentSideInstance = createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler(methodHandlers, ref));
-			ref.setReferrer(newStudentSideInstance);
-			return newStudentSideInstance;
-		}
+		return createProxyInstance(instanceClass, new StudentSideInstanceInvocationHandler<>(methodHandlers, ref));
 	}
 
 	private void checkInstanceClass()
@@ -94,18 +72,18 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
 	}
 
-	private record MethodWithHandler(Method method, InstanceMethodHandler handler)
+	private record MethodWithHandler<REF>(Method method, InstanceMethodHandler<REF> handler)
 	{}
-	private Map<Method, InstanceMethodHandler> createMethodHandlers()
+	private Map<Method, InstanceMethodHandler<REF>> createMethodHandlers()
 	{
 		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
 		return Stream.concat(
 				Arrays.stream(instanceClass.getMethods())
-						.map(m -> new MethodWithHandler(m, methodHandlerFor(m))),
+						.map(m -> new MethodWithHandler<>(m, methodHandlerFor(m))),
 				objectMethodHandlers())
 				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
 	}
-	private Stream<MethodWithHandler> objectMethodHandlers()
+	private Stream<MethodWithHandler<REF>> objectMethodHandlers()
 	{
 		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
 		// So, throwing an exception (via checkReturnAndParameterTypes) is appropriate.
@@ -113,11 +91,11 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 				.filter(method -> !Modifier.isFinal(method.getModifiers()))
 				.map(method -> switch(method.getName())
 				{
-					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
+					case "toString" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, String.class),
 							(ref, proxy, args) -> "StudentSideInstance[" + ref + "]");
-					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
+					case "hashCode" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, int.class),
 							(ref, proxy, args) -> System.identityHashCode(proxy));
-					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),
+					case "equals" -> new MethodWithHandler<>(checkReturnAndParameterTypes(method, boolean.class, Object.class),
 							(ref, proxy, args) -> proxy == args[0]);
 					default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
 				});
@@ -132,13 +110,13 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		return method;
 	}
 
-	private InstanceMethodHandler methodHandlerFor(Method method)
+	private InstanceMethodHandler<REF> methodHandlerFor(Method method)
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-		Marshaler methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
+		Marshaler<REF> methodWideMarshaler = instanceWideMarshaler.withAdditionalSerDeses(getSerDeses(method));
 
-		InstanceMethodHandler defaultHandler = defaultInstanceHandler(method);
+		InstanceMethodHandler<REF> defaultHandler = defaultInstanceHandler(method);
 		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
@@ -148,7 +126,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 				});
 	}
 
-	private InstanceMethodHandler methodHandler(Marshaler marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> methodHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> paramTypes = Arrays.asList(method.getParameterTypes());
@@ -158,13 +136,13 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 
 		return (ref, proxy, args) ->
 		{
-			List<Ref> argRefs = marshaler.send(paramTypes, argsToList(args));
-			Ref resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
+			List<REF> argRefs = marshaler.send(paramTypes, argsToList(args));
+			REF resultRef = communicator.callInstanceMethod(studentSideCN, name, returnCN, paramCNs, ref, argRefs);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler fieldGetterHandler(Marshaler marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> fieldGetterHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		if(returnType.equals(void.class))
@@ -177,12 +155,12 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 
 		return (ref, proxy, args) ->
 		{
-			Ref resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
+			REF resultRef = communicator.getInstanceField(studentSideCN, name, returnCN, ref);
 			return marshaler.receive(returnType, resultRef);
 		};
 	}
 
-	private InstanceMethodHandler fieldSetterHandler(Marshaler marshaler, Method method, String name)
+	private InstanceMethodHandler<REF> fieldSetterHandler(Marshaler<REF> marshaler, Method method, String name)
 	{
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
@@ -197,7 +175,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> InstanceMethodHandler fieldSetterHandlerChecked(Marshaler marshaler, String name, Class<F> fieldType)
+	private <F> InstanceMethodHandler<REF> fieldSetterHandlerChecked(Marshaler<REF> marshaler, String name, Class<F> fieldType)
 	{
 		String fieldCN = mapToStudentSide(fieldType);
 
@@ -205,7 +183,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		{
 			@SuppressWarnings("unchecked") // We could
 			F argCasted = (F) args[0];
-			Ref valRef = marshaler.send(fieldType, argCasted);
+			REF valRef = marshaler.send(fieldType, argCasted);
 			communicator.setInstanceField(studentSideCN, name, fieldCN, ref, valRef);
 			return null;
 		};

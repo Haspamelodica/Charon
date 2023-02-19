@@ -18,8 +18,6 @@ import net.haspamelodica.charon.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.refs.direct.DirectRefManager;
 
 /**
  * <b>Using this class in the tester JVM to create a {@link StudentSideImpl} is not safe
@@ -31,28 +29,22 @@ import net.haspamelodica.charon.refs.direct.DirectRefManager;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicator
-		implements StudentSideCommunicatorClientSide
+public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicator implements StudentSideCommunicatorClientSide<Object>
 {
-	public DirectSameJVMCommunicatorClientSide(DirectRefManager refManager)
-	{
-		super(refManager);
-	}
-
 	@Override
-	public <T> Ref send(Ref serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> Object send(Object serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);
-		return refManager.pack(sendAndReceive(sendObj, serdes::deserialize, obj));
+		SerDes<T> serdes = (SerDes<T>) serdesRef;
+		return sendAndReceive(sendObj, serdes::deserialize, obj);
 	}
 	@Override
-	public <T> T receive(Ref serdesRef, IOFunction<DataInput, T> receiveObj, Ref objRef)
+	public <T> T receive(Object serdesRef, IOFunction<DataInput, T> receiveObj, Object objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		SerDes<T> serdes = (SerDes<T>) refManager.unpack(serdesRef);
+		SerDes<T> serdes = (SerDes<T>) serdesRef;
 		@SuppressWarnings("unchecked") // caller is responsible for this
-		T obj = (T) refManager.unpack(objRef);
+		T obj = (T) objRef;
 		return sendAndReceive(serdes::serialize, receiveObj, obj);
 	}
 	private <T> T sendAndReceive(IOBiConsumer<DataOutput, T> sender, IOFunction<DataInput, T> receiver, T obj)

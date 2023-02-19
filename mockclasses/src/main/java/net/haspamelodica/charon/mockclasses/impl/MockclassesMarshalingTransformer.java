@@ -19,18 +19,16 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
-import net.haspamelodica.charon.refs.Ref;
 
-public class MockclassesMarshalingTransformer implements DynamicClassTransformer,
-		RepresentationObjectMarshaler<Mockclass>
+public class MockclassesMarshalingTransformer<REF> implements DynamicClassTransformer, RepresentationObjectMarshaler<REF>
 {
-	private final StudentSideCommunicator communicator;
+	private final StudentSideCommunicator<REF> communicator;
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
 
-	private final Map<String, Constructor<? extends Mockclass>> refBasedConstructorsByClassname;
+	private final Map<String, Constructor<? extends Mockclass<REF>>> refBasedConstructorsByClassname;
 
-	public MockclassesMarshalingTransformer(StudentSideCommunicator communicator)
+	public MockclassesMarshalingTransformer(StudentSideCommunicator<REF> communicator)
 	{
 		this.communicator = communicator;
 		this.refBasedConstructorsByClassname = new HashMap<>();
@@ -48,7 +46,7 @@ public class MockclassesMarshalingTransformer implements DynamicClassTransformer
 	public void registerDynamicClass(Class<?> clazz)
 	{
 		@SuppressWarnings("unchecked") // Same reason as in representationObjectClass.
-		Class<? extends Mockclass> clazzCasted = (Class<? extends Mockclass>) clazz;
+		Class<? extends Mockclass<REF>> clazzCasted = (Class<? extends Mockclass<REF>>) clazz;
 		try
 		{
 			refBasedConstructorsByClassname.put(clazz.getName(), clazzCasted.getConstructor(Object.class));
@@ -81,36 +79,12 @@ public class MockclassesMarshalingTransformer implements DynamicClassTransformer
 	}
 
 	@Override
-	public Class<Mockclass> representationObjectClass()
+	public Object createRepresentationObject(REF objRef)
 	{
 		try
 		{
-			// Users are responsible to not mix mockclasses created for different Refs.
-			// So, it's fine to return a Class which isn't "wildcarded". (It only makes a compile-time difference anyway.)
-			@SuppressWarnings("unchecked")
-			Class<Mockclass> clazz = (Class<Mockclass>) Class.forName(Mockclass.class.getName(), true, classloader);
-			return clazz;
-		} catch(ClassNotFoundException e)
-		{
-			throw new RuntimeException(e);
-		}
-	}
-
-	@Override
-	public Ref marshal(Mockclass obj)
-	{
-		return obj.getRef();
-	}
-
-	@Override
-	public Mockclass unmarshal(Ref objRef)
-	{
-		try
-		{
-			String cn = communicator.getStudentSideClassname(objRef);
-			Mockclass mock = refBasedConstructorsByClassname.get(cn).newInstance(objRef);
-			objRef.setReferrer(mock);
-			return mock;
+			String cn = communicator.getClassname(objRef);
+			return refBasedConstructorsByClassname.get(cn).newInstance(objRef);
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)
 		{
 			throw new RuntimeException("Error invoking generated constructor", e);

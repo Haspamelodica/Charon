@@ -3,57 +3,49 @@ package net.haspamelodica.charon.communicator.impl.samejvm;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClass;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-import java.io.IOException;
 import java.util.List;
 
 import net.haspamelodica.charon.communicator.Callback;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.charon.marshaling.SerDes;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
-import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.refs.direct.DirectRefManager;
 
-public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServerSide
+public abstract class DirectSameJVMCommunicator implements StudentSideCommunicator<Object>
 {
-	protected final DirectRefManager refManager;
-
-	public DirectSameJVMCommunicator(DirectRefManager refManager)
+	@Override
+	public boolean storeRefsIdentityBased()
 	{
-		this.refManager = refManager;
+		return true;
 	}
 
 	@Override
-	public String getStudentSideClassname(Ref ref)
+	public String getClassname(Object ref)
 	{
-		return classToName(refManager.unpack(ref).getClass());
+		return classToName(ref.getClass());
 	}
 
 	@Override
-	public Ref callConstructor(String cn, List<String> params, List<Ref> argRefs)
+	public Object callConstructor(String cn, List<String> params, List<Object> argRefs)
 	{
-		return refManager.pack(ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), refManager.unpack(argRefs)));
+		return ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), argRefs);
 	}
 
 	@Override
-	public Ref callStaticMethod(String cn, String name, String returnClassname, List<String> params,
-			List<Ref> argRefs)
+	public Object callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+			List<Object> argRefs)
 	{
-		return refManager.pack(ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
-				refManager.unpack(argRefs)));
+		return ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params), argRefs);
 	}
 
 	@Override
-	public Ref getStaticField(String cn, String name, String fieldClassname)
+	public Object getStaticField(String cn, String name, String fieldClassname)
 	{
-		return refManager.pack(ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname)));
+		return ReflectionUtils.getStaticField(nameToClass(cn), name, nameToClass(fieldClassname));
 	}
 
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, Ref valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, Object valueRef)
 	{
-		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(valueRef));
+		setStaticField_(nameToClass(cn), name, nameToClass(fieldClassname), valueRef);
 	}
 	// extracted to method so the cast is expressible in Java
 	private <F> void setStaticField_(Class<?> clazz, String name, Class<F> fieldClass, Object value)
@@ -64,11 +56,11 @@ public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServer
 	}
 
 	@Override
-	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-			Ref receiverRef, List<Ref> argRefs)
+	public Object callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			Object receiverRef, List<Object> argRefs)
 	{
-		return refManager.pack(callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
-				refManager.unpack(receiverRef), refManager.unpack(argRefs)));
+		return callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
+				receiverRef, argRefs);
 	}
 	// extracted to method so the cast is expressible in Java
 	private <T> Object callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params,
@@ -80,9 +72,9 @@ public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServer
 	}
 
 	@Override
-	public Ref getInstanceField(String cn, String name, String fieldClassname, Ref receiverRef)
+	public Object getInstanceField(String cn, String name, String fieldClassname, Object receiverRef)
 	{
-		return refManager.pack(getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), refManager.unpack(receiverRef)));
+		return getInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), receiverRef);
 	}
 	// extracted to method so the cast is expressible in Java
 	private <T> Object getInstanceField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
@@ -94,10 +86,9 @@ public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServer
 
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname,
-			Ref receiverRef, Ref valueRef)
+			Object receiverRef, Object valueRef)
 	{
-		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname),
-				refManager.unpack(receiverRef), refManager.unpack(valueRef));
+		setInstanceField_(nameToClass(cn), name, nameToClass(fieldClassname), receiverRef, valueRef);
 	}
 	// extracted to method so the casts are expressible in Java
 	private <T, F> void setInstanceField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)
@@ -110,32 +101,9 @@ public class DirectSameJVMCommunicator		implements StudentSideCommunicatorServer
 	}
 
 	@Override
-	public Ref createCallbackInstance(String interfaceName, Callback callback)
+	public Object createCallbackInstance(String interfaceName, Callback<Object> callback)
 	{
 		//TODO create callback instance
 		return null;
-	}
-
-	@Override
-	public Ref send(Ref serdesRef, DataInput objIn) throws IOException
-	{
-		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
-		Object result = serdes.deserialize(objIn);
-		return refManager.pack(result);
-	}
-	@Override
-	public void receive(Ref serdesRef, Ref objRef, DataOutput objOut) throws IOException
-	{
-		SerDes<?> serdes = (SerDes<?>) refManager.unpack(serdesRef);
-		Object obj = refManager.unpack(objRef);
-		respondReceive(objOut, serdes, obj);
-	}
-
-	// extracted to own method so cast to T is expressible in Java
-	private <T> void respondReceive(DataOutput out, SerDes<T> serdes, Object obj) throws IOException
-	{
-		@SuppressWarnings("unchecked") // responsibility of server
-		T objCasted = (T) obj;
-		serdes.serialize(out, objCasted);
 	}
 }

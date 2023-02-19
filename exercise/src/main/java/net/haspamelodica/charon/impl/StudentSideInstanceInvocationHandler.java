@@ -4,15 +4,13 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
 
-import net.haspamelodica.charon.refs.Ref;
-
-public class StudentSideInstanceInvocationHandler implements InvocationHandler
+public class StudentSideInstanceInvocationHandler<REF> implements InvocationHandler
 {
-	private final Map<Method, InstanceMethodHandler> methodHandlers;
+	private final Map<Method, InstanceMethodHandler<REF>> methodHandlers;
 
-	private final Ref ref;
+	private final REF ref;
 
-	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler> methodHandlers, Ref ref)
+	public StudentSideInstanceInvocationHandler(Map<Method, InstanceMethodHandler<REF>> methodHandlers, REF ref)
 	{
 		this.methodHandlers = methodHandlers;
 		this.ref = ref;
@@ -22,10 +20,5 @@ public class StudentSideInstanceInvocationHandler implements InvocationHandler
 	public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
 	{
 		return methodHandlers.get(method).invoke(ref, proxy, args);
-	}
-
-	public Ref getRef()
-	{
-		return ref;
 	}
 }

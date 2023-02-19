@@ -2,9 +2,7 @@ package net.haspamelodica.charon.communicator;
 
 import java.util.List;
 
-import net.haspamelodica.charon.refs.Ref;
-
-public interface Callback
+public interface Callback<REF>
 {
-	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Ref receiverRef, List<Ref> argRefs);
+	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs);
 }

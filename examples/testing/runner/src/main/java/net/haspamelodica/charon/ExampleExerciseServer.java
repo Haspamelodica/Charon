@@ -9,9 +9,11 @@ import java.lang.ref.SoftReference;
 import java.net.ServerSocket;
 import java.net.Socket;
 
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.impl.RefTranslatorCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.charon.refs.direct.WeakDirectRefManager;
+import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -37,8 +39,10 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
-					maybeWrapLoggingS(new DirectSameJVMCommunicatorServerSide(new WeakDirectRefManager()), LOGGING));
+			StudentSideCommunicatorServerSide<Object> directComm = new DirectSameJVMCommunicatorServerSide();
+			StudentSideCommunicatorServerSide<LongRef> translatedComm = new RefTranslatorCommunicatorServerSide<>(directComm, LOGGING);
+			StudentSideCommunicatorServerSide<LongRef> loggingComm = maybeWrapLoggingS(translatedComm, false);
+			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(), loggingComm);
 			server.run();
 		}
 

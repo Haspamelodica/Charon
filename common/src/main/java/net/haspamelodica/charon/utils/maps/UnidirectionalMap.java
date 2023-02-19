@@ -67,22 +67,41 @@ public interface UnidirectionalMap<K, V>
 
 		public Builder identityMap()
 		{
-			identityMap = true;
+			return identityMap(true);
+		}
+		public Builder identityMap(boolean identityMap)
+		{
+			this.identityMap |= identityMap;
 			return this;
 		}
+
 		public Builder weakKeys()
 		{
-			weakKeys = true;
+			return weakKeys(true);
+		}
+		public Builder weakKeys(boolean weakKeys)
+		{
+			this.weakKeys |= weakKeys;
 			return this;
 		}
+
 		public Builder weakValues()
 		{
-			weakValues = true;
+			return weakValues(true);
+		}
+		public Builder weakValues(boolean weakValues)
+		{
+			this.weakValues |= weakValues;
 			return this;
 		}
+
 		public Builder concurrent()
 		{
-			concurrent = true;
+			return concurrent(true);
+		}
+		public Builder concurrent(boolean concurrent)
+		{
+			this.concurrent |= concurrent;
 			return this;
 		}
 

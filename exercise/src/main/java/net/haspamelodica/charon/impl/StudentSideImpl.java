@@ -1,7 +1,5 @@
 package net.haspamelodica.charon.impl;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,8 +10,6 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
-import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
-import net.haspamelodica.charon.refs.Ref;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
 // TODO maybe provide syncWithStudentSide method for mutable serialized objects
@@ -31,20 +27,19 @@ import net.haspamelodica.charon.refs.Ref;
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public class StudentSideImpl implements StudentSide
+public class StudentSideImpl<REF> implements StudentSide
 {
-	private final StudentSideCommunicatorClientSide	communicator;
-	private final Marshaler							globalMarshaler;
+	private final StudentSideCommunicatorClientSide<REF>	communicator;
+	private final Marshaler<REF>							globalMarshaler;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
-	private final Map<String, StudentSidePrototypeBuilder<?, ?>> prototypeBuildersByStudentSideClassname;
+	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(StudentSideCommunicatorClientSide communicator)
+	public StudentSideImpl(StudentSideCommunicatorClientSide<REF> communicator)
 	{
 		this.communicator = communicator;
-		this.globalMarshaler = new Marshaler(communicator, new StudentSideImplRepresentationObjectMarshaler(),
-				PrimitiveSerDes.PRIMITIVE_SERDESES);
+		this.globalMarshaler = new Marshaler<>(communicator, this::createRepresentationObject, PrimitiveSerDes.PRIMITIVE_SERDESES);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
 	}
@@ -59,7 +54,7 @@ public class StudentSideImpl implements StudentSide
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
+		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
 
 		synchronized(prototypes)
 		{
@@ -72,7 +67,7 @@ public class StudentSideImpl implements StudentSide
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
-				StudentSidePrototypeBuilder<?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				StudentSidePrototypeBuilder<REF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 				if(otherPrototypeBuilder.instanceClass.equals(prototypeBuilder.instanceClass))
 					throw new InconsistentHierarchyException("Two prototype classes for " + prototypeBuilder.instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
@@ -96,33 +91,13 @@ public class StudentSideImpl implements StudentSide
 		return prototype;
 	}
 
-	private class StudentSideImplRepresentationObjectMarshaler implements RepresentationObjectMarshaler<StudentSideInstance>
+	private Object createRepresentationObject(REF objRef)
 	{
-		@Override
-		public Class<StudentSideInstance> representationObjectClass()
-		{
-			return StudentSideInstance.class;
-		}
-
-		@Override
-		public Ref marshal(StudentSideInstance obj)
-		{
-			// Guaranteed by StudentSidePrototypeBuilder#getPrototype
-			InvocationHandler invocationHandler = Proxy.getInvocationHandler(obj);
-			// Guaranteed by StudentSidePrototypeBuilder#getPrototype
-			StudentSideInstanceInvocationHandler invocationHandlerCasted = (StudentSideInstanceInvocationHandler) invocationHandler;
-			return invocationHandlerCasted.getRef();
-		}
-
-		@Override
-		public StudentSideInstance unmarshal(Ref objRef)
-		{
-			//TODO if we support inheritance, we need to check super-class-names too
-			String studentSideCN = communicator.getStudentSideClassname(objRef);
-			StudentSidePrototypeBuilder<?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
-			if(prototypeBuilder == null)
-				return null;
-			return prototypeBuilder.instanceBuilder.createInstance(objRef);
-		}
+		//TODO if we support inheritance, we need to check super-class-names too
+		String studentSideCN = communicator.getClassname(objRef);
+		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+		if(prototypeBuilder == null)
+			return null;
+		return prototypeBuilder.instanceBuilder.createInstance(objRef);
 	}
 }

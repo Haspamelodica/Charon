@@ -1,8 +1,6 @@
 package net.haspamelodica.charon.impl;
 
-import net.haspamelodica.charon.refs.Ref;
-
-public interface InstanceMethodHandler
+public interface InstanceMethodHandler<REF>
 {
-	public Object invoke(Ref ref, Object proxy, Object[] args) throws Throwable;
+	public Object invoke(REF ref, Object proxy, Object[] args) throws Throwable;
 }

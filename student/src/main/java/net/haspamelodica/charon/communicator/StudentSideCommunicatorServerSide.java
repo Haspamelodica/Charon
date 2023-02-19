@@ -4,10 +4,8 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-import net.haspamelodica.charon.refs.Ref;
-
-public interface StudentSideCommunicatorServerSide extends StudentSideCommunicator
+public interface StudentSideCommunicatorServerSide<REF> extends StudentSideCommunicator<REF>
 {
-	public Ref send(Ref serdesRef, DataInput objIn) throws IOException;
-	public void receive(Ref serdesRef, Ref objRef, DataOutput objOut) throws IOException;
+	public REF send(REF serdesRef, DataInput objIn) throws IOException;
+	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException;
 }

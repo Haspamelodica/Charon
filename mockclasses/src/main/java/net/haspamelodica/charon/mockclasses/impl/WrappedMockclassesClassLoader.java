@@ -18,7 +18,6 @@ import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader.Stat
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.mockclasses.classloaders.RedefiningClassLoader;
-import net.haspamelodica.charon.refs.Ref;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedMockclassesClassLoader implements AutoCloseable
@@ -50,19 +49,17 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		communicator.close();
 	}
 
-	public static ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			StudentSideCommunicatorClientSide communicator, Class<?>... forceDelegationClasses)
+	public static <REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
+			StudentSideCommunicatorClientSide<REF> communicator, Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer transformer = new MockclassesMarshalingTransformer(communicator);
+		MockclassesMarshalingTransformer<REF> transformer = new MockclassesMarshalingTransformer<>(communicator);
 		// TODO make Serdeses configurable
-		Marshaler marshaler = new Marshaler(communicator, transformer,
+		Marshaler<REF> marshaler = new Marshaler<>(communicator, transformer,
 				PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
-		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler(communicator, marshaler, transformer);
+		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
 
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
-				// Delegate Ref because of the getRef method of Mockclass
-				Ref.class,
 				// Mockclass has to be delegated
 				// because classes from the "outer" classloader need to cast mock classes to "their" Mockclass class.
 				Mockclass.class,

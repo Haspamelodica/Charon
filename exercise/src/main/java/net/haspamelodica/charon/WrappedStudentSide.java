@@ -23,7 +23,7 @@ public class WrappedStudentSide implements AutoCloseable
 	{
 		WrappedCommunicator communicator = new WrappedCommunicator(communication);
 		this.communicator = communicator;
-		this.studentSide = new StudentSideImpl(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
+		this.studentSide = new StudentSideImpl<>(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
 	}
 
 	public StudentSide getStudentSide()

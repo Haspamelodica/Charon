@@ -24,7 +24,6 @@ import java.io.OutputStream;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import net.haspamelodica.charon.communicator.Callback;
@@ -36,10 +35,9 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
-import net.haspamelodica.charon.refs.IllegalRefException;
-import net.haspamelodica.charon.refs.Ref;
-import net.haspamelodica.charon.refs.intref.renter.IntRefManager;
-import net.haspamelodica.charon.refs.intref.renter.IntRefManager.DeletedRef;
+import net.haspamelodica.charon.refs.longref.LongRefManager;
+import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
+import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
@@ -48,7 +46,7 @@ import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
+public class DataCommunicatorClient implements StudentSideCommunicatorClientSide<LongRef>
 {
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
@@ -61,10 +59,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 
 	private final ThreadLocal<StudentSideThread> threads;
 
-	private final IntRefManager refManager;
-
-	private final AtomicBoolean	running;
-	private final Thread		refCleanupThread;
+	private final LongRefManager<LongRef> refManager;
 
 	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut)
 	{
@@ -79,35 +74,11 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 
 		this.out0Lock = new Object();
 
-		this.refManager = new IntRefManager();
-		this.running = new AtomicBoolean(true);
-		this.refCleanupThread = new Thread(this::refCleanupThread);
-		refCleanupThread.setDaemon(true);
-		refCleanupThread.start();
-	}
-
-	private void refCleanupThread()
-	{
-		while(running.get())
-		{
-			try
-			{
-				DeletedRef deletedRef = refManager.removeDeletedRef();
-				refDeleted(deletedRef.id(), deletedRef.receivedCount());
-			} catch(InterruptedException e)
-			{
-				// ignore: means the cleanup thread is being shut down
-			} catch(CommunicationException e)
-			{
-				// ignore: means student side crashed; user-controlled threads will get this exception as well
-			}
-		}
+		this.refManager = new SimpleLongRefManager(false);
 	}
 
 	public void shutdown()
 	{
-		running.set(false);
-		refCleanupThread.interrupt();
 		executeThreadIndependentCommand(SHUTDOWN, out0 ->
 		{}, in0 ->
 		{
@@ -119,13 +90,19 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public String getStudentSideClassname(Ref ref)
+	public boolean storeRefsIdentityBased()
+	{
+		return false;
+	}
+
+	@Override
+	public String getClassname(LongRef ref)
 	{
 		return executeCommand(GET_CLASSNAME, out -> writeRef(out, ref), DataInput::readUTF);
 	}
 
 	@Override
-	public <T> Ref send(Ref serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> LongRef send(LongRef serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
 		return executeRefCommand(SEND, out ->
 		{
@@ -143,7 +120,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 	@Override
-	public <T> T receive(Ref serdesRef, IOFunction<DataInput, T> receiveObj, Ref objRef)
+	public <T> T receive(LongRef serdesRef, IOFunction<DataInput, T> receiveObj, LongRef objRef)
 	{
 		return executeCommand(RECEIVE, out ->
 		{
@@ -169,7 +146,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public Ref callConstructor(String cn, List<String> params, List<Ref> argRefs)
+	public LongRef callConstructor(String cn, List<String> params, List<LongRef> argRefs)
 	{
 		return executeRefCommand(CALL_CONSTRUCTOR, out ->
 		{
@@ -179,7 +156,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public Ref callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<Ref> argRefs)
+	public LongRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
 	{
 		return executeRefCommand(CALL_STATIC_METHOD, out ->
 		{
@@ -190,7 +167,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 	@Override
-	public Ref getStaticField(String cn, String name, String fieldClassname)
+	public LongRef getStaticField(String cn, String name, String fieldClassname)
 	{
 		return executeRefCommand(GET_STATIC_FIELD, out ->
 		{
@@ -200,7 +177,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, Ref valueRef)
+	public void setStaticField(String cn, String name, String fieldClassname, LongRef valueRef)
 	{
 		executeVoidCommand(SET_STATIC_FIELD, out ->
 		{
@@ -212,7 +189,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public Ref callInstanceMethod(String cn, String name, String returnClassname, List<String> params, Ref receiverRef, List<Ref> argRefs)
+	public LongRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
 	{
 		return executeRefCommand(CALL_INSTANCE_METHOD, out ->
 		{
@@ -224,7 +201,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 	@Override
-	public Ref getInstanceField(String cn, String name, String fieldClassname, Ref receiverRef)
+	public LongRef getInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef)
 	{
 		return executeRefCommand(GET_INSTANCE_FIELD, out ->
 		{
@@ -235,7 +212,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, Ref receiverRef, Ref valueRef)
+	public void setInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef, LongRef valueRef)
 	{
 		executeVoidCommand(SET_INSTANCE_FIELD, out ->
 		{
@@ -248,7 +225,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public Ref createCallbackInstance(String interfaceName, Callback callback)
+	public LongRef createCallbackInstance(String interfaceName, Callback<LongRef> callback)
 	{
 		//TODO do something with the passed callback
 		//TODO cache callbacks so that == works
@@ -272,7 +249,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	{
 		executeCommand(command, sendParams, in -> null);
 	}
-	private Ref executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
+	private LongRef executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
 	{
 		return executeCommand(command, sendParams, this::readRef);
 	}
@@ -371,7 +348,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		return new StudentSideThread(in, out);
 	}
 
-	private void writeArgs(DataOutput out, List<String> params, List<Ref> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<String> params, List<LongRef> argRefs) throws IOException
 	{
 		int paramCount = params.size();
 		if(paramCount != argRefs.size())
@@ -380,24 +357,17 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		out.writeInt(paramCount);
 		for(String param : params)
 			out.writeUTF(param);
-		for(Ref argRef : argRefs)
+		for(LongRef argRef : argRefs)
 			writeRef(out, argRef);
 	}
 
-	private Ref readRef(DataInput in) throws IOException
+	private LongRef readRef(DataInput in) throws IOException
 	{
-		try
-		{
-			return refManager.lookupReceivedRef(in.readInt());
-		} catch(IllegalRefException e)
-		{
-			throw new IllegalBehaviourException(e);
-		}
+		return refManager.unmarshalReceivedId(in.readLong());
 	}
-
-	private void writeRef(DataOutput out, Ref ref) throws IOException
+	private void writeRef(DataOutput out, LongRef ref) throws IOException
 	{
-		out.writeInt(refManager.getID(ref));
+		out.writeLong(refManager.marshalRefForSending(ref));
 	}
 
 	private MultiplexedDataInputStream nextInStream() throws ClosedException

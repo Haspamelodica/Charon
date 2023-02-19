@@ -1,7 +1,9 @@
 package net.haspamelodica.charon.marshaling;
 
-public interface RepresentationObjectMarshaler<REF>
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicator.UntranslatedRef;
+
+public interface RepresentationObjectMarshaler
 {
-	/** Creates and returns a representation object for the given Ref. */
-	public Object createRepresentationObject(REF objRef);
+	/** Creates and returns a representation object for the given {@link UntranslatedRef}. */
+	public Object createRepresentationObject(UntranslatedRef untranslatedRef);
 }

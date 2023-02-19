@@ -7,6 +7,8 @@ import java.util.List;
 
 import net.haspamelodica.charon.WrappedCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplierImpl;
 import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
@@ -35,7 +37,8 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 			WrappedCommunicator communicator, Class<?>... forceDelegationClasses)
 	{
 		this.communicator = communicator;
-		this.classloader = createMockclassesClassloader(parent, interfaceProvider, communicator.getClient(), forceDelegationClasses);
+		this.classloader = createMockclassesClassloader(parent, interfaceProvider,
+				new RefTranslatorCommunicatorClientSideSupplierImpl<>(communicator.getClient()), forceDelegationClasses);
 	}
 
 	public ClassLoader getClassloader()
@@ -50,19 +53,17 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 	}
 
 	public static <REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			StudentSideCommunicatorClientSide<REF> communicator, Class<?>... forceDelegationClasses)
+			RefTranslatorCommunicatorClientSideSupplier communicatorSupplier, Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer<REF> transformer = new MockclassesMarshalingTransformer<>(communicator);
+		MockclassesMarshalingTransformer transformer = new MockclassesMarshalingTransformer();
+		StudentSideCommunicatorClientSide<Object> communicator = communicatorSupplier.createCommunicator(true, transformer);
 		// TODO make Serdeses configurable
-		Marshaler<REF> marshaler = new Marshaler<>(communicator, transformer,
+		Marshaler marshaler = new Marshaler(communicator,
 				PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
-		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler<>(communicator, marshaler, transformer);
+		DynamicInvocationHandler<?, ?, ?, ?, ?> invocationHandler = new MockclassesInvocationHandler(communicator, marshaler, transformer);
 
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
-				// Mockclass has to be delegated
-				// because classes from the "outer" classloader need to cast mock classes to "their" Mockclass class.
-				Mockclass.class,
 				// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
 				// Otherwise, we get weird ClassCastExceptions.
 				StaticMethodHandler.class, ConstructorMethodHandler.class, InstanceMethodHandler.class);

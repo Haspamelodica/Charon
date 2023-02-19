@@ -11,15 +11,15 @@ import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class MockclassesInvocationHandler<REF>
-		implements DynamicInvocationHandler<String, MethodDescription, MethodDescription, MethodDescription, REF>
+public class MockclassesInvocationHandler
+		implements DynamicInvocationHandler<String, MethodDescription, MethodDescription, MethodDescription, Object>
 {
-	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final Marshaler<REF>							marshaler;
-	private final MockclassesMarshalingTransformer<REF>		transformer;
+	private final StudentSideCommunicatorClientSide<Object>	communicator;
+	private final Marshaler									marshaler;
+	private final MockclassesMarshalingTransformer			transformer;
 
-	public MockclassesInvocationHandler(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<REF> marshaler,
-			MockclassesMarshalingTransformer<REF> transformer)
+	public MockclassesInvocationHandler(StudentSideCommunicatorClientSide<Object> communicator, Marshaler marshaler,
+			MockclassesMarshalingTransformer transformer)
 	{
 		this.communicator = communicator;
 		this.marshaler = marshaler;
@@ -56,9 +56,9 @@ public class MockclassesInvocationHandler<REF>
 	public Object invokeStaticMethod(String classContext, MethodDescription methodContext, Object[] args)
 	{
 		TypeList.Generic parameterTypes = methodContext.getParameters().asTypeList();
-		List<REF> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
+		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
 
-		REF result = communicator.callStaticMethod(
+		Object result = communicator.callStaticMethod(
 				classContext,
 				methodContext.getActualName(),
 				toClassname(methodContext.getReturnType().asErasure()),
@@ -68,12 +68,12 @@ public class MockclassesInvocationHandler<REF>
 		return marshaler.receive(toClass(methodContext.getReturnType()), result);
 	}
 	@Override
-	public REF invokeConstructor(String classContext, MethodDescription constructorContext, Object receiver, Object[] args)
+	public Object invokeConstructor(String classContext, MethodDescription constructorContext, Object receiver, Object[] args)
 	{
 		TypeList.Generic parameterTypes = constructorContext.getParameters().asTypeList();
-		List<REF> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
+		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
 
-		REF result = communicator.callConstructor(
+		Object result = communicator.callConstructor(
 				classContext,
 				toClassnames(parameterTypes),
 				argsRefs);
@@ -81,12 +81,12 @@ public class MockclassesInvocationHandler<REF>
 		return result;
 	}
 	@Override
-	public Object invokeInstanceMethod(String classContext, MethodDescription methodContext, Object receiver, REF receiverContext, Object[] args)
+	public Object invokeInstanceMethod(String classContext, MethodDescription methodContext, Object receiver, Object receiverContext, Object[] args)
 	{
 		TypeList.Generic parameterTypes = methodContext.getParameters().asTypeList();
-		List<REF> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
+		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
 
-		REF result = communicator.callInstanceMethod(
+		Object result = communicator.callInstanceMethod(
 				classContext,
 				methodContext.getActualName(),
 				toClassname(methodContext.getReturnType()),

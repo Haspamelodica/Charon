@@ -5,6 +5,8 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 
 public class LoggingCommunicatorServerSide<REF>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorServerSide<REF>>
@@ -20,18 +22,28 @@ public class LoggingCommunicatorServerSide<REF>
 	}
 
 	public static <REF> StudentSideCommunicatorServerSide<REF>
+			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, boolean logging)
+	{
+		return maybeWrapLoggingS(communicator, DEFAULT_PREFIX, logging);
+	}
+	public static <REF> StudentSideCommunicatorServerSide<REF>
 			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorServerSide<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REF> StudentSideCommunicatorServerSide<REF>
-			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, boolean logging)
+	public static RefTranslatorCommunicatorServerSideSupplier maybeWrapLoggingS(
+			RefTranslatorCommunicatorServerSideSupplier communicatorSupplier, boolean logging)
+	{
+		return maybeWrapLoggingS(communicatorSupplier, DEFAULT_PREFIX, logging);
+	}
+	public static RefTranslatorCommunicatorServerSideSupplier maybeWrapLoggingS(
+			RefTranslatorCommunicatorServerSideSupplier communicatorSupplier, String prefix, boolean logging)
 	{
 		if(logging)
-			return new LoggingCommunicatorServerSide<>(communicator);
-		return communicator;
+			return new LoggingRefTranslatorCommunicatorServerSideSupplier(communicatorSupplier, prefix);
+		return communicatorSupplier;
 	}
 
 	@Override
@@ -45,5 +57,22 @@ public class LoggingCommunicatorServerSide<REF>
 	{
 		log("receive " + serdesRef + ", " + objRef + ", " + objOut);
 		communicator.receive(serdesRef, objRef, objOut);
+	}
+
+	private static class LoggingRefTranslatorCommunicatorServerSideSupplier
+			extends LoggingRefTranslatorCommunicatorSupplier<RefTranslatorCommunicatorServerSideSupplier>
+			implements RefTranslatorCommunicatorServerSideSupplier
+	{
+		protected LoggingRefTranslatorCommunicatorServerSideSupplier(RefTranslatorCommunicatorServerSideSupplier communicatorSupplier, String prefix)
+		{
+			super(communicatorSupplier, prefix);
+		}
+
+		@Override
+		public <REF_TO> StudentSideCommunicatorServerSide<REF_TO> createCommunicator(
+				boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+		{
+			return new LoggingCommunicatorServerSide<>(communicatorSupplier.createCommunicator(storeRefsIdentityBased, callbacks), prefix);
+		}
 	}
 }

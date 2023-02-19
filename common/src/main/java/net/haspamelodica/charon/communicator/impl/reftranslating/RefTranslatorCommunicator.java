@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.communicator.impl;
+package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import java.util.List;
 
@@ -11,13 +11,16 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 	protected final COMM	communicator;
 	private final boolean	storeRefsIdentityBased;
 
+	private final RefTranslatorCommunicatorCallbacks<REF_TO> callbacks;
+
 	private final BidirectionalMap<REF_TO, REF_FROM>	forwardRefs;
 	private final BidirectionalMap<REF_TO, REF_FROM>	backwardRefs;
 
-	public RefTranslatorCommunicator(COMM communicator, boolean storeRefsIdentityBased)
+	public RefTranslatorCommunicator(COMM communicator, boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
 		this.communicator = communicator;
 		this.storeRefsIdentityBased = storeRefsIdentityBased;
+		this.callbacks = callbacks;
 
 		this.forwardRefs = BidirectionalMap.builder()
 				// It is the user's responsibility to keep all forward refs alive
@@ -111,7 +114,7 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 		if(refFrom != null)
 			return refFrom;
 
-		return backwardRefs.computeValueIfAbsent(refTo, refTo_ ->
+		return backwardRefs.computeValueIfAbsent(refTo, r ->
 		{
 			//TODO the callback is new or has been cleared by now; we need to (re)create it
 			throw new UnsupportedOperationException("not implemented yet");
@@ -129,10 +132,43 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 		if(refTo != null)
 			return refTo;
 
-		//TODO we need to keep track of the representation object becoming unreachable
-		return forwardRefs.computeKeyIfAbsent(refFrom, refFrom_ ->
+		return forwardRefs.computeKeyIfAbsent(refFrom, r -> callbacks.createForwardRef(new UntranslatedRef(communicator, r)));
+	}
+
+
+	public static class UntranslatedRef
+	{
+		private final UntranslatedRefInner<?> inner;
+
+		public <REF> UntranslatedRef(StudentSideCommunicator<REF> communicator, REF ref)
 		{
-			throw new UnsupportedOperationException("not implemented yet");
-		});
+			this(new UntranslatedRefInner<>(communicator, ref));
+		}
+
+		public UntranslatedRef(UntranslatedRefInner<?> inner)
+		{
+			this.inner = inner;
+		}
+
+		public String getClassname()
+		{
+			return inner.getClassname();
+		}
+	}
+	private static class UntranslatedRefInner<REF>
+	{
+		private final StudentSideCommunicator<REF>	communicator;
+		private final REF							ref;
+
+		public UntranslatedRefInner(StudentSideCommunicator<REF> communicator, REF ref)
+		{
+			this.communicator = communicator;
+			this.ref = ref;
+		}
+
+		public String getClassname()
+		{
+			return communicator.getClassname(ref);
+		}
 	}
 }

@@ -5,16 +5,20 @@ import java.util.stream.Collectors;
 
 import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplier;
 
 public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>> implements StudentSideCommunicator<REF>
 {
+	public static final String DEFAULT_PREFIX = "";
+
 	protected final COMM communicator;
 
 	private final String prefix;
 
 	public LoggingCommunicator(COMM communicator)
 	{
-		this(communicator, "");
+		this(communicator, DEFAULT_PREFIX);
 	}
 	public LoggingCommunicator(COMM communicator, String prefix)
 	{
@@ -35,6 +39,18 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 		if(logging)
 			return new LoggingCommunicator<>(communicator);
 		return communicator;
+	}
+	public static <REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>> RefTranslatorCommunicatorSupplier
+			maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, boolean logging)
+	{
+		return maybeWrapLogging(communicatorSupplier, DEFAULT_PREFIX, logging);
+	}
+	public static <REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>> RefTranslatorCommunicatorSupplier
+			maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, String prefix, boolean logging)
+	{
+		if(logging)
+			return new LoggingRefTranslatorCommunicatorSupplier<>(communicatorSupplier, prefix);
+		return communicatorSupplier;
 	}
 
 	@Override
@@ -105,5 +121,25 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 	protected void log(String message)
 	{
 		System.err.println(prefix + message);
+	}
+
+	protected static class LoggingRefTranslatorCommunicatorSupplier<SUPP extends RefTranslatorCommunicatorSupplier>
+			implements RefTranslatorCommunicatorSupplier
+	{
+		protected final SUPP	communicatorSupplier;
+		protected final String	prefix;
+
+		protected LoggingRefTranslatorCommunicatorSupplier(SUPP communicatorSupplier, String prefix)
+		{
+			this.communicatorSupplier = communicatorSupplier;
+			this.prefix = prefix;
+		}
+
+		@Override
+		public <REF_TO> StudentSideCommunicator<REF_TO> createCommunicator(
+				boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+		{
+			return new LoggingCommunicator<>(communicatorSupplier.createCommunicator(storeRefsIdentityBased, callbacks), prefix);
+		}
 	}
 }

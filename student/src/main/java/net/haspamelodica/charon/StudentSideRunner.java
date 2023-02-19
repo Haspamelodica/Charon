@@ -7,10 +7,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.charon.communicator.impl.RefTranslatorCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
@@ -36,10 +36,10 @@ public class StudentSideRunner
 
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
-		StudentSideCommunicatorServerSide<Object> directComm = new DirectSameJVMCommunicatorServerSide();
-		StudentSideCommunicatorServerSide<LongRef> translatedComm = new RefTranslatorCommunicatorServerSide<>(directComm, false);
-		StudentSideCommunicatorServerSide<LongRef> loggingComm = maybeWrapLoggingS(translatedComm, logging);
-		DataCommunicatorServer server = new DataCommunicatorServer(in, out, loggingComm);
+		StudentSideCommunicatorServerSide<?> directComm = new DirectSameJVMCommunicatorServerSide();
+		RefTranslatorCommunicatorServerSideSupplier translatedSupp = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
+		RefTranslatorCommunicatorServerSideSupplier loggingSupp = maybeWrapLoggingS(translatedSupp, logging);
+		DataCommunicatorServer server = new DataCommunicatorServer(in, out, loggingSupp);
 		server.run();
 	}
 }

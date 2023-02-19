@@ -19,6 +19,7 @@ import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
@@ -38,17 +39,11 @@ public class DataCommunicatorServer
 
 	private final AtomicBoolean running;
 
-	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorServerSide<LongRef> communicator)
+	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorServerSideSupplier communicatorSupplier)
 	{
-		if(communicator.storeRefsIdentityBased())
-			throw new IllegalArgumentException("Communicator requested to store LongRefs identity-based");
-
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
-
-		this.communicator = communicator;
-
 		this.refManager = new SimpleLongRefManager(true);
-
+		this.communicator = communicatorSupplier.createCommunicator(false, r -> refManager.createManagedRef());
 		this.running = new AtomicBoolean();
 	}
 

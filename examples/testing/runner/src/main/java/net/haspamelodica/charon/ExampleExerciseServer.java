@@ -10,10 +10,10 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.charon.communicator.impl.RefTranslatorCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
-import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -39,9 +39,9 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			StudentSideCommunicatorServerSide<Object> directComm = new DirectSameJVMCommunicatorServerSide();
-			StudentSideCommunicatorServerSide<LongRef> translatedComm = new RefTranslatorCommunicatorServerSide<>(directComm, LOGGING);
-			StudentSideCommunicatorServerSide<LongRef> loggingComm = maybeWrapLoggingS(translatedComm, false);
+			StudentSideCommunicatorServerSide<?> directComm = new DirectSameJVMCommunicatorServerSide();
+			RefTranslatorCommunicatorServerSideSupplier translatedComm = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
+			RefTranslatorCommunicatorServerSideSupplier loggingComm = maybeWrapLoggingS(translatedComm, LOGGING);
 			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(), loggingComm);
 			server.run();
 		}

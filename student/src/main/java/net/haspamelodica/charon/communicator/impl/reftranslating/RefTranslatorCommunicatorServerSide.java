@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.communicator.impl;
+package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -10,9 +10,10 @@ public class RefTranslatorCommunicatorServerSide<REF_TO, REF_FROM>
 		extends RefTranslatorCommunicator<REF_TO, REF_FROM, StudentSideCommunicatorServerSide<REF_FROM>>
 		implements StudentSideCommunicatorServerSide<REF_TO>
 {
-	public RefTranslatorCommunicatorServerSide(StudentSideCommunicatorServerSide<REF_FROM> communicator, boolean storeRefsIdentityBased)
+	public RefTranslatorCommunicatorServerSide(StudentSideCommunicatorServerSide<REF_FROM> communicator, boolean storeRefsIdentityBased,
+			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
-		super(communicator, storeRefsIdentityBased);
+		super(communicator, storeRefsIdentityBased, callbacks);
 	}
 
 	@Override

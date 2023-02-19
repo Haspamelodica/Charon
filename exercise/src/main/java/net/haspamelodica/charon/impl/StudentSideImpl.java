@@ -7,6 +7,8 @@ import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicator.UntranslatedRef;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.Marshaler;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
@@ -27,19 +29,19 @@ import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
 // TODO type bound is wrong: StudentSideInstance only for forward refs
-public class StudentSideImpl<REF> implements StudentSide
+public class StudentSideImpl implements StudentSide
 {
-	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final Marshaler<REF>							globalMarshaler;
+	private final StudentSideCommunicatorClientSide<Object>	communicator;
+	private final Marshaler									globalMarshaler;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
-	private final Map<String, StudentSidePrototypeBuilder<REF, ?, ?>> prototypeBuildersByStudentSideClassname;
+	private final Map<String, StudentSidePrototypeBuilder<?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(StudentSideCommunicatorClientSide<REF> communicator)
+	public StudentSideImpl(RefTranslatorCommunicatorClientSideSupplier communicatorSupplier)
 	{
-		this.communicator = communicator;
-		this.globalMarshaler = new Marshaler<>(communicator, this::createRepresentationObject, PrimitiveSerDes.PRIMITIVE_SERDESES);
+		this.communicator = communicatorSupplier.createCommunicator(true, this::createRepresentationObject);
+		this.globalMarshaler = new Marshaler(communicator, PrimitiveSerDes.PRIMITIVE_SERDESES);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
 	}
@@ -54,7 +56,7 @@ public class StudentSideImpl<REF> implements StudentSide
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<REF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
+		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
 
 		synchronized(prototypes)
 		{
@@ -67,7 +69,7 @@ public class StudentSideImpl<REF> implements StudentSide
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
-				StudentSidePrototypeBuilder<REF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				StudentSidePrototypeBuilder<?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 				if(otherPrototypeBuilder.instanceClass.equals(prototypeBuilder.instanceClass))
 					throw new InconsistentHierarchyException("Two prototype classes for " + prototypeBuilder.instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
@@ -91,13 +93,13 @@ public class StudentSideImpl<REF> implements StudentSide
 		return prototype;
 	}
 
-	private Object createRepresentationObject(REF objRef)
+	private Object createRepresentationObject(UntranslatedRef untranslatedRef)
 	{
 		//TODO if we support inheritance, we need to check super-class-names too
-		String studentSideCN = communicator.getClassname(objRef);
-		StudentSidePrototypeBuilder<REF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+		String studentSideCN = untranslatedRef.getClassname();
+		StudentSidePrototypeBuilder<?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 		if(prototypeBuilder == null)
 			return null;
-		return prototypeBuilder.instanceBuilder.createInstance(objRef);
+		return prototypeBuilder.instanceBuilder.createInstance();
 	}
 }

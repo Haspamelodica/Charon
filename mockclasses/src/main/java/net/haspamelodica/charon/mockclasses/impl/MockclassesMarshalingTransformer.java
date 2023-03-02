@@ -11,12 +11,12 @@ import net.bytebuddy.dynamic.DynamicType.Builder;
 import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicator.UntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 
-public class MockclassesMarshalingTransformer implements DynamicClassTransformer, RefTranslatorCommunicatorCallbacks<Object>
+public class MockclassesMarshalingTransformer implements DynamicClassTransformer, RepresentationObjectMarshaler
 {
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
@@ -60,7 +60,7 @@ public class MockclassesMarshalingTransformer implements DynamicClassTransformer
 	}
 
 	@Override
-	public Object createForwardRef(UntranslatedRef untranslatedRef)
+	public Object createRepresentationObject(UntranslatedRef untranslatedRef)
 	{
 		try
 		{

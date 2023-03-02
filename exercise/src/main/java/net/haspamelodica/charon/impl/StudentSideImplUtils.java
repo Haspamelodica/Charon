@@ -51,11 +51,6 @@ public class StudentSideImplUtils
 		return (proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
 	}
 
-	public static <REF> InstanceMethodHandler<REF> defaultInstanceHandler(Method method)
-	{
-		return (ref, proxy, args) -> InvocationHandler.invokeDefault(proxy, method, args);
-	}
-
 	public interface StudentSideHandlerGenerator<R, K>
 	{
 		public R generate(K kind, String name, boolean nameOverridden);
@@ -81,25 +76,32 @@ public class StudentSideImplUtils
 				.map((Function<UseSerDes, Class<? extends SerDes<?>>>) UseSerDes::value).toList();
 	}
 
-	public static List<String> mapToStudentSide(Class<?>[] classes)
+	public static List<StudentSideType<?>> mapToStudentSide(Class<?>[] classes)
 	{
 		return mapToStudentSide(Arrays.stream(classes)).toList();
 	}
-	public static List<String> mapToStudentSide(List<Class<?>> classes)
+	public static List<StudentSideType<?>> mapToStudentSide(List<Class<?>> classes)
 	{
 		return mapToStudentSide(classes.stream()).toList();
 	}
-	public static Stream<String> mapToStudentSide(Stream<Class<?>> classes)
+	public static Stream<StudentSideType<?>> mapToStudentSide(Stream<Class<?>> classes)
 	{
 		return classes.map(StudentSideImplUtils::mapToStudentSide);
 	}
-	public static String mapToStudentSide(Class<?> clazz)
+	public static <T> StudentSideType<T> mapToStudentSide(Class<T> clazz)
+	{
+		return new StudentSideType<>(clazz, mapNameToStudentSide(clazz));
+	}
+	public static String mapNameToStudentSide(Class<?> clazz)
 	{
 		//TODO not pretty
 		if(StudentSideInstance.class.isAssignableFrom(clazz))
 			return getStudentSideName(clazz);
 		return classToName(clazz);
 	}
+
+	public static record StudentSideType<T>(Class<T> localType, String studentSideCN)
+	{}
 
 	public static String getStudentSideName(Class<?> clazz)
 	{

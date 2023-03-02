@@ -19,11 +19,11 @@ public class RefTranslatorCommunicatorServerSide<REF_TO, REF_FROM>
 	@Override
 	public REF_TO send(REF_TO serdesRef, DataInput objIn) throws IOException
 	{
-		return translateTo(communicator.send(translateFrom(serdesRef), objIn));
+		return translator.translateTo(communicator.send(translator.translateFrom(serdesRef), objIn));
 	}
 	@Override
 	public void receive(REF_TO serdesRef, REF_TO objRef, DataOutput objOut) throws IOException
 	{
-		communicator.receive(translateFrom(serdesRef), translateFrom(objRef), objOut);
+		communicator.receive(translator.translateFrom(serdesRef), translator.translateFrom(objRef), objOut);
 	}
 }

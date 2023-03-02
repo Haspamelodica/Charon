@@ -20,11 +20,11 @@ public class RefTranslatorCommunicatorClientSide<REF_TO, REF_FROM>
 	@Override
 	public <T> REF_TO send(REF_TO serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
-		return translateTo(communicator.send(translateFrom(serdesRef), sendObj, obj));
+		return translator.translateTo(communicator.send(translator.translateFrom(serdesRef), sendObj, obj));
 	}
 	@Override
 	public <T> T receive(REF_TO serdesRef, IOFunction<DataInput, T> receiveObj, REF_TO objRef)
 	{
-		return communicator.receive(translateFrom(serdesRef), receiveObj, translateFrom(objRef));
+		return communicator.receive(translator.translateFrom(serdesRef), receiveObj, translator.translateFrom(objRef));
 	}
 }

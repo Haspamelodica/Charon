@@ -4,40 +4,22 @@ import java.util.List;
 
 import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
-import net.haspamelodica.charon.utils.maps.BidirectionalMap;
 
-public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>> implements StudentSideCommunicator<REF_TO>
+public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>>
+		implements StudentSideCommunicator<REF_TO>
 {
 	protected final COMM	communicator;
 	private final boolean	storeRefsIdentityBased;
 
-	private final RefTranslatorCommunicatorCallbacks<REF_TO> callbacks;
-
-	private final BidirectionalMap<REF_TO, REF_FROM>	forwardRefs;
-	private final BidirectionalMap<REF_TO, REF_FROM>	backwardRefs;
+	protected final RefTranslator<REF_TO, REF_FROM> translator;
 
 	public RefTranslatorCommunicator(COMM communicator, boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
 		this.communicator = communicator;
 		this.storeRefsIdentityBased = storeRefsIdentityBased;
-		this.callbacks = callbacks;
 
-		this.forwardRefs = BidirectionalMap.builder()
-				// It is the user's responsibility to keep all forward refs alive
-				// as long as they are needed.
-				.weakKeys()
-				.identityKeys(storeRefsIdentityBased)
-				.identityValues(communicator.storeRefsIdentityBased())
-				.concurrent()
-				.build();
-		this.backwardRefs = BidirectionalMap.builder()
-				// If the student side doesn't need a callback anymore,
-				// it should be reclaimed and the exercise side notified.
-				.weakValues()
-				.identityKeys(storeRefsIdentityBased)
-				.identityValues(communicator.storeRefsIdentityBased())
-				.concurrent()
-				.build();
+		this.translator = new RefTranslator<>(storeRefsIdentityBased, storeRefsIdentityBased,
+				r -> callbacks.createForwardRef(new UntranslatedRef(communicator, r)));
 	}
 
 	@Override
@@ -49,126 +31,51 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 	@Override
 	public String getClassname(REF_TO ref)
 	{
-		return communicator.getClassname(translateFrom(ref));
+		return communicator.getClassname(translator.translateFrom(ref));
 	}
 	@Override
 	public REF_TO callConstructor(String cn, List<String> params, List<REF_TO> argRefs)
 	{
-		return translateTo(communicator.callConstructor(cn, params, translateFrom(argRefs)));
+		return translator.translateTo(communicator.callConstructor(cn, params, translator.translateFrom(argRefs)));
 	}
 	@Override
 	public REF_TO callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF_TO> argRefs)
 	{
-		return translateTo(communicator.callStaticMethod(cn, name, returnClassname, params, translateFrom(argRefs)));
+		return translator.translateTo(communicator.callStaticMethod(cn, name, returnClassname, params, translator.translateFrom(argRefs)));
 	}
 	@Override
 	public REF_TO getStaticField(String cn, String name, String fieldClassname)
 	{
-		return translateTo(communicator.getStaticField(cn, name, fieldClassname));
+		return translator.translateTo(communicator.getStaticField(cn, name, fieldClassname));
 	}
 	@Override
 	public void setStaticField(String cn, String name, String fieldClassname, REF_TO valueRef)
 	{
-		communicator.setStaticField(cn, name, fieldClassname, translateFrom(valueRef));
+		communicator.setStaticField(cn, name, fieldClassname, translator.translateFrom(valueRef));
 	}
 	@Override
 	public REF_TO callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF_TO receiverRef, List<REF_TO> argRefs)
 	{
-		return translateTo(communicator.callInstanceMethod(cn, name, returnClassname, params, translateFrom(receiverRef), translateFrom(argRefs)));
+		return translator.translateTo(communicator.callInstanceMethod(cn, name, returnClassname, params,
+				translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));
 	}
 	@Override
 	public REF_TO getInstanceField(String cn, String name, String fieldClassname, REF_TO receiverRef)
 	{
-		return translateTo(communicator.getInstanceField(cn, name, fieldClassname, translateFrom(receiverRef)));
+		return translator.translateTo(communicator.getInstanceField(cn, name, fieldClassname, translator.translateFrom(receiverRef)));
 	}
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname, REF_TO receiverRef, REF_TO valueRef)
 	{
-		communicator.setInstanceField(cn, name, fieldClassname, translateFrom(receiverRef), translateFrom(valueRef));
+		communicator.setInstanceField(cn, name, fieldClassname, translator.translateFrom(receiverRef), translator.translateFrom(valueRef));
 	}
 
 	@Override
 	public REF_TO createCallbackInstance(String interfaceName, Callback<REF_TO> callback)
 	{
-		return translateTo(communicator.createCallbackInstance(interfaceName, (cn, name, returnClassname, params, receiverRef, argRefs) -> translateFrom(
-				callback.callInstanceMethod(cn, name, returnClassname, params, translateTo(receiverRef), translateTo(argRefs)))));
-	}
-
-	protected List<REF_FROM> translateFrom(List<REF_TO> refsTo)
-	{
-		return refsTo.stream().map(this::translateFrom).toList();
-	}
-	protected List<REF_TO> translateTo(List<REF_FROM> refsFrom)
-	{
-		return refsFrom.stream().map(this::translateTo).toList();
-	}
-	protected REF_FROM translateFrom(REF_TO refTo)
-	{
-		if(refTo == null)
-			return null;
-
-		// If the passed object is a forward ref, we are sure to find the Ref in this map:
-		// it can't have been cleared since it is apparently still reachable,
-		// otherwise it couldn't have been passed to this method.
-		REF_FROM refFrom = forwardRefs.getValue(refTo);
-		if(refFrom != null)
-			return refFrom;
-
-		return backwardRefs.computeValueIfAbsent(refTo, r ->
-		{
-			//TODO the callback is new or has been cleared by now; we need to (re)create it
-			throw new UnsupportedOperationException("not implemented yet");
-		});
-	}
-	protected REF_TO translateTo(REF_FROM refFrom)
-	{
-		if(refFrom == null)
-			return null;
-
-		// If the passed Ref is a backward ref (a callback), we are sure to find the object in this map:
-		// it can't have been cleared (by the student side) since it is apparently still reachable (by the student side),
-		// otherwise the student side wouldn't have passed it to this method.
-		REF_TO refTo = backwardRefs.getKey(refFrom);
-		if(refTo != null)
-			return refTo;
-
-		return forwardRefs.computeKeyIfAbsent(refFrom, r -> callbacks.createForwardRef(new UntranslatedRef(communicator, r)));
-	}
-
-
-	public static class UntranslatedRef
-	{
-		private final UntranslatedRefInner<?> inner;
-
-		public <REF> UntranslatedRef(StudentSideCommunicator<REF> communicator, REF ref)
-		{
-			this(new UntranslatedRefInner<>(communicator, ref));
-		}
-
-		public UntranslatedRef(UntranslatedRefInner<?> inner)
-		{
-			this.inner = inner;
-		}
-
-		public String getClassname()
-		{
-			return inner.getClassname();
-		}
-	}
-	private static class UntranslatedRefInner<REF>
-	{
-		private final StudentSideCommunicator<REF>	communicator;
-		private final REF							ref;
-
-		public UntranslatedRefInner(StudentSideCommunicator<REF> communicator, REF ref)
-		{
-			this.communicator = communicator;
-			this.ref = ref;
-		}
-
-		public String getClassname()
-		{
-			return communicator.getClassname(ref);
-		}
+		return translator.translateTo(communicator.createCallbackInstance(interfaceName,
+				(cn, name, returnClassname, params, receiverRef, argRefs) -> translator.translateFrom(
+						callback.callInstanceMethod(cn, name, returnClassname, params,
+								translator.translateTo(receiverRef), translator.translateTo(argRefs)))));
 	}
 }

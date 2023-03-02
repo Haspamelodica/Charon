@@ -13,7 +13,8 @@ public class RefTranslatorCommunicatorSupplierImpl<REF_FROM, COMM extends Studen
 	}
 
 	@Override
-	public <REF_TO> StudentSideCommunicator<REF_TO> createCommunicator(boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+	public <REF_TO> StudentSideCommunicator<REF_TO> createCommunicator(
+			boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
 		return new RefTranslatorCommunicator<>(communicator, storeRefsIdentityBased, callbacks);
 	}

@@ -16,8 +16,6 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplier;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorClientSide;
@@ -54,10 +52,7 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		StudentSideCommunicatorClientSide<?> directComm = new DirectSameJVMCommunicatorClientSide();
-		RefTranslatorCommunicatorClientSideSupplier translatedSupp = new RefTranslatorCommunicatorClientSideSupplierImpl<>(directComm);
-		RefTranslatorCommunicatorClientSideSupplier loggingSupp = maybeWrapLoggingC(translatedSupp, LOGGING);
-		run(new StudentSideImpl(loggingSupp));
+		run(new StudentSideImpl(maybeWrapLoggingC((StudentSideCommunicatorClientSide<?>) new DirectSameJVMCommunicatorClientSide(), LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -87,9 +82,7 @@ public class ExampleExerciseClient
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
 			DataCommunicatorClient client = new DataCommunicatorClient(clientIn, clientOut);
-			RefTranslatorCommunicatorClientSideSupplier translatedSupp = new RefTranslatorCommunicatorClientSideSupplierImpl<>(client);
-			RefTranslatorCommunicatorClientSideSupplier loggingSupp = maybeWrapLoggingC(translatedSupp, "CLIENT: ", LOGGING);
-			run(new StudentSideImpl(loggingSupp));
+			run(new StudentSideImpl(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
 	}
@@ -102,9 +95,7 @@ public class ExampleExerciseClient
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				RefTranslatorCommunicatorClientSideSupplier translatedSupp = new RefTranslatorCommunicatorClientSideSupplierImpl<>(client);
-				RefTranslatorCommunicatorClientSideSupplier loggingSupp = maybeWrapLoggingC(translatedSupp, LOGGING);
-				run(new StudentSideImpl(loggingSupp));
+				run(new StudentSideImpl(maybeWrapLoggingC(client, LOGGING)));
 			} finally
 			{
 				client.shutdown();

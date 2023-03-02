@@ -22,13 +22,13 @@ public class LoggingCommunicatorClientSide<REF>
 		super(communicator, prefix);
 	}
 
-	public static <REF>
-			StudentSideCommunicatorClientSide<REF> maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, boolean logging)
+	public static <REF> StudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, boolean logging)
 	{
 		return maybeWrapLoggingC(communicator, DEFAULT_PREFIX, logging);
 	}
-	public static <REF>
-			StudentSideCommunicatorClientSide<REF> maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, String prefix, boolean logging)
+	public static <REF> StudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicatorClientSide<>(communicator, prefix);

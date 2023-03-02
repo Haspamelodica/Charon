@@ -1,6 +1,6 @@
 package net.haspamelodica.charon.marshaling;
 
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicator.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 
 public interface RepresentationObjectMarshaler
 {

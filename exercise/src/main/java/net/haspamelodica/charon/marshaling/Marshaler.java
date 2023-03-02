@@ -11,28 +11,35 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class Marshaler
+public class Marshaler<REF>
 {
-	private final StudentSideCommunicatorClientSide<Object>	communicator;
+	private final StudentSideCommunicatorClientSide<REF>	communicator;
+	private final RefTranslator<Object, REF>				translator;
 	private final List<Class<? extends SerDes<?>>>			serdesClasses;
 
-	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<?>> initializedSerDesesBySerDesClass;
+	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<REF, ?>> initializedSerDesesBySerDesClass;
 
-	private final Map<Class<?>, InitializedSerDes<?>> initializedSerDesesByInstanceClass;
+	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(StudentSideCommunicatorClientSide<Object> communicator, List<Class<? extends SerDes<?>>> serdesClasses)
+	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler representationObjectMarshaler,
+			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator;
+		this.translator = new RefTranslator<>(true, communicator.storeRefsIdentityBased(),
+				r -> representationObjectMarshaler.createRepresentationObject(new UntranslatedRef(communicator, r)));
 		this.serdesClasses = List.copyOf(serdesClasses);
 
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
-	private Marshaler(Marshaler base, List<Class<? extends SerDes<?>>> serdesClasses)
+	private Marshaler(Marshaler<REF> base, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = base.communicator;
+		this.translator = base.translator;
 		this.serdesClasses = List.copyOf(serdesClasses);
 
 		this.initializedSerDesesBySerDesClass = base.initializedSerDesesBySerDesClass;
@@ -41,24 +48,24 @@ public class Marshaler
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
 
-	public Marshaler withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
+	public Marshaler<REF> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		List<Class<? extends SerDes<?>>> mergedSerDesClasses = new ArrayList<>(serdesClasses);
 		if(mergedSerDesClasses.isEmpty())
 			return this;
 		// insert these after new classes to let new SerDes classes override old ones
 		mergedSerDesClasses.addAll(this.serdesClasses);
-		return new Marshaler(this, mergedSerDesClasses);
+		return new Marshaler<>(this, mergedSerDesClasses);
 	}
 
-	public List<Object> send(List<? extends Class<?>> classes, List<?> objs)
+	public List<REF> send(List<? extends Class<?>> classes, List<?> objs)
 	{
-		List<Object> result = new ArrayList<>();
+		List<REF> result = new ArrayList<>();
 		for(int i = 0; i < classes.size(); i ++)
 			result.add(send(classes.get(i), objs.get(i)));
 		return result;
 	}
-	public List<?> receive(List<Class<?>> classes, List<Object> objRefs)
+	public List<?> receive(List<Class<?>> classes, List<REF> objRefs)
 	{
 		List<Object> result = new ArrayList<>();
 		for(int i = 0; i < classes.size(); i ++)
@@ -66,47 +73,55 @@ public class Marshaler
 		return result;
 	}
 
-	public <T> Object send(Class<T> clazz, Object obj)
+	public <T> REF send(Class<T> clazz, Object obj)
 	{
 		return sendUnchecked(clazz, castOrPrimitive(clazz, obj));
 	}
 
-	public <T> Object sendUnchecked(Class<T> clazz, T object)
+	public <T> REF sendUnchecked(Class<T> clazz, T object)
 	{
 		if(object == null)
 			return null;
 
-		InitializedSerDes<T> serdes = getSerDesForStaticObjectClass(clazz);
+		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
 			return communicator.send(serdes.studentSideSerDesRef(), serdes.serdes()::serialize, object);
 
-		return object;
+		return translateFrom(object);
+	}
+	public REF translateFrom(Object object)
+	{
+		return translator.translateFrom(object);
 	}
 
-	public <T> T receive(Class<T> clazz, Object objRef)
+	public <T> T receive(Class<T> clazz, REF objRef)
 	{
 		//TODO make exception easier to understand: this happens if some exercise creator tries to pass an object into a method.
 		return castOrPrimitive(clazz, receiveUnchecked(clazz, objRef));
 	}
-	public <T> Object receiveUnchecked(Class<T> clazz, Object objRef)
+	public <T> Object receiveUnchecked(Class<T> clazz, REF objRef)
 	{
 		if(objRef == null)
 			return null;
 
-		InitializedSerDes<T> serdes = getSerDesForStaticObjectClass(clazz);
+		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
 			return communicator.receive(serdes.studentSideSerDesRef(), serdes.serdes()::deserialize, objRef);
 
-		return objRef;
+		return translateTo(objRef);
+	}
+	public Object translateTo(REF objRef)
+	{
+		return translator.translateTo(objRef);
 	}
 
-	private <T> InitializedSerDes<T> getSerDesForStaticObjectClass(Class<T> clazz)
+	private <T> InitializedSerDes<REF, T> getSerDesForStaticObjectClass(Class<T> clazz)
 	{
-		InitializedSerDes<?> result = initializedSerDesesByInstanceClass.computeIfAbsent(clazz, c ->
+		InitializedSerDes<REF, ?> result = initializedSerDesesByInstanceClass.computeIfAbsent(clazz, c ->
 		{
 			for(Class<? extends SerDes<?>> serdesClass : serdesClasses)
 			{
-				InitializedSerDes<?> serdes = getSerDesFromSerDesClass(serdesClass);
+				InitializedSerDes<REF, ?> serdes = getSerDesFromSerDesClass(serdesClass);
 				if(serdes.serdes().getHandledClass().isAssignableFrom(clazz))
 					return serdes;
 			}
@@ -114,21 +129,20 @@ public class Marshaler
 			return null;
 		});
 		@SuppressWarnings("unchecked") // this is guaranteed because we only put key-value pairs with matching T
-		InitializedSerDes<T> resultCasted = (InitializedSerDes<T>) result;
+		InitializedSerDes<REF, T> resultCasted = (InitializedSerDes<REF, T>) result;
 		return resultCasted;
 	}
 
-	private InitializedSerDes<?> getSerDesFromSerDesClass(Class<? extends SerDes<?>> serdesClass)
+	private InitializedSerDes<REF, ?> getSerDesFromSerDesClass(Class<? extends SerDes<?>> serdesClass)
 	{
 		return initializedSerDesesBySerDesClass.computeIfAbsent(serdesClass, c ->
 		{
 			SerDes<?> serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
-			//TODO this does not work. callConstructor will attempt to unmarshal the serdes, which won't work since there is no SSI for serializers.
-			Object serdesRef = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
+			REF serdesRef = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
 			return new InitializedSerDes<>(serdes, serdesRef);
 		});
 	}
 
-	private static record InitializedSerDes<T>(SerDes<T> serdes, Object studentSideSerDesRef)
+	private static record InitializedSerDes<REF, T>(SerDes<T> serdes, REF studentSideSerDesRef)
 	{}
 }

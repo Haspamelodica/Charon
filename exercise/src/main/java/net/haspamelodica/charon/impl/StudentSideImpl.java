@@ -7,10 +7,9 @@ import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplier;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicator.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
-import net.haspamelodica.charon.marshaling.Marshaler;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
@@ -31,17 +30,15 @@ import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 // TODO type bound is wrong: StudentSideInstance only for forward refs
 public class StudentSideImpl implements StudentSide
 {
-	private final StudentSideCommunicatorClientSide<Object>	communicator;
-	private final Marshaler									globalMarshaler;
+	private final MarshalingCommunicator<?> marshalingCommunicator;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>> prototypes;
 
 	private final Map<String, StudentSidePrototypeBuilder<?, ?>> prototypeBuildersByStudentSideClassname;
 
-	public StudentSideImpl(RefTranslatorCommunicatorClientSideSupplier communicatorSupplier)
+	public StudentSideImpl(StudentSideCommunicatorClientSide<?> communicator)
 	{
-		this.communicator = communicatorSupplier.createCommunicator(true, this::createRepresentationObject);
-		this.globalMarshaler = new Marshaler(communicator, PrimitiveSerDes.PRIMITIVE_SERDESES);
+		this.marshalingCommunicator = new MarshalingCommunicator<>(communicator, this::createRepresentationObject, PrimitiveSerDes.PRIMITIVE_SERDESES);
 		this.prototypes = new ConcurrentHashMap<>();
 		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
 	}
@@ -56,7 +53,7 @@ public class StudentSideImpl implements StudentSide
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(communicator, globalMarshaler, prototypeClass);
+		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(marshalingCommunicator, prototypeClass);
 
 		synchronized(prototypes)
 		{
@@ -65,7 +62,7 @@ public class StudentSideImpl implements StudentSide
 			if(prototype != null)
 				return prototype;
 
-			String studentSideCN = prototypeBuilder.instanceBuilder.studentSideCN;
+			String studentSideCN = prototypeBuilder.instanceBuilder.instanceStudentSideType.studentSideCN();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{

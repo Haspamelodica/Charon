@@ -2,107 +2,93 @@ package net.haspamelodica.charon.mockclasses.impl;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Stream;
 
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
-import net.bytebuddy.description.type.TypeList;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.marshaling.Marshaler;
+import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class MockclassesInvocationHandler
-		implements DynamicInvocationHandler<String, MethodDescription, MethodDescription, MethodDescription, Object>
+		implements DynamicInvocationHandler<StudentSideType<?>, MethodDescription, MethodDescription, MethodDescription, Object>
 {
-	private final StudentSideCommunicatorClientSide<Object>	communicator;
-	private final Marshaler									marshaler;
-	private final MockclassesMarshalingTransformer			transformer;
+	private final MarshalingCommunicator<?>			marshalingCommunicator;
+	private final MockclassesMarshalingTransformer	transformer;
 
-	public MockclassesInvocationHandler(StudentSideCommunicatorClientSide<Object> communicator, Marshaler marshaler,
-			MockclassesMarshalingTransformer transformer)
+	public MockclassesInvocationHandler(MarshalingCommunicator<?> marshalingCommunicator, MockclassesMarshalingTransformer transformer)
 	{
-		this.communicator = communicator;
-		this.marshaler = marshaler;
+		this.marshalingCommunicator = marshalingCommunicator;
 		this.transformer = transformer;
 	}
 
 	@Override
-	public String createClassContext(TypeDefinition typeDefinition)
+	public StudentSideType<?> createClassContext(TypeDefinition typeDefinition)
 	{
-		return typeDefinition.getActualName();
+		return toStudentSideType(typeDefinition);
 	}
+
 	@Override
-	public MethodDescription createStaticMethodContext(String classContext, MethodDescription method)
+	public MethodDescription createStaticMethodContext(StudentSideType<?> classContext, MethodDescription method)
 	{
 		return method;
 	}
 	@Override
-	public MethodDescription createConstructorContext(String classContext, MethodDescription constructor)
+	public MethodDescription createConstructorContext(StudentSideType<?> classContext, MethodDescription constructor)
 	{
 		return constructor;
 	}
 	@Override
-	public MethodDescription createInstanceMethodContext(String classContext, MethodDescription method)
+	public MethodDescription createInstanceMethodContext(StudentSideType<?> classContext, MethodDescription method)
 	{
 		return method;
 	}
 	@Override
-	public void registerDynamicClassCreated(String classContext, Class<?> clazz)
+	public void registerDynamicClassCreated(StudentSideType<?> classContext, Class<?> clazz)
 	{
 		transformer.registerDynamicClass(clazz);
 	}
 
 	@Override
-	public Object invokeStaticMethod(String classContext, MethodDescription methodContext, Object[] args)
+	public Object invokeStaticMethod(StudentSideType<?> classContext, MethodDescription methodContext, Object[] args)
 	{
-		TypeList.Generic parameterTypes = methodContext.getParameters().asTypeList();
-		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
-
-		Object result = communicator.callStaticMethod(
+		return marshalingCommunicator.callStaticMethod(
 				classContext,
 				methodContext.getActualName(),
-				toClassname(methodContext.getReturnType().asErasure()),
-				toClassnames(methodContext.getParameters().asTypeList()),
-				argsRefs);
-
-		return marshaler.receive(toClass(methodContext.getReturnType()), result);
+				toStudentSideType(methodContext.getReturnType().asErasure()),
+				toStudentSideTypes(methodContext.getParameters().asTypeList()),
+				Arrays.asList(args));
 	}
 	@Override
-	public Object invokeConstructor(String classContext, MethodDescription constructorContext, Object receiver, Object[] args)
+	public Object invokeConstructor(StudentSideType<?> classContext, MethodDescription constructorContext, Object receiver, Object[] args)
 	{
-		TypeList.Generic parameterTypes = constructorContext.getParameters().asTypeList();
-		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
-
-		Object result = communicator.callConstructor(
+		Object result = marshalingCommunicator.callConstructor(
 				classContext,
-				toClassnames(parameterTypes),
-				argsRefs);
+				toStudentSideTypes(constructorContext.getParameters().asTypeList()),
+				Arrays.asList(args));
 
 		return result;
 	}
 	@Override
-	public Object invokeInstanceMethod(String classContext, MethodDescription methodContext, Object receiver, Object receiverContext, Object[] args)
+	public Object invokeInstanceMethod(StudentSideType<?> classContext, MethodDescription methodContext, Object receiver, Object receiverContext, Object[] args)
 	{
-		TypeList.Generic parameterTypes = methodContext.getParameters().asTypeList();
-		List<Object> argsRefs = marshaler.send(toClasses(parameterTypes), Arrays.asList(args));
-
-		Object result = communicator.callInstanceMethod(
+		return marshalingCommunicator.callInstanceMethod(
 				classContext,
 				methodContext.getActualName(),
-				toClassname(methodContext.getReturnType()),
-				toClassnames(parameterTypes),
-				receiverContext, argsRefs);
-
-		return marshaler.receive(toClass(methodContext.getReturnType()), result);
+				toStudentSideType(methodContext.getReturnType()),
+				toStudentSideTypes(methodContext.getParameters().asTypeList()),
+				receiverContext, Arrays.asList(args));
 	}
 
-	private List<? extends Class<?>> toClasses(List<? extends TypeDefinition> typeDefinitions)
+	private List<StudentSideType<?>> toStudentSideTypes(List<? extends TypeDefinition> typeDefinitions)
 	{
-		return typeDefinitions.stream().map(this::toClass).toList();
+		Stream<StudentSideType<?>> stream = typeDefinitions.stream().map(this::toStudentSideType);
+		return stream.toList();
 	}
-	private static List<String> toClassnames(List<? extends TypeDefinition> typeDefinitions)
+	private StudentSideType<?> toStudentSideType(TypeDefinition typeDefinition)
 	{
-		return typeDefinitions.stream().map(MockclassesInvocationHandler::toClassname).toList();
+		return new StudentSideType<>(toClass(typeDefinition), typeDefinition.getActualName());
 	}
 	private Class<?> toClass(TypeDefinition typeDefinition)
 	{

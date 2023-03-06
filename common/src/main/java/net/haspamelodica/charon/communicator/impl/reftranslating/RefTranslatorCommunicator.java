@@ -19,7 +19,7 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 		this.storeRefsIdentityBased = storeRefsIdentityBased;
 
 		this.translator = new RefTranslator<>(storeRefsIdentityBased, storeRefsIdentityBased,
-				r -> callbacks.createForwardRef(new UntranslatedRef(communicator, r)));
+				r -> callbacks.createForwardRef(new UntranslatedRef<>(communicator, r)));
 	}
 
 	@Override

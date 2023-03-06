@@ -13,7 +13,7 @@ public class MarshalingCommunicator<REF>
 	private final Marshaler<REF>							marshaler;
 
 	public MarshalingCommunicator(StudentSideCommunicatorClientSide<REF> communicator,
-			RepresentationObjectMarshaler representationObjectMarshaler, List<Class<? extends SerDes<?>>> serdesClasses)
+			RepresentationObjectMarshaler<REF> representationObjectMarshaler, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this(communicator, new Marshaler<>(communicator, representationObjectMarshaler, serdesClasses));
 	}
@@ -30,11 +30,23 @@ public class MarshalingCommunicator<REF>
 
 	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args)
 	{
-		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
-
-		REF resultRef = communicator.callConstructor(type.studentSideCN(), extractStudentSideCNs(params), argRefs);
+		REF resultRef = callConstructorRawRef(type, params, args);
 
 		return marshaler.receive(type.localType(), resultRef);
+	}
+	// Neccessary for the Mockclasses frontend
+	public REF callConstructorExistingRepresentationObject(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args,
+			Object representationObject)
+	{
+		REF resultRef = callConstructorRawRef(type, params, args);
+		marshaler.setRepresentationObjectRefPair(resultRef, representationObject);
+		return resultRef;
+	}
+	private REF callConstructorRawRef(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args)
+	{
+		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
+
+		return communicator.callConstructor(type.studentSideCN(), extractStudentSideCNs(params), argRefs);
 	}
 
 	public <T> T callStaticMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params, List<Object> args)
@@ -64,6 +76,13 @@ public class MarshalingCommunicator<REF>
 			Object receiver, List<Object> args)
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
+
+		return callInstanceMethodRawReceiver(type, name, returnType, params, receiverRef, args);
+	}
+	// Neccessary for the Mockclasses frontend
+	public <T> T callInstanceMethodRawReceiver(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
+			REF receiverRef, List<Object> args)
+	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
 		REF resultRef = communicator.callInstanceMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params),

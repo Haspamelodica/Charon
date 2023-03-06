@@ -53,9 +53,9 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 	}
 
 	public static <REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			StudentSideCommunicatorClientSide<?> communicator, Class<?>... forceDelegationClasses)
+			StudentSideCommunicatorClientSide<REF> communicator, Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer transformer = new MockclassesMarshalingTransformer();
+		MockclassesMarshalingTransformer<REF> transformer = new MockclassesMarshalingTransformer<>();
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
 				// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
@@ -74,9 +74,9 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 				new LazyDynamicInvocationHandler<>(() ->
 				{
 					// TODO make Serdeses configurable
-					MarshalingCommunicator<?> marshalingCommunicator = new MarshalingCommunicator<>(communicator, transformer,
+					MarshalingCommunicator<REF> marshalingCommunicator = new MarshalingCommunicator<>(communicator, transformer,
 							PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
-					return new MockclassesInvocationHandler(marshalingCommunicator, transformer);
+					return new MockclassesInvocationHandler<>(marshalingCommunicator, transformer);
 				}));
 		ClassLoader userClassLoader = new RedefiningClassLoader(dynamicClassloader, parent);
 
@@ -117,6 +117,12 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		public MCTX createInstanceMethodContext(CCTX classContext, MethodDescription method)
 		{
 			return handler().createInstanceMethodContext(classContext, method);
+		}
+
+		@Override
+		public void registerDynamicClassCreated(CCTX classContext, Class<?> clazz)
+		{
+			handler().registerDynamicClassCreated(classContext, clazz);
 		}
 
 		@Override

@@ -25,12 +25,12 @@ public class Marshaler<REF>
 
 	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler representationObjectMarshaler,
+	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler<REF> representationObjectMarshaler,
 			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator;
 		this.translator = new RefTranslator<>(true, communicator.storeRefsIdentityBased(),
-				r -> representationObjectMarshaler.createRepresentationObject(new UntranslatedRef(communicator, r)));
+				r -> representationObjectMarshaler.createRepresentationObject(new UntranslatedRef<>(communicator, r)));
 		this.serdesClasses = List.copyOf(serdesClasses);
 
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
@@ -113,6 +113,11 @@ public class Marshaler<REF>
 	public Object translateTo(REF objRef)
 	{
 		return translator.translateTo(objRef);
+	}
+
+	public void setRepresentationObjectRefPair(REF ref, Object representationObject)
+	{
+		translator.setForwardRefTranslation(ref, representationObject);
 	}
 
 	private <T> InitializedSerDes<REF, T> getSerDesForStaticObjectClass(Class<T> clazz)

@@ -73,4 +73,9 @@ public class RefTranslator<REF_TO, REF_FROM>
 
 		return forwardRefs.computeKeyIfAbsent(refFrom, callbacks::createForwardRef);
 	}
+
+	public void setForwardRefTranslation(REF_FROM refFrom, REF_TO refTo)
+	{
+		forwardRefs.put(refTo, refFrom);
+	}
 }

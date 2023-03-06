@@ -7,7 +7,7 @@ import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
@@ -90,7 +90,7 @@ public class StudentSideImpl implements StudentSide
 		return prototype;
 	}
 
-	private Object createRepresentationObject(UntranslatedRef untranslatedRef)
+	private Object createRepresentationObject(UntypedUntranslatedRef untranslatedRef)
 	{
 		//TODO if we support inheritance, we need to check super-class-names too
 		String studentSideCN = untranslatedRef.getClassname();

@@ -3,6 +3,7 @@ package net.haspamelodica.charon.utils.maps;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.WeakHashMap;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -15,6 +16,8 @@ public interface UnidirectionalMap<K, V>
 	public V put(K key, V value);
 	public V remove(K key);
 	public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction);
+
+	public void removeIf(BiPredicate<K, V> removalPredicate);
 
 	public Stream<Entry<K, V>> stream();
 	public default Stream<K> keyStream()
@@ -124,19 +127,13 @@ public interface UnidirectionalMap<K, V>
 		}
 		private <K, V> UnidirectionalMap<K, V> buildConsideringWeakKeysIdentity()
 		{
-			if(!weakKeys)
-				return buildConsideringIdentity();
-
-			UnidirectionalMapSupplier supplier = this::buildWithWeakKeys;
-			return identityMap ? new IdentityUnidirectionalMap<>(supplier) : supplier.createMap();
-		}
-		private <K, V> UnidirectionalMap<K, V> buildWithWeakKeys()
-		{
-			return new UnidirectionalMapImpl<>(WeakHashMap::new);
-		}
-		private <K, V> UnidirectionalMap<K, V> buildConsideringIdentity()
-		{
-			return identityMap ? new UnidirectionalMapImpl<>(IdentityHashMap::new) : buildDefault();
+			return weakKeys
+					? identityMap
+							? new WeakIdentityUnidirectionalMap<>(this::buildDefault)
+							: new UnidirectionalMapImpl<>(WeakHashMap::new)
+					: identityMap
+							? new UnidirectionalMapImpl<>(IdentityHashMap::new)
+							: buildDefault();
 		}
 		private <K, V> UnidirectionalMap<K, V> buildDefault()
 		{

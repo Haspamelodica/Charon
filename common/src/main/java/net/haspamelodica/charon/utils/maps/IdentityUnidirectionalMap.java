@@ -1,5 +1,6 @@
 package net.haspamelodica.charon.utils.maps;
 
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -36,6 +37,12 @@ public class IdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalMap<K
 	public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction)
 	{
 		return map.computeIfAbsent(new IdentityReference<>(key), r -> mappingFunction.apply(r.t()));
+	}
+
+	@Override
+	public void removeIf(BiPredicate<K, V> removalPredicate)
+	{
+		map.removeIf((k, v) -> removalPredicate.test(k.t(), v));
 	}
 
 	@Override

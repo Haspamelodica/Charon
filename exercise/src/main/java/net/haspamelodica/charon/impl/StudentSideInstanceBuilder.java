@@ -85,7 +85,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 				.map(method -> switch(method.getName())
 				{
 					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
-							(proxy, args) -> "StudentSideInstance"); //TODO can we easily show the RefID here?
+							(proxy, args) -> "SSI#" + Integer.toHexString(System.identityHashCode(proxy))); //TODO can we easily show the RefID here?
 					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
 							(proxy, args) -> System.identityHashCode(proxy));
 					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),

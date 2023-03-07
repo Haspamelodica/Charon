@@ -1,6 +1,7 @@
 package net.haspamelodica.charon.utils.maps;
 
 import java.util.List;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -48,6 +49,15 @@ public class ConcurrentUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 		synchronized(map)
 		{
 			return map.computeIfAbsent(key, mappingFunction);
+		}
+	}
+
+	@Override
+	public void removeIf(BiPredicate<K, V> removalPredicate)
+	{
+		synchronized(map)
+		{
+			map.removeIf(removalPredicate);
 		}
 	}
 

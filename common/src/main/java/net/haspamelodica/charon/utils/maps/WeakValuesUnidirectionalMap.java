@@ -3,6 +3,8 @@ package net.haspamelodica.charon.utils.maps;
 import java.lang.ref.Reference;
 import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.util.Objects;
+import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.stream.Stream;
 
@@ -39,6 +41,7 @@ public class WeakValuesUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 	@Override
 	public V put(K key, V value)
 	{
+		Objects.requireNonNull(value);
 		pollRefqueue();
 
 		WeakReference<V> ref = new DebuggingWeakReference<>(value, refqueue);
@@ -83,6 +86,29 @@ public class WeakValuesUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 		value = mappingFunction.apply(key);
 		put(key, value);
 		return value;
+	}
+
+	@Override
+	public void removeIf(BiPredicate<K, V> removalPredicate)
+	{
+		pollRefqueue();
+
+		map.removeIf((k, vRef) ->
+		{
+			V v = vRef.get();
+			if(v == null)
+			{
+				// Got cleared after polling refqueue, but before reaching here
+				refToKeyMap.remove(vRef);
+				return true;
+			}
+
+			if(!removalPredicate.test(k, v))
+				return false;
+
+			refToKeyMap.remove(vRef);
+			return true;
+		});
 	}
 
 	@Override

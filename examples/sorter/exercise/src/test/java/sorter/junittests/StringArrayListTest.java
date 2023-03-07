@@ -2,6 +2,8 @@ package sorter.junittests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.lang.ref.Reference;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,6 +31,8 @@ public class StringArrayListTest
 		StringArrayList list = StringArrayListP.new_(STRINGS.length);
 		assertEquals(0, list.length());
 
+		System.gc();
+
 		list.add("hello");
 		assertEquals(1, list.length());
 
@@ -41,6 +45,7 @@ public class StringArrayListTest
 		list.add("hello");
 		assertEquals(4, list.length());
 
+		Reference.reachabilityFence(list);
 		//TODO test passing null
 	}
 

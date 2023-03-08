@@ -39,7 +39,7 @@ public class ExampleExerciseClient
 	public static void main(String[] args) throws IOException, InterruptedException
 	{
 		// An instance of StudentSide will at some point be provided by the framework, not created by the exercise.
-		// Also, Ares would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the exercise JVM.
+		// Also, Charon would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the exercise JVM.
 		switch(MODE)
 		{
 			case DIRECT -> runDirect();

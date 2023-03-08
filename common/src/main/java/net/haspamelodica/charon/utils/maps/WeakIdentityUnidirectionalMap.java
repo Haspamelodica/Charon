@@ -128,10 +128,7 @@ public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalM
 
 		public boolean isCleared()
 		{
-			boolean result = ref.get() == null;
-			if(result)
-				System.out.println("Cleared a ref!");
-			return result;
+			return ref.get() == null;
 		}
 
 		public T getOrNull()
@@ -167,10 +164,5 @@ public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalM
 	}
 
 	private static class RefClearedException extends RuntimeException
-	{
-		public RefClearedException()
-		{
-			System.out.println("RefClearedException thrown");
-		}
-	}
+	{}
 }

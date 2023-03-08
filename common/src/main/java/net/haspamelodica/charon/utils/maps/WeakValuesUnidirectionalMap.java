@@ -44,7 +44,7 @@ public class WeakValuesUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 		Objects.requireNonNull(value);
 		pollRefqueue();
 
-		WeakReference<V> ref = new DebuggingWeakReference<>(value, refqueue);
+		WeakReference<V> ref = new WeakReference<>(value, refqueue);
 		WeakReference<V> oldRef = map.put(key, ref);
 		refToKeyMap.put(ref, key);
 

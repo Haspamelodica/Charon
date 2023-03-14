@@ -2,8 +2,9 @@ package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import java.util.List;
 
-import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 
 public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>>
 		implements StudentSideCommunicator<REF_TO>
@@ -13,13 +14,41 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 
 	protected final RefTranslator<REF_TO, REF_FROM> translator;
 
-	public RefTranslatorCommunicator(COMM communicator, boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+	public RefTranslatorCommunicator(UninitializedStudentSideCommunicator<REF_FROM, COMM> communicator, boolean storeRefsIdentityBased,
+			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
-		this.communicator = communicator;
+		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
+		{
+			@Override
+			public REF_FROM callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+					REF_FROM receiverRef, List<REF_FROM> argRefs)
+			{
+				return translator.translateFrom(callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params,
+						translator.translateTo(receiverRef), translator.translateTo(argRefs)));
+			}
+
+			@Override
+			public String getCallbackInterfaceCn(REF_FROM ref)
+			{
+				return callbacks.getCallbackInterfaceCn(translator.translateTo(ref));
+			}
+		});
 		this.storeRefsIdentityBased = storeRefsIdentityBased;
 
-		this.translator = new RefTranslator<>(storeRefsIdentityBased, storeRefsIdentityBased,
-				r -> callbacks.createForwardRef(new UntranslatedRef<>(communicator, r)));
+		this.translator = new RefTranslator<>(storeRefsIdentityBased, this.communicator.storeRefsIdentityBased(), new RefTranslatorCallbacks<>()
+		{
+			@Override
+			public REF_TO createForwardRef(REF_FROM untranslatedRef)
+			{
+				return callbacks.createForwardRef(new UntranslatedRef<>(RefTranslatorCommunicator.this.communicator, untranslatedRef));
+			}
+
+			@Override
+			public REF_FROM createBackwardRef(REF_TO translatedRef)
+			{
+				return RefTranslatorCommunicator.this.communicator.createCallbackInstance(callbacks.getCallbackInterfaceCn(translatedRef));
+			}
+		});
 	}
 
 	@Override
@@ -32,6 +61,16 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 	public String getClassname(REF_TO ref)
 	{
 		return communicator.getClassname(translator.translateFrom(ref));
+	}
+	@Override
+	public String getSuperclass(String cn)
+	{
+		return communicator.getSuperclass(cn);
+	}
+	@Override
+	public List<String> getInterfaces(String cn)
+	{
+		return communicator.getInterfaces(cn);
 	}
 	@Override
 	public REF_TO callConstructor(String cn, List<String> params, List<REF_TO> argRefs)
@@ -71,11 +110,8 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 	}
 
 	@Override
-	public REF_TO createCallbackInstance(String interfaceName, Callback<REF_TO> callback)
+	public REF_TO createCallbackInstance(String interfaceCn)
 	{
-		return translator.translateTo(communicator.createCallbackInstance(interfaceName,
-				(cn, name, returnClassname, params, receiverRef, argRefs) -> translator.translateFrom(
-						callback.callInstanceMethod(cn, name, returnClassname, params,
-								translator.translateTo(receiverRef), translator.translateTo(argRefs)))));
+		return translator.translateTo(communicator.createCallbackInstance(interfaceCn));
 	}
 }

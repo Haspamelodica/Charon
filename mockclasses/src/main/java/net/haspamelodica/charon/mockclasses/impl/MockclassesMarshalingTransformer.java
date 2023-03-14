@@ -2,7 +2,9 @@ package net.haspamelodica.charon.mockclasses.impl;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import net.bytebuddy.description.field.FieldDescription;
@@ -13,11 +15,11 @@ import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
-import net.haspamelodica.charon.marshaling.RepresentationObjectMarshaler;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 
-public class MockclassesMarshalingTransformer<REF> implements DynamicClassTransformer, RepresentationObjectMarshaler<REF>
+public class MockclassesMarshalingTransformer implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<Method>
 {
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
@@ -63,7 +65,25 @@ public class MockclassesMarshalingTransformer<REF> implements DynamicClassTransf
 	}
 
 	@Override
-	public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
+	public String getCallbackInterfaceCn(Object exerciseSideObject)
+	{
+		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
+	}
+
+	@Override
+	public CallbackMethod<Method> lookupCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiver)
+	{
+		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
+	}
+
+	@Override
+	public Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+	{
+		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
+	}
+
+	@Override
+	public <REF> Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
 	{
 		try
 		{

@@ -123,7 +123,7 @@ public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalM
 		{
 			this.ref = new WeakReference<>(t);
 			// We need cache this to avoid changing the reported hashCode if we get cleared
-			this.hashCode = t.hashCode();
+			this.hashCode = System.identityHashCode(t);
 		}
 
 		public boolean isCleared()

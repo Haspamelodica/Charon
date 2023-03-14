@@ -1,8 +1,11 @@
 package net.haspamelodica.charon.reflection;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -178,9 +181,30 @@ public class ReflectionUtils
 		}, classname);
 	}
 
+	public static List<String> classToName(Class<?>[] classes)
+	{
+		return Arrays.stream(classes).map(ReflectionUtils::classToName).toList();
+	}
+	public static List<String> classToName(List<Class<?>> classes)
+	{
+		return classes.stream().map(ReflectionUtils::classToName).toList();
+	}
 	public static String classToName(Class<?> clazz)
 	{
 		return clazz.getName();
+	}
+
+	public static <P> P createProxyInstance(Class<P> proxiedClass, InvocationHandler handler)
+	{
+		Object proxyInstance = Proxy.newProxyInstance(proxiedClass.getClassLoader(), new Class[] {proxiedClass}, handler);
+		@SuppressWarnings("unchecked")
+		P proxyInstanceCasted = (P) proxyInstance;
+		return proxyInstanceCasted;
+	}
+
+	public static List<Object> argsToList(Object[] args)
+	{
+		return args == null ? List.of() : Arrays.asList(args);
 	}
 
 	private ReflectionUtils()

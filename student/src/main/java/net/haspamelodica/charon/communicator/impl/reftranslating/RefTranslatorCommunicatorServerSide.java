@@ -5,13 +5,14 @@ import java.io.DataOutput;
 import java.io.IOException;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 
 public class RefTranslatorCommunicatorServerSide<REF_TO, REF_FROM>
 		extends RefTranslatorCommunicator<REF_TO, REF_FROM, StudentSideCommunicatorServerSide<REF_FROM>>
 		implements StudentSideCommunicatorServerSide<REF_TO>
 {
-	public RefTranslatorCommunicatorServerSide(StudentSideCommunicatorServerSide<REF_FROM> communicator, boolean storeRefsIdentityBased,
-			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+	public RefTranslatorCommunicatorServerSide(UninitializedStudentSideCommunicator<REF_FROM, StudentSideCommunicatorServerSide<REF_FROM>> communicator,
+			boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 	{
 		super(communicator, storeRefsIdentityBased, callbacks);
 	}

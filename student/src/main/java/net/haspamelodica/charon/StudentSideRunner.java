@@ -6,7 +6,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
@@ -36,7 +36,7 @@ public class StudentSideRunner
 
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
-		StudentSideCommunicatorServerSide<?> directComm = new DirectSameJVMCommunicatorServerSide();
+		UninitializedStudentSideCommunicatorServerSide<Object> directComm = DirectSameJVMCommunicatorServerSide::new;
 		RefTranslatorCommunicatorServerSideSupplier translatedSupp = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
 		RefTranslatorCommunicatorServerSideSupplier loggingSupp = maybeWrapLoggingS(translatedSupp, logging);
 		DataCommunicatorServer server = new DataCommunicatorServer(in, out, loggingSupp);

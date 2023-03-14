@@ -13,6 +13,7 @@ public class UntranslatedRef<REF> implements UntypedUntranslatedRef
 		this.ref = ref;
 	}
 
+	@Override
 	public String getClassname()
 	{
 		return communicator.getClassname(ref);

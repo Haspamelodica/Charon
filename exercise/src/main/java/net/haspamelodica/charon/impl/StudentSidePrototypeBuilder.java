@@ -1,11 +1,11 @@
 package net.haspamelodica.charon.impl;
 
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.argsToList;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.createProxyInstance;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.mapToStudentSide;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.ParameterizedType;
@@ -19,6 +19,7 @@ import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
+import net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
@@ -46,7 +47,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 
 		// The order of the following operations is important: each step depends on the last
 
-		this.instanceClass = checkPrototypeClassAndGetInstsanceClass();
+		this.instanceClass = checkPrototypeClassAndGetInstanceClass();
 		this.instanceStudentSideType = mapToStudentSide(instanceClass);
 		this.prototypeWideMarshalingCommunicator = createPrototypeWideMarshalingCommunicator(globalMarshalingCommunicator);
 
@@ -66,7 +67,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		return prototype;
 	}
 
-	private Class<SI> checkPrototypeClassAndGetInstsanceClass()
+	private Class<SI> checkPrototypeClassAndGetInstanceClass()
 	{
 		if(!prototypeClass.isInterface())
 			throw new InconsistentHierarchyException("Prototype classes have to be interfaces: " + prototypeClass);
@@ -92,7 +93,8 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 					Class<SI> instanceClass = (Class<SI>) instanceTypeUnchecked;
 					return instanceClass;
 				}
-		throw new InconsistentHierarchyException("A prototype class has to implement StudentClassPrototype directly: " + prototypeClass);
+		throw new InconsistentHierarchyException("A prototype class has to implement "
+				+ StudentSidePrototype.class.getSimpleName() + " directly: " + prototypeClass);
 	}
 
 	private MarshalingCommunicator<?> createPrototypeWideMarshalingCommunicator(MarshalingCommunicator<?> globalMarshalingCommunicator)
@@ -131,13 +133,8 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 
 	private MethodHandler constructorHandler(Method method, MarshalingCommunicator<?> marshalingCommunicator, boolean nameOverridden)
 	{
-		switch(instanceClass.getAnnotation(StudentSideInstanceKind.class).value())
-		{
-			case CLASS ->
-					{
-					}
-			case INTERFACE -> throw new InconsistentHierarchyException("Student-side interfaces can't have constructors");
-		}
+		if(instanceBuilder.kind != Kind.CLASS)
+			throw new InconsistentHierarchyException("Only student-side classes can have constructors: " + method);
 
 		if(nameOverridden)
 			throw new InconsistentHierarchyException("Student-side constructor had name overridden: " + method);

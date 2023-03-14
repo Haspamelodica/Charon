@@ -2,15 +2,19 @@ package net.haspamelodica.charon.communicator.impl.data;
 
 public enum ThreadCommand
 {
+	EXERCISE_FINISHED,
+
 	//no callback possible
 	GET_STATIC_FIELD,
 	SET_STATIC_FIELD,
 	GET_INSTANCE_FIELD,
 	SET_INSTANCE_FIELD,
 	CREATE_CALLBACK_INSTANCE,
+	GET_CLASSNAME,
+	GET_SUPERCLASS,
+	GET_INTERFACES,
 
 	//callback possible
-	GET_CLASSNAME,
 	SEND,
 	RECEIVE,
 	CALL_CONSTRUCTOR,

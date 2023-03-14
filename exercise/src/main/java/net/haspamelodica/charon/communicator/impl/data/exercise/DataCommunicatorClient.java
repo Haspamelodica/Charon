@@ -4,9 +4,12 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_INSTANCE_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_STATIC_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CREATE_CALLBACK_INSTANCE;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_FINISHED;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_CLASSNAME;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INTERFACES;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_STATIC_FIELD;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_SUPERCLASS;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.RECEIVE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SEND;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_INSTANCE_FIELD;
@@ -26,8 +29,11 @@ import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import net.haspamelodica.charon.communicator.Callback;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
+import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
+import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse;
@@ -48,6 +54,8 @@ import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 // TODO server, client or both crash on shutdown sometimes
 public class DataCommunicatorClient implements StudentSideCommunicatorClientSide<LongRef>
 {
+	private final StudentSideCommunicatorCallbacks<LongRef> callbacks;
+
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
 	private final AtomicInteger			nextOutStreamID;
@@ -55,34 +63,35 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	private final Queue<MultiplexedDataInputStream>		freeStreamsForReceiving;
 	private final Queue<MultiplexedDataOutputStream>	freeStreamsForSending;
 
-	private final Object out0Lock;
+	private final Object commandStreamLock;
 
 	private final ThreadLocal<StudentSideThread> threads;
 
 	private final LongRefManager<LongRef> refManager;
 
-	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut)
+	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorCallbacks<LongRef> callbacks)
 	{
+		this.callbacks = callbacks;
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
-		this.nextInStreamID = new AtomicInteger(1);
-		this.nextOutStreamID = new AtomicInteger(1);
+		this.nextInStreamID = new AtomicInteger(DataCommunicatorConstants.FIRST_FREE_STREAM_ID);
+		this.nextOutStreamID = new AtomicInteger(DataCommunicatorConstants.FIRST_FREE_STREAM_ID);
 
 		this.freeStreamsForReceiving = new ConcurrentLinkedQueue<>();
 		this.freeStreamsForSending = new ConcurrentLinkedQueue<>();
 
 		this.threads = new ThreadLocal<>();
 
-		this.out0Lock = new Object();
+		this.commandStreamLock = new Object();
 
 		this.refManager = new SimpleLongRefManager(false);
 	}
 
 	public void shutdown()
 	{
-		executeThreadIndependentCommand(SHUTDOWN, out0 ->
-		{}, in0 ->
+		executeThreadIndependentCommand(SHUTDOWN, commandOut ->
+		{}, commandIn ->
 		{
-			if(ThreadIndependentResponse.decode(in0.readByte()) != ThreadIndependentResponse.SHUTDOWN_FINISHED)
+			if(ThreadIndependentResponse.decode(commandIn.readByte()) != ThreadIndependentResponse.SHUTDOWN_FINISHED)
 				throw new IllegalBehaviourException("Student side didn't respond with SHUTDOWN_FINISHED to SHUTDOWN");
 			return null;
 		});
@@ -98,13 +107,30 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public String getClassname(LongRef ref)
 	{
-		return executeCommand(GET_CLASSNAME, out -> writeRef(out, ref), DataInput::readUTF);
+		return executeCommand(GET_CLASSNAME, false, out -> writeRef(out, ref), DataInput::readUTF);
+	}
+	@Override
+	public String getSuperclass(String cn)
+	{
+		return executeCommand(GET_SUPERCLASS, false, out -> out.writeUTF(cn), DataInput::readUTF);
+	}
+	@Override
+	public List<String> getInterfaces(String cn)
+	{
+		return executeCommand(GET_INTERFACES, false, out -> out.writeUTF(cn), in ->
+		{
+			int n = in.readInt();
+			String[] result = new String[n];
+			for(int i = 0; i < n; i ++)
+				result[i] = in.readUTF();
+			return List.of(result);
+		});
 	}
 
 	@Override
 	public <T> LongRef send(LongRef serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{
-		return executeRefCommand(SEND, out ->
+		return executeRefCommand(SEND, true, out ->
 		{
 			MultiplexedDataOutputStream serdesOut = freeStreamsForSending.poll();
 			if(serdesOut == null)
@@ -122,7 +148,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public <T> T receive(LongRef serdesRef, IOFunction<DataInput, T> receiveObj, LongRef objRef)
 	{
-		return executeCommand(RECEIVE, out ->
+		return executeCommand(RECEIVE, true, out ->
 		{
 			MultiplexedDataInputStream serdesIn = freeStreamsForReceiving.poll();
 			if(serdesIn == null)
@@ -135,10 +161,6 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 			return serdesIn;
 		}, (in, serdesIn) ->
 		{
-			// The student side notifies us it is finished with createing the output stream behind serdesIn by sending SERDES_OUT_READY.
-			// Neccessary because StreamMultiplexer requires the output stream to exist before the input stream is used.
-			if(ThreadResponse.decode(in.readByte()) != ThreadResponse.SERDES_OUT_READY)
-				throw new IllegalBehaviourException("Expected " + ThreadResponse.SERDES_OUT_READY);
 			T result = receiveObj.apply(serdesIn);
 			freeStreamsForReceiving.add(serdesIn);
 			return result;
@@ -148,7 +170,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callConstructor(String cn, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_CONSTRUCTOR, out ->
+		return executeRefCommand(CALL_CONSTRUCTOR, true, out ->
 		{
 			out.writeUTF(cn);
 			writeArgs(out, params, argRefs);
@@ -158,7 +180,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_STATIC_METHOD, out ->
+		return executeRefCommand(CALL_STATIC_METHOD, true, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -169,7 +191,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef getStaticField(String cn, String name, String fieldClassname)
 	{
-		return executeRefCommand(GET_STATIC_FIELD, out ->
+		return executeRefCommand(GET_STATIC_FIELD, false, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -179,7 +201,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public void setStaticField(String cn, String name, String fieldClassname, LongRef valueRef)
 	{
-		executeVoidCommand(SET_STATIC_FIELD, out ->
+		executeVoidCommand(SET_STATIC_FIELD, false, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -191,19 +213,19 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_INSTANCE_METHOD, out ->
+		return executeRefCommand(CALL_INSTANCE_METHOD, true, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
 			out.writeUTF(returnClassname);
-			writeRef(out, receiverRef);
 			writeArgs(out, params, argRefs);
+			writeRef(out, receiverRef);
 		});
 	}
 	@Override
 	public LongRef getInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef)
 	{
-		return executeRefCommand(GET_INSTANCE_FIELD, out ->
+		return executeRefCommand(GET_INSTANCE_FIELD, false, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -214,7 +236,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef, LongRef valueRef)
 	{
-		executeVoidCommand(SET_INSTANCE_FIELD, out ->
+		executeVoidCommand(SET_INSTANCE_FIELD, false, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -225,60 +247,98 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public LongRef createCallbackInstance(String interfaceName, Callback<LongRef> callback)
+	public LongRef createCallbackInstance(String interfaceCn)
 	{
-		//TODO do something with the passed callback
-		//TODO cache callbacks so that == works
-		return executeRefCommand(CREATE_CALLBACK_INSTANCE, out ->
-		{
-			out.writeUTF(interfaceName);
-		});
+		return executeRefCommand(CREATE_CALLBACK_INSTANCE, false, out -> out.writeUTF(interfaceCn));
 	}
 
 	private void refDeleted(int id, int receivedCount)
 	{
-		executeThreadIndependentCommand(REF_DELETED, out0 ->
+		executeThreadIndependentCommand(REF_DELETED, commandOut ->
 		{
 			// Can't use writeRef: the ref doesn't exist anymore
-			out0.writeInt(id);
-			out0.writeInt(receivedCount);
+			commandOut.writeInt(id);
+			commandOut.writeInt(receivedCount);
 		});
 	}
 
-	private void executeVoidCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
+	private void executeVoidCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams)
 	{
-		executeCommand(command, sendParams, in -> null);
+		executeCommand(command, allowCallbacks, sendParams, in -> null);
 	}
-	private LongRef executeRefCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams)
+	private LongRef executeRefCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams)
 	{
-		return executeCommand(command, sendParams, this::readRef);
+		return executeCommand(command, allowCallbacks, sendParams, this::readRef);
 	}
-	private <R> R executeCommand(ThreadCommand command, IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
+	private <R> R executeCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
 	{
-		return executeCommand(command, out ->
+		return executeCommand(command, allowCallbacks, out ->
 		{
 			sendParams.accept(out);
 			return null;
 		}, (in, params) -> parseResponse.apply(in));
 	}
-	private <R, P> R executeCommand(ThreadCommand command, IOFunction<DataOutputStream, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
+	private <R, P> R executeCommand(ThreadCommand command, boolean allowCallbacks,
+			IOFunction<DataOutputStream, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
 	{
 		try
 		{
 			StudentSideThread thread = getStudentSideThread();
-
+			MultiplexedDataInputStream in = thread.in();
 			MultiplexedDataOutputStream out = thread.out();
-			out.writeByte(command.encode());
+
+			writeThreadCommand(out, command);
 			P params = sendParams.apply(out);
 			out.flush();
 
-			return parseResponse.apply(thread.in(), params);
+			if(allowCallbacks)
+				handleStudentSideResponsesUntilFinished(in, out);
+			else if(readThreadResponse(in) != ThreadResponse.STUDENT_FINISHED)
+				throw new IllegalBehaviourException("Unexpected response from student side");
+			return parseResponse.apply(in, params);
 		} catch(UnexpectedResponseException e)
 		{
 			return wrapUnexpectedResponseException(e);
 		} catch(IOException e)
 		{
 			return wrapIOException(e);
+		}
+	}
+
+	private void handleStudentSideResponsesUntilFinished(DataInput in, DataOutputStream out) throws IOException
+	{
+		for(;;)
+		{
+			switch(readThreadResponse(in))
+			{
+				case STUDENT_FINISHED ->
+				{
+					return;
+				}
+				case CALL_CALLBACK_INSTANCE_METHOD ->
+				{
+					String cn = in.readUTF();
+					String name = in.readUTF();
+					String returnClassname = in.readUTF();
+					Args args = readArgs(in);
+					LongRef receiverRef = readRef(in);
+
+					LongRef result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs());
+
+					writeThreadCommand(out, EXERCISE_FINISHED);
+					writeRef(out, result);
+				}
+				case GET_CALLBACK_INTERFACE_CN ->
+				{
+					LongRef callbackRef = readRef(in);
+
+					String result = callbacks.getCallbackInterfaceCn(callbackRef);
+
+					writeThreadCommand(out, EXERCISE_FINISHED);
+					out.writeUTF(result);
+				}
+			}
+			out.flush();
 		}
 	}
 
@@ -289,17 +349,17 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand,
 			IOFunction<DataInput, R> parseResponse)
 	{
-		synchronized(out0Lock)
+		synchronized(commandStreamLock)
 		{
 			try
 			{
-				MultiplexedDataOutputStream out0 = multiplexer.getOut(0);
-				MultiplexedDataInputStream in0 = multiplexer.getIn(0);
-				out0.writeByte(command.encode());
-				sendCommand.accept(out0);
+				MultiplexedDataOutputStream commandOut = multiplexer.getOut(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
+				MultiplexedDataInputStream commandIn = multiplexer.getIn(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
+				commandOut.writeByte(command.encode());
+				sendCommand.accept(commandOut);
 				//TODO this spuriously throws "another thread is currently writing"
-				out0.flush();
-				return parseResponse.apply(in0);
+				commandOut.flush();
+				return parseResponse.apply(commandIn);
 			} catch(UnexpectedResponseException e)
 			{
 				return wrapUnexpectedResponseException(e);
@@ -331,34 +391,44 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		return thread;
 	}
 
+	//TODO clean up threads which have exited
 	private StudentSideThread createStudentSideThread() throws ClosedException
 	{
-		// in only is usable as soon as the student side created the corresponding output stream.
+		// This thread's in stream is only usable as soon as the student side created the corresponding output stream.
 		// But the first communication between two threads is always a write by the exercise side,
 		// which will (according to GenericStreamMultiplexer) finish only when read is called on the corresponding input stream.
 		// The student side does this only after creating the output stream, which means this won't cause problems.
 		// (If the student side is malicious and doesn't create the output stream, all it can do is cause UnexpectedResponseExceptions.)
 		MultiplexedDataInputStream in = nextInStream();
 		MultiplexedDataOutputStream out = nextOutStream();
-		executeThreadIndependentCommand(NEW_THREAD, out0 ->
+		executeThreadIndependentCommand(NEW_THREAD, commandOut ->
 		{
-			out0.writeInt(in.getStreamID());
-			out0.writeInt(out.getStreamID());
+			commandOut.writeInt(in.getStreamID());
+			commandOut.writeInt(out.getStreamID());
 		});
 		return new StudentSideThread(in, out);
 	}
 
+	private Args readArgs(DataInput in) throws IOException
+	{
+		return DataCommunicatorUtils.readArgs(in, this::readRef);
+	}
 	private void writeArgs(DataOutput out, List<String> params, List<LongRef> argRefs) throws IOException
 	{
-		int paramCount = params.size();
-		if(paramCount != argRefs.size())
-			throw new FrameworkCausedException("Parameter and argument count mismatched: " + paramCount + ", " + argRefs.size());
+		DataCommunicatorUtils.writeArgs(out, params, argRefs, FrameworkCausedException::new, this::writeRef);
+	}
 
-		out.writeInt(paramCount);
-		for(String param : params)
-			out.writeUTF(param);
-		for(LongRef argRef : argRefs)
-			writeRef(out, argRef);
+	private ThreadResponse readThreadResponse(DataInput in) throws IOException
+	{
+		byte encodedResponse = in.readByte();
+		ThreadResponse result = ThreadResponse.decode(encodedResponse);
+		if(result == null)
+			throw new IllegalBehaviourException("Illegal thread response: " + encodedResponse);
+		return result;
+	}
+	private void writeThreadCommand(DataOutput out, ThreadCommand command) throws IOException
+	{
+		out.writeByte(command.encode());
 	}
 
 	private LongRef readRef(DataInput in) throws IOException

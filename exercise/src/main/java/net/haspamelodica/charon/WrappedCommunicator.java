@@ -2,15 +2,17 @@ package net.haspamelodica.charon;
 
 import java.io.IOException;
 
-import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
+import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedCommunicator implements AutoCloseable
 {
-	private final Communication				communication;
-	private final DataCommunicatorClient	client;
+	private final Communication							communication;
+	private final UninitializedDataCommunicatorClient	client;
 
 	public WrappedCommunicator(String... args) throws IOException, InterruptedException, IncorrectUsageException
 	{
@@ -20,10 +22,10 @@ public class WrappedCommunicator implements AutoCloseable
 	public WrappedCommunicator(Communication communication)
 	{
 		this.communication = communication;
-		this.client = new DataCommunicatorClient(communication.getIn(), communication.getOut());
+		this.client = new UninitializedDataCommunicatorClient(communication.getIn(), communication.getOut());
 	}
 
-	public DataCommunicatorClient getClient()
+	public UninitializedStudentSideCommunicatorClientSide<LongRef> getClient()
 	{
 		return client;
 	}

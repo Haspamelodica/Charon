@@ -11,6 +11,7 @@ import java.io.UncheckedIOException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.exercise.IOBiConsumer;
@@ -31,6 +32,11 @@ import net.haspamelodica.charon.marshaling.SerDes;
 //TODO better exception handling. Use StudentSideException
 public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicator implements StudentSideCommunicatorClientSide<Object>
 {
+	public DirectSameJVMCommunicatorClientSide(StudentSideCommunicatorCallbacks<Object> callbacks)
+	{
+		super(callbacks);
+	}
+
 	@Override
 	public <T> Object send(Object serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
 	{

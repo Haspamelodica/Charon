@@ -4,7 +4,10 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 
@@ -12,15 +15,28 @@ public class LoggingCommunicatorServerSide<REF>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorServerSide<REF>>
 		implements StudentSideCommunicatorServerSide<REF>
 {
-	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REF> communicator)
-	{
-		super(communicator);
-	}
 	public LoggingCommunicatorServerSide(StudentSideCommunicatorServerSide<REF> communicator, String prefix)
 	{
 		super(communicator, prefix);
 	}
+	public LoggingCommunicatorServerSide(UninitializedStudentSideCommunicator<REF, StudentSideCommunicatorServerSide<REF>> communicator,
+			StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
+	{
+		super(communicator, callbacks, prefix);
+	}
 
+	public static <REF> UninitializedStudentSideCommunicatorServerSide<REF>
+			maybeWrapLoggingS(UninitializedStudentSideCommunicatorServerSide<REF> communicator, boolean logging)
+	{
+		return maybeWrapLoggingS(communicator, DEFAULT_PREFIX, logging);
+	}
+	public static <REF> UninitializedStudentSideCommunicatorServerSide<REF>
+			maybeWrapLoggingS(UninitializedStudentSideCommunicatorServerSide<REF> communicator, String prefix, boolean logging)
+	{
+		if(logging)
+			return c -> new LoggingCommunicatorServerSide<>(communicator, c, prefix);
+		return communicator;
+	}
 	public static <REF> StudentSideCommunicatorServerSide<REF>
 			maybeWrapLoggingS(StudentSideCommunicatorServerSide<REF> communicator, boolean logging)
 	{

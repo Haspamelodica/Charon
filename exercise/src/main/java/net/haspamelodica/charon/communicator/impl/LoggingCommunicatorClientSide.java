@@ -3,7 +3,10 @@ package net.haspamelodica.charon.communicator.impl;
 import java.io.DataInput;
 import java.io.DataOutput;
 
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.IOBiConsumer;
 import net.haspamelodica.charon.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
@@ -13,15 +16,29 @@ public class LoggingCommunicatorClientSide<REF>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorClientSide<REF>>
 		implements StudentSideCommunicatorClientSide<REF>
 {
-	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REF> communicator)
-	{
-		super(communicator);
-	}
 	public LoggingCommunicatorClientSide(StudentSideCommunicatorClientSide<REF> communicator, String prefix)
 	{
 		super(communicator, prefix);
 	}
 
+	public LoggingCommunicatorClientSide(UninitializedStudentSideCommunicator<REF, StudentSideCommunicatorClientSide<REF>> communicator,
+			StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
+	{
+		super(communicator, callbacks, prefix);
+	}
+
+	public static <REF> UninitializedStudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(UninitializedStudentSideCommunicatorClientSide<REF> communicator, boolean logging)
+	{
+		return maybeWrapLoggingC(communicator, DEFAULT_PREFIX, logging);
+	}
+	public static <REF> UninitializedStudentSideCommunicatorClientSide<REF>
+			maybeWrapLoggingC(UninitializedStudentSideCommunicatorClientSide<REF> communicator, String prefix, boolean logging)
+	{
+		if(logging)
+			return c -> new LoggingCommunicatorClientSide<>(communicator, c, prefix);
+		return communicator;
+	}
 	public static <REF> StudentSideCommunicatorClientSide<REF>
 			maybeWrapLoggingC(StudentSideCommunicatorClientSide<REF> communicator, boolean logging)
 	{

@@ -4,6 +4,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.marshaling.SerDes;
 
@@ -11,6 +12,11 @@ public class DirectSameJVMCommunicatorServerSide
 		extends DirectSameJVMCommunicator
 		implements StudentSideCommunicatorServerSide<Object>
 {
+	public DirectSameJVMCommunicatorServerSide(StudentSideCommunicatorCallbacks<Object> callbacks)
+	{
+		super(callbacks);
+	}
+
 	@Override
 	public Object send(Object serdesRef, DataInput objIn) throws IOException
 	{

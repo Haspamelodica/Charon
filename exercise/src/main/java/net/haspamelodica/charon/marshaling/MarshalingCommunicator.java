@@ -3,19 +3,43 @@ package net.haspamelodica.charon.marshaling;
 import java.util.List;
 import java.util.stream.Stream;
 
-import net.haspamelodica.charon.communicator.Callback;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 
 public class MarshalingCommunicator<REF>
 {
 	private final StudentSideCommunicatorClientSide<REF>	communicator;
 	private final Marshaler<REF>							marshaler;
 
-	public MarshalingCommunicator(StudentSideCommunicatorClientSide<REF> communicator,
-			RepresentationObjectMarshaler<REF> representationObjectMarshaler, List<Class<? extends SerDes<?>>> serdesClasses)
+	public <M> MarshalingCommunicator(UninitializedStudentSideCommunicatorClientSide<REF> communicator,
+			MarshalingCommunicatorCallbacks<M> callbacks, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
-		this(communicator, new Marshaler<>(communicator, representationObjectMarshaler, serdesClasses));
+		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
+		{
+			@Override
+			public String getCallbackInterfaceCn(REF ref)
+			{
+				return callbacks.getCallbackInterfaceCn(marshaler.translateFrom(ref));
+			}
+
+			@Override
+			public REF callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+			{
+				Object receiverObj = marshaler.translateTo(receiverRef);
+
+				CallbackMethod<M> callbackMethod = callbacks.lookupCallbackInstanceMethod(cn, name, returnClassname, params, receiverObj);
+
+				List<Object> argObjs = marshaler.receive(callbackMethod.paramTypes(), argRefs);
+
+				Object resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod, receiverObj, argObjs);
+
+				return marshaler.send(callbackMethod.returnType(), resultObj);
+			}
+		});
+		this.marshaler = new Marshaler<>(this.communicator, callbacks, serdesClasses);
 	}
 	public MarshalingCommunicator(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<REF> marshaler)
 	{
@@ -26,6 +50,19 @@ public class MarshalingCommunicator<REF>
 	public MarshalingCommunicator<REF> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serDeses)
 	{
 		return new MarshalingCommunicator<>(communicator, marshaler.withAdditionalSerDeses(serDeses));
+	}
+
+	public String getClassname(Object representationObject)
+	{
+		return communicator.getClassname(marshaler.translateFrom(representationObject));
+	}
+	public String getSuperclass(String cn)
+	{
+		return communicator.getSuperclass(cn);
+	}
+	public List<String> getInterfaces(String cn)
+	{
+		return communicator.getInterfaces(cn);
 	}
 
 	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args)
@@ -106,12 +143,6 @@ public class MarshalingCommunicator<REF>
 		REF valRef = marshaler.send(fieldType.localType(), value);
 
 		communicator.setInstanceField(type.studentSideCN(), name, fieldType.studentSideCN(), receiverRef, valRef);
-	}
-
-	public Object createCallbackInstance(String interfaceName, Callback<Object> callback)
-	{
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	private List<Class<?>> extractLocalTypes(List<StudentSideType<?>> params)

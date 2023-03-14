@@ -3,8 +3,9 @@ package net.haspamelodica.charon.communicator.impl;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplier;
 
@@ -16,37 +17,44 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 
 	private final String prefix;
 
-	public LoggingCommunicator(COMM communicator)
-	{
-		this(communicator, DEFAULT_PREFIX);
-	}
 	public LoggingCommunicator(COMM communicator, String prefix)
 	{
 		this.communicator = communicator;
 		this.prefix = prefix;
 	}
+	public LoggingCommunicator(UninitializedStudentSideCommunicator<REF, COMM> communicator, StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
+	{
+		this.communicator = communicator.initialize(new LoggingStudentSideCommunicatorCallbacks(callbacks));
+		this.prefix = prefix;
+	}
 
-	public static <REF, COMM extends StudentSideCommunicator<REF>>
-			StudentSideCommunicator<REF> maybeWrapLogging(COMM communicator, String prefix, boolean logging)
+	public static <REF> UninitializedStudentSideCommunicator<REF, ?>
+			maybeWrapLogging(UninitializedStudentSideCommunicator<REF, ?> communicator, boolean logging)
+	{
+		return maybeWrapLogging(communicator, DEFAULT_PREFIX, logging);
+	}
+	public static <REF> UninitializedStudentSideCommunicator<REF, ?>
+			maybeWrapLogging(UninitializedStudentSideCommunicator<REF, ?> communicator, String prefix, boolean logging)
+	{
+		if(logging)
+			return (UninitializedStudentSideCommunicator<REF, StudentSideCommunicator<REF>>) c -> new LoggingCommunicator<>(communicator, c, prefix);
+		return communicator;
+	}
+	public static <REF> StudentSideCommunicator<REF> maybeWrapLogging(StudentSideCommunicator<REF> communicator, boolean logging)
+	{
+		return maybeWrapLogging(communicator, DEFAULT_PREFIX, logging);
+	}
+	public static <REF> StudentSideCommunicator<REF> maybeWrapLogging(StudentSideCommunicator<REF> communicator, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingCommunicator<>(communicator, prefix);
 		return communicator;
 	}
-	public static <REF, COMM extends StudentSideCommunicator<REF>>
-			StudentSideCommunicator<REF> maybeWrapLogging(COMM communicator, boolean logging)
-	{
-		if(logging)
-			return new LoggingCommunicator<>(communicator);
-		return communicator;
-	}
-	public static <REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>> RefTranslatorCommunicatorSupplier
-			maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, boolean logging)
+	public static RefTranslatorCommunicatorSupplier maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, boolean logging)
 	{
 		return maybeWrapLogging(communicatorSupplier, DEFAULT_PREFIX, logging);
 	}
-	public static <REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>> RefTranslatorCommunicatorSupplier
-			maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, String prefix, boolean logging)
+	public static RefTranslatorCommunicatorSupplier maybeWrapLogging(RefTranslatorCommunicatorSupplier communicatorSupplier, String prefix, boolean logging)
 	{
 		if(logging)
 			return new LoggingRefTranslatorCommunicatorSupplier<>(communicatorSupplier, prefix);
@@ -64,6 +72,18 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 	{
 		log("classname " + ref);
 		return communicator.getClassname(ref);
+	}
+	@Override
+	public String getSuperclass(String cn)
+	{
+		log("superclass " + cn);
+		return communicator.getSuperclass(cn);
+	}
+	@Override
+	public List<String> getInterfaces(String cn)
+	{
+		log("interfaces " + cn);
+		return communicator.getInterfaces(cn);
 	}
 
 	@Override
@@ -112,15 +132,39 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 	}
 
 	@Override
-	public REF createCallbackInstance(String interfaceName, Callback<REF> callback)
+	public REF createCallbackInstance(String interfaceCn)
 	{
-		log("new callback " + interfaceName);
-		return communicator.createCallbackInstance(interfaceName, callback);
+		log("new callback " + interfaceCn);
+		return communicator.createCallbackInstance(interfaceCn);
 	}
 
 	protected void log(String message)
 	{
 		System.err.println(prefix + message);
+	}
+
+	protected class LoggingStudentSideCommunicatorCallbacks implements StudentSideCommunicatorCallbacks<REF>
+	{
+		private final StudentSideCommunicatorCallbacks<REF> callbacks;
+
+		public LoggingStudentSideCommunicatorCallbacks(StudentSideCommunicatorCallbacks<REF> callbacks)
+		{
+			this.callbacks = callbacks;
+		}
+
+		@Override
+		public String getCallbackInterfaceCn(REF ref)
+		{
+			log("callback interface " + ref);
+			return callbacks.getCallbackInterfaceCn(ref);
+		}
+
+		@Override
+		public REF callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+		{
+			log("callback " + returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs.toString());
+			return callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+		}
 	}
 
 	protected static class LoggingRefTranslatorCommunicatorSupplier<SUPP extends RefTranslatorCommunicatorSupplier>

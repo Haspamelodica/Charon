@@ -12,9 +12,8 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.Semaphore;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
-import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
@@ -52,7 +51,7 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		run(new StudentSideImpl(maybeWrapLoggingC((StudentSideCommunicatorClientSide<?>) new DirectSameJVMCommunicatorClientSide(), LOGGING)));
+		run(new StudentSideImpl(maybeWrapLoggingC(DirectSameJVMCommunicatorClientSide::new, LOGGING)));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -65,7 +64,7 @@ public class ExampleExerciseClient
 				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
 				{
 					serverConnected.release();
-					StudentSideCommunicatorServerSide<?> directComm = new DirectSameJVMCommunicatorServerSide();
+					UninitializedStudentSideCommunicatorServerSide<?> directComm = DirectSameJVMCommunicatorServerSide::new;
 					RefTranslatorCommunicatorServerSideSupplier translatedSupp = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
 					RefTranslatorCommunicatorServerSideSupplier loggingComm = maybeWrapLoggingS(translatedSupp, "SERVER: ", LOGGING);
 					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut, loggingComm);
@@ -81,7 +80,7 @@ public class ExampleExerciseClient
 			}).start();
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
-			DataCommunicatorClient client = new DataCommunicatorClient(clientIn, clientOut);
+			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
 			run(new StudentSideImpl(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
 			client.shutdown();
 		}
@@ -91,7 +90,7 @@ public class ExampleExerciseClient
 	{
 		try(Socket sock = new Socket(HOST, PORT))
 		{
-			DataCommunicatorClient client = new DataCommunicatorClient(
+			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{

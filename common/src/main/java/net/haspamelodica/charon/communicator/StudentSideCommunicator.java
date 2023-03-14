@@ -7,6 +7,8 @@ public interface StudentSideCommunicator<REF>
 	public boolean storeRefsIdentityBased();
 
 	public String getClassname(REF ref);
+	public String getSuperclass(String cn);
+	public List<String> getInterfaces(String cn);
 
 	public REF callConstructor(String cn, List<String> params, List<REF> argRefs);
 
@@ -18,5 +20,5 @@ public interface StudentSideCommunicator<REF>
 	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
 	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
 
-	public REF createCallbackInstance(String interfaceName, Callback<REF> callback);
+	public REF createCallbackInstance(String interfaceCn);
 }

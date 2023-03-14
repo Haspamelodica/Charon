@@ -9,7 +9,7 @@ import java.lang.ref.SoftReference;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
@@ -39,7 +39,7 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			StudentSideCommunicatorServerSide<?> directComm = new DirectSameJVMCommunicatorServerSide();
+			UninitializedStudentSideCommunicatorServerSide<?> directComm = DirectSameJVMCommunicatorServerSide::new;
 			RefTranslatorCommunicatorServerSideSupplier translatedComm = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
 			RefTranslatorCommunicatorServerSideSupplier loggingComm = maybeWrapLoggingS(translatedComm, LOGGING);
 			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(), loggingComm);

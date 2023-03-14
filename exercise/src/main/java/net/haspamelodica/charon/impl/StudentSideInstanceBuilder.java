@@ -1,12 +1,12 @@
 package net.haspamelodica.charon.impl;
 
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.argsToList;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.createProxyInstance;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.defaultHandler;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.mapToStudentSide;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -30,8 +30,9 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 // TODO type bound is wrong: StudentSideInstance only for forward refs
 public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 {
-	public final Class<SI>				instanceClass;
-	public final StudentSideType<SI>	instanceStudentSideType;
+	public final Class<SI>						instanceClass;
+	public final StudentSideType<SI>			instanceStudentSideType;
+	public final StudentSideInstanceKind.Kind	kind;
 
 	public final MarshalingCommunicator<?> instanceWideMarshalingCommunicator;
 
@@ -44,7 +45,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 
 		this.instanceWideMarshalingCommunicator = prototypeBuilder.prototypeWideMarshalingCommunicator;
 
-		checkInstanceClass();
+		this.kind = checkInstanceClassAndGetInstanceKind();
 		this.methodHandlers = createMethodHandlers();
 	}
 
@@ -53,7 +54,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		return createProxyInstance(instanceClass, (proxy, method, args) -> methodHandlers.get(method).invoke(proxy, args));
 	}
 
-	private void checkInstanceClass()
+	private StudentSideInstanceKind.Kind checkInstanceClassAndGetInstanceKind()
 	{
 		checkNotAnnotatedWith(instanceClass, StudentSideInstanceMethodKind.class);
 		checkNotAnnotatedWith(instanceClass, StudentSidePrototypeMethodKind.class);
@@ -61,8 +62,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		StudentSideInstanceKind kind = instanceClass.getAnnotation(StudentSideInstanceKind.class);
 		if(kind == null)
 			throw new InconsistentHierarchyException("A student-side instance class has to be annotated with StudentSideInstanceKind: " + instanceClass);
-		if(kind.value() != Kind.CLASS)
-			throw new FrameworkCausedException("Student-side interfaces aren't implemented yet");
+		return kind.value();
 	}
 
 	private record MethodWithHandler(Method method, MethodHandler handler)
@@ -129,6 +129,9 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 
 	private MethodHandler fieldGetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
 	{
+		if(kind != Kind.CLASS)
+			throw new InconsistentHierarchyException("Only student-side classes can have field getters: " + method);
+
 		Class<?> localReturnType = method.getReturnType();
 		if(localReturnType.equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field getter return type was void: " + method);
@@ -143,6 +146,9 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 
 	private MethodHandler fieldSetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
 	{
+		if(kind != Kind.CLASS)
+			throw new InconsistentHierarchyException("Only student-side classes can have field setters: " + method);
+
 		if(!method.getReturnType().equals(void.class))
 			throw new InconsistentHierarchyException("Student-side instance field setter return type wasn't void:" + method);
 

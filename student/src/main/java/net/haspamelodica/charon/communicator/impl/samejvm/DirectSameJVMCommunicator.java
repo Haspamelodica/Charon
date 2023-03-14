@@ -1,16 +1,25 @@
 package net.haspamelodica.charon.communicator.impl.samejvm;
 
+import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClass;
 
 import java.util.List;
 
-import net.haspamelodica.charon.communicator.Callback;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public abstract class DirectSameJVMCommunicator implements StudentSideCommunicator<Object>
+public class DirectSameJVMCommunicator implements StudentSideCommunicator<Object>
 {
+	private final StudentSideCommunicatorCallbacks<Object> callbacks;
+
+	public DirectSameJVMCommunicator(StudentSideCommunicatorCallbacks<Object> callbacks)
+	{
+		this.callbacks = callbacks;
+	}
+
 	@Override
 	public boolean storeRefsIdentityBased()
 	{
@@ -21,6 +30,18 @@ public abstract class DirectSameJVMCommunicator implements StudentSideCommunicat
 	public String getClassname(Object ref)
 	{
 		return classToName(ref.getClass());
+	}
+
+	@Override
+	public String getSuperclass(String cn)
+	{
+		return classToName(nameToClass(cn).getSuperclass());
+	}
+
+	@Override
+	public List<String> getInterfaces(String cn)
+	{
+		return classToName(List.of(nameToClass(cn).getInterfaces()));
 	}
 
 	@Override
@@ -101,9 +122,9 @@ public abstract class DirectSameJVMCommunicator implements StudentSideCommunicat
 	}
 
 	@Override
-	public Object createCallbackInstance(String interfaceName, Callback<Object> callback)
+	public Object createCallbackInstance(String interfaceCn)
 	{
-		//TODO create callback instance
-		return null;
+		return createProxyInstance(nameToClass(interfaceCn), (proxy, method, args) -> callbacks.callCallbackInstanceMethod(
+				interfaceCn, method.getName(), classToName(method.getReturnType()), classToName(method.getParameterTypes()), proxy, argsToList(args)));
 	}
 }

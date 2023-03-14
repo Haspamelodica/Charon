@@ -1,10 +1,10 @@
 package net.haspamelodica.charon.marshaling;
 
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
 
-public interface RepresentationObjectMarshaler<REF>
+public interface RepresentationObjectMarshaler
 {
-	/** Creates and returns a representation object for the given {@link UntypedUntranslatedRef}. */
-	public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef);
+	/** Creates and returns a representation object for the given {@link UntranslatedRef}. */
+	public <REF> Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef);
+	public String getCallbackInterfaceCn(Object exerciseSideObject);
 }

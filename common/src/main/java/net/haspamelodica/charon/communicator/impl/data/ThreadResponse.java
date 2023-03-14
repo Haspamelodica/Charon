@@ -2,9 +2,9 @@ package net.haspamelodica.charon.communicator.impl.data;
 
 public enum ThreadResponse
 {
-	RETURNED,
-	CALLBACK,
-	SERDES_OUT_READY,
+	STUDENT_FINISHED,
+	GET_CALLBACK_INTERFACE_CN,
+	CALL_CALLBACK_INSTANCE_METHOD,
 	;
 
 	public byte encode()
@@ -13,6 +13,6 @@ public enum ThreadResponse
 	}
 	public static ThreadResponse decode(byte raw)
 	{
-		return values()[raw];
+		return raw < 0 || raw >= values().length ? null : values()[raw];
 	}
 }

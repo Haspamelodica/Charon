@@ -12,6 +12,7 @@ import java.util.concurrent.ConcurrentMap;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
@@ -25,12 +26,24 @@ public class Marshaler<REF>
 
 	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler<REF> representationObjectMarshaler,
+	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler representationObjectMarshaler,
 			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator;
-		this.translator = new RefTranslator<>(true, communicator.storeRefsIdentityBased(),
-				r -> representationObjectMarshaler.createRepresentationObject(new UntranslatedRef<>(communicator, r)));
+		this.translator = new RefTranslator<>(true, communicator.storeRefsIdentityBased(), new RefTranslatorCallbacks<>()
+		{
+			@Override
+			public Object createForwardRef(REF untranslatedRef)
+			{
+				return representationObjectMarshaler.createRepresentationObject(new UntranslatedRef<>(communicator, untranslatedRef));
+			}
+
+			@Override
+			public REF createBackwardRef(Object translatedRef)
+			{
+				return communicator.createCallbackInstance(representationObjectMarshaler.getCallbackInterfaceCn(translatedRef));
+			}
+		});
 		this.serdesClasses = List.copyOf(serdesClasses);
 
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
@@ -65,7 +78,7 @@ public class Marshaler<REF>
 			result.add(send(classes.get(i), objs.get(i)));
 		return result;
 	}
-	public List<?> receive(List<Class<?>> classes, List<REF> objRefs)
+	public List<Object> receive(List<Class<?>> classes, List<REF> objRefs)
 	{
 		List<Object> result = new ArrayList<>();
 		for(int i = 0; i < classes.size(); i ++)
@@ -93,6 +106,10 @@ public class Marshaler<REF>
 	{
 		return translator.translateFrom(object);
 	}
+	public List<REF> translateFrom(List<Object> objects)
+	{
+		return translator.translateFrom(objects);
+	}
 
 	public <T> T receive(Class<T> clazz, REF objRef)
 	{
@@ -113,6 +130,10 @@ public class Marshaler<REF>
 	public Object translateTo(REF objRef)
 	{
 		return translator.translateTo(objRef);
+	}
+	public List<Object> translateTo(List<REF> objRefs)
+	{
+		return translator.translateTo(objRefs);
 	}
 
 	public void setRepresentationObjectRefPair(REF ref, Object representationObject)

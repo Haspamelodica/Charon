@@ -53,11 +53,7 @@ public class RefTranslator<REF_TO, REF_FROM>
 		if(refFrom != null)
 			return refFrom;
 
-		return backwardRefs.computeValueIfAbsent(refTo, r ->
-		{
-			//TODO the callback is new or has been cleared by now; we need to (re)create it
-			throw new UnsupportedOperationException("not implemented yet");
-		});
+		return backwardRefs.computeValueIfAbsent(refTo, callbacks::createBackwardRef);
 	}
 	public REF_TO translateTo(REF_FROM refFrom)
 	{

@@ -9,7 +9,7 @@ import java.util.function.Supplier;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
 import net.haspamelodica.charon.WrappedCommunicator;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
@@ -53,9 +53,9 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 	}
 
 	public static <REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			StudentSideCommunicatorClientSide<REF> communicator, Class<?>... forceDelegationClasses)
+			UninitializedStudentSideCommunicatorClientSide<REF> communicator, Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer<REF> transformer = new MockclassesMarshalingTransformer<>();
+		MockclassesMarshalingTransformer transformer = new MockclassesMarshalingTransformer();
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
 				// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.

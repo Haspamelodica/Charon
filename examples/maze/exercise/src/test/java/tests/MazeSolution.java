@@ -21,13 +21,6 @@ public class MazeSolution implements Maze
 
 	@Override
 	@SafeForCallByStudent
-	public boolean isSolved()
-	{
-		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
-	}
-
-	@Override
-	@SafeForCallByStudent
 	public int distanceToTargetX()
 	{
 		return targetX - x;
@@ -59,5 +52,12 @@ public class MazeSolution implements Maze
 
 		x += dx;
 		y += dy;
+	}
+
+	@Override
+	@SafeForCallByStudent
+	public boolean isSolved()
+	{
+		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
 	}
 }

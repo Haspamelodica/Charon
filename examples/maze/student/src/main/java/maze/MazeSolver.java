@@ -7,10 +7,10 @@ public class MazeSolver
 {
 	public static void solveMaze(Maze maze)
 	{
-		solveMaze(maze, 0, 0, new HashSet<>());
+		solveMazeDFS(maze, 0, 0, new HashSet<>());
 	}
 
-	private static boolean solveMaze(Maze maze, int x, int y, Set<Position> visitedPositions)
+	private static boolean solveMazeDFS(Maze maze, int x, int y, Set<Position> visitedPositions)
 	{
 		if(!visitedPositions.add(new Position(x, y)))
 			return false;
@@ -32,7 +32,7 @@ public class MazeSolver
 
 		maze.move(dx, dy);
 
-		if(solveMaze(maze, x + dx, y + dy, visitedPositions))
+		if(solveMazeDFS(maze, x + dx, y + dy, visitedPositions))
 			return true;
 
 		maze.move(-dx, -dy);

@@ -27,7 +27,7 @@ public class TestMaze
 	}
 
 	@Test
-	public void testBasicMazeSolver()
+	public void testBasicMazeSolverAgainstStudentMaze()
 	{
 		Maze maze = MazeP.builder(3, 1).setStart(0, 0).setTarget(2, 0).build();
 		MazeSolverP.solveMaze(maze);
@@ -35,7 +35,7 @@ public class TestMaze
 	}
 
 	@Test
-	public void testBasicMazeSolverCallback()
+	public void testBasicMazeSolverAgainstSolution()
 	{
 		Maze maze = new MazeSolutionBuilder(3, 1).setStart(0, 0).setTarget(2, 0).build();
 		MazeSolverP.solveMaze(maze);

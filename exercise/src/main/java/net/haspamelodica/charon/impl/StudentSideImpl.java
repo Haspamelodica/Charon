@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
-import net.haspamelodica.charon.annotations.CallbackCallable;
+import net.haspamelodica.charon.annotations.SafeForCallByStudent;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
@@ -193,7 +193,7 @@ public class StudentSideImpl implements StudentSide
 			if(!classToName(method.getReturnType()).equals(returnClassname))
 				continue;
 
-			if(!method.isAnnotationPresent(CallbackCallable.class))
+			if(!method.isAnnotationPresent(SafeForCallByStudent.class))
 				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback: "
 						+ callbackMethodToString(clazz, name, params));
 			return new CallbackMethod<>(clazz, method.getReturnType(), List.of(method.getParameterTypes()), method);

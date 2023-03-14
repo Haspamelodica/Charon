@@ -1,7 +1,7 @@
 package tests;
 
 import maze.Maze;
-import net.haspamelodica.charon.annotations.CallbackCallable;
+import net.haspamelodica.charon.annotations.SafeForCallByStudent;
 
 public class MazeSolution implements Maze
 {
@@ -20,28 +20,28 @@ public class MazeSolution implements Maze
 	}
 
 	@Override
-	@CallbackCallable
+	@SafeForCallByStudent
 	public boolean isSolved()
 	{
 		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
 	}
 
 	@Override
-	@CallbackCallable
+	@SafeForCallByStudent
 	public int distanceToTargetX()
 	{
 		return targetX - x;
 	}
 
 	@Override
-	@CallbackCallable
+	@SafeForCallByStudent
 	public int distanceToTargetY()
 	{
 		return targetY - y;
 	}
 
 	@Override
-	@CallbackCallable
+	@SafeForCallByStudent
 	public boolean canMove(int dx, int dy)
 	{
 		if(Math.abs(dx) + Math.abs(dy) != 1)
@@ -51,7 +51,7 @@ public class MazeSolution implements Maze
 	}
 
 	@Override
-	@CallbackCallable
+	@SafeForCallByStudent
 	public void move(int dx, int dy)
 	{
 		if(!canMove(dx, dy))

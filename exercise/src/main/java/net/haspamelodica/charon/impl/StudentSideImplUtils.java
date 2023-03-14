@@ -91,7 +91,14 @@ public class StudentSideImplUtils
 
 	public static String getStudentSideName(Class<?> clazz)
 	{
-		return getStudentSideName(clazz, Class::getName);
+		return getStudentSideName(clazz, clazzI ->
+		{
+			Class<?> enclosingClass = clazzI.getEnclosingClass();
+			if(enclosingClass == null)
+				return clazzI.getName();
+
+			return getStudentSideName(enclosingClass) + '$' + clazzI.getSimpleName();
+		});
 	}
 	public static String getStudentSideName(Method method)
 	{

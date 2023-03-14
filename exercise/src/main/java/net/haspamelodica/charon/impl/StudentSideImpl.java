@@ -194,11 +194,17 @@ public class StudentSideImpl implements StudentSide
 				continue;
 
 			if(!method.isAnnotationPresent(CallbackCallable.class))
-				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback");
+				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback: "
+						+ callbackMethodToString(clazz, name, params));
 			return new CallbackMethod<>(clazz, method.getReturnType(), List.of(method.getParameterTypes()), method);
 		}
 
-		throw new IllegalArgumentException("Method not found: " + cn + "." + name + "(" + params.stream().collect(Collectors.joining(", ")) + ")");
+		throw new IllegalArgumentException("Method not found: " + callbackMethodToString(clazz, name, params));
+	}
+
+	private String callbackMethodToString(Class<?> clazz, String name, List<String> params)
+	{
+		return clazz.getName() + "." + name + "(" + params.stream().collect(Collectors.joining(", ")) + ")";
 	}
 
 	private Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)

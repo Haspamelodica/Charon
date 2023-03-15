@@ -17,6 +17,11 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand.NEW_THREAD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand.REF_DELETED;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand.SHUTDOWN;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.CALL_CALLBACK_INSTANCE_METHOD;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.GET_CALLBACK_INTERFACE_CN;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_FINISHED;
+import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient.AllowedThreadCallbacks.ALLOW_CALLBACKS;
+import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient.AllowedThreadCallbacks.DISALLOW_CALLBACKS;
 
 import java.io.DataInput;
 import java.io.DataOutput;
@@ -26,6 +31,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
 import java.util.Queue;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -41,6 +47,8 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
+import net.haspamelodica.charon.marshaling.Deserializer;
+import net.haspamelodica.charon.marshaling.Serializer;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
@@ -83,7 +91,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 
 		this.commandStreamLock = new Object();
 
-		this.refManager = new SimpleLongRefManager(false);
+		this.refManager = new SimpleLongRefManager(true);
 	}
 
 	public void shutdown()
@@ -107,17 +115,17 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public String getClassname(LongRef ref)
 	{
-		return executeCommand(GET_CLASSNAME, false, out -> writeRef(out, ref), DataInput::readUTF);
+		return executeCommand(GET_CLASSNAME, DISALLOW_CALLBACKS, out -> writeRef(out, ref), DataInput::readUTF);
 	}
 	@Override
 	public String getSuperclass(String cn)
 	{
-		return executeCommand(GET_SUPERCLASS, false, out -> out.writeUTF(cn), DataInput::readUTF);
+		return executeCommand(GET_SUPERCLASS, DISALLOW_CALLBACKS, out -> out.writeUTF(cn), DataInput::readUTF);
 	}
 	@Override
 	public List<String> getInterfaces(String cn)
 	{
-		return executeCommand(GET_INTERFACES, false, out -> out.writeUTF(cn), in ->
+		return executeCommand(GET_INTERFACES, DISALLOW_CALLBACKS, out -> out.writeUTF(cn), in ->
 		{
 			int n = in.readInt();
 			String[] result = new String[n];
@@ -128,9 +136,9 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
-	public <T> LongRef send(LongRef serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> LongRef send(LongRef serdesRef, Serializer<T> serializer, T obj)
 	{
-		return executeRefCommand(SEND, true, out ->
+		return executeRefCommand(SEND, ALLOW_CALLBACKS, out ->
 		{
 			MultiplexedDataOutputStream serdesOut = freeStreamsForSending.poll();
 			if(serdesOut == null)
@@ -139,16 +147,16 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 			writeRef(out, serdesRef);
 			out.writeInt(serdesOut.getStreamID());
 			out.flush();
-			sendObj.accept(serdesOut, obj);
+			serializer.serialize(serdesOut, obj);
 			serdesOut.flush();
 
 			freeStreamsForSending.add(serdesOut);
 		});
 	}
 	@Override
-	public <T> T receive(LongRef serdesRef, IOFunction<DataInput, T> receiveObj, LongRef objRef)
+	public <T> T receive(LongRef serdesRef, Deserializer<T> deserializer, LongRef objRef)
 	{
-		return executeCommand(RECEIVE, true, out ->
+		return executeCommand(RECEIVE, ALLOW_CALLBACKS, out ->
 		{
 			MultiplexedDataInputStream serdesIn = freeStreamsForReceiving.poll();
 			if(serdesIn == null)
@@ -161,7 +169,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 			return serdesIn;
 		}, (in, serdesIn) ->
 		{
-			T result = receiveObj.apply(serdesIn);
+			T result = deserializer.deserialize(serdesIn);
 			freeStreamsForReceiving.add(serdesIn);
 			return result;
 		});
@@ -170,7 +178,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callConstructor(String cn, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_CONSTRUCTOR, true, out ->
+		return executeRefCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			writeArgs(out, params, argRefs);
@@ -180,7 +188,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_STATIC_METHOD, true, out ->
+		return executeRefCommand(CALL_STATIC_METHOD, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -191,7 +199,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef getStaticField(String cn, String name, String fieldClassname)
 	{
-		return executeRefCommand(GET_STATIC_FIELD, false, out ->
+		return executeRefCommand(GET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -201,7 +209,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public void setStaticField(String cn, String name, String fieldClassname, LongRef valueRef)
 	{
-		executeVoidCommand(SET_STATIC_FIELD, false, out ->
+		executeVoidCommand(SET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -213,7 +221,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_INSTANCE_METHOD, true, out ->
+		return executeRefCommand(CALL_INSTANCE_METHOD, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -225,7 +233,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef getInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef)
 	{
-		return executeRefCommand(GET_INSTANCE_FIELD, false, out ->
+		return executeRefCommand(GET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -236,7 +244,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef, LongRef valueRef)
 	{
-		executeVoidCommand(SET_INSTANCE_FIELD, false, out ->
+		executeVoidCommand(SET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -249,7 +257,8 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef createCallbackInstance(String interfaceCn)
 	{
-		return executeRefCommand(CREATE_CALLBACK_INSTANCE, false, out -> out.writeUTF(interfaceCn));
+		//TODO callbacks need a Ref managed by the exercise side
+		return executeRefCommand(CREATE_CALLBACK_INSTANCE, DISALLOW_CALLBACKS, out -> out.writeUTF(interfaceCn));
 	}
 
 	private void refDeleted(int id, int receivedCount)
@@ -262,23 +271,24 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		});
 	}
 
-	private void executeVoidCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams)
+	private void executeVoidCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks, IOConsumer<DataOutputStream> sendParams)
 	{
-		executeCommand(command, allowCallbacks, sendParams, in -> null);
+		executeCommand(command, allowedCallbacks, sendParams, in -> null);
 	}
-	private LongRef executeRefCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams)
+	private LongRef executeRefCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks, IOConsumer<DataOutputStream> sendParams)
 	{
-		return executeCommand(command, allowCallbacks, sendParams, this::readRef);
+		return executeCommand(command, allowedCallbacks, sendParams, this::readRef);
 	}
-	private <R> R executeCommand(ThreadCommand command, boolean allowCallbacks, IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
+	private <R> R executeCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
+			IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
 	{
-		return executeCommand(command, allowCallbacks, out ->
+		return executeCommand(command, allowedCallbacks, out ->
 		{
 			sendParams.accept(out);
 			return null;
 		}, (in, params) -> parseResponse.apply(in));
 	}
-	private <R, P> R executeCommand(ThreadCommand command, boolean allowCallbacks,
+	private <R, P> R executeCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
 			IOFunction<DataOutputStream, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
 	{
 		try
@@ -291,10 +301,7 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 			P params = sendParams.apply(out);
 			out.flush();
 
-			if(allowCallbacks)
-				handleStudentSideResponsesUntilFinished(in, out);
-			else if(readThreadResponse(in) != ThreadResponse.STUDENT_FINISHED)
-				throw new IllegalBehaviourException("Unexpected response from student side");
+			handleStudentSideResponsesUntilFinished(allowedCallbacks, in, out);
 			return parseResponse.apply(in, params);
 		} catch(UnexpectedResponseException e)
 		{
@@ -305,11 +312,14 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 		}
 	}
 
-	private void handleStudentSideResponsesUntilFinished(DataInput in, DataOutputStream out) throws IOException
+	private void handleStudentSideResponsesUntilFinished(AllowedThreadCallbacks allowedCallbacks, DataInput in, DataOutputStream out) throws IOException
 	{
 		for(;;)
 		{
-			switch(readThreadResponse(in))
+			ThreadResponse response = readThreadResponse(in);
+			if(!allowedCallbacks.allows(response))
+				throw new IllegalBehaviourException("Illegal response from student side: " + response);
+			switch(response)
 			{
 				case STUDENT_FINISHED ->
 				{
@@ -452,4 +462,22 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 
 	private static record StudentSideThread(MultiplexedDataInputStream in, MultiplexedDataOutputStream out)
 	{}
+
+	protected static enum AllowedThreadCallbacks
+	{
+		DISALLOW_CALLBACKS(STUDENT_FINISHED),
+		ALLOW_CALLBACKS(STUDENT_FINISHED, GET_CALLBACK_INTERFACE_CN, CALL_CALLBACK_INSTANCE_METHOD);
+
+		private final Set<ThreadResponse> allowedResponses;
+
+		private AllowedThreadCallbacks(ThreadResponse... allowedResponses)
+		{
+			this.allowedResponses = Set.of(allowedResponses);
+		}
+
+		public boolean allows(ThreadResponse response)
+		{
+			return allowedResponses.contains(response);
+		}
+	}
 }

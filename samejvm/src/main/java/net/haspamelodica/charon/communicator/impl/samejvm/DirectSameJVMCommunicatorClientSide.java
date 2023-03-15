@@ -1,8 +1,6 @@
 package net.haspamelodica.charon.communicator.impl.samejvm;
 
-import java.io.DataInput;
 import java.io.DataInputStream;
-import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -14,11 +12,11 @@ import java.util.concurrent.atomic.AtomicReference;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
-import net.haspamelodica.charon.communicator.impl.data.exercise.IOBiConsumer;
-import net.haspamelodica.charon.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.impl.StudentSideImpl;
+import net.haspamelodica.charon.marshaling.Deserializer;
 import net.haspamelodica.charon.marshaling.SerDes;
+import net.haspamelodica.charon.marshaling.Serializer;
 
 /**
  * <b>Using this class in the tester JVM to create a {@link StudentSideImpl} is not safe
@@ -38,14 +36,14 @@ public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicat
 	}
 
 	@Override
-	public <T> Object send(Object serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> Object send(Object serdesRef, Serializer<T> sendObj, T obj)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		SerDes<T> serdes = (SerDes<T>) serdesRef;
 		return sendAndReceive(sendObj, serdes::deserialize, obj);
 	}
 	@Override
-	public <T> T receive(Object serdesRef, IOFunction<DataInput, T> receiveObj, Object objRef)
+	public <T> T receive(Object serdesRef, Deserializer<T> receiveObj, Object objRef)
 	{
 		@SuppressWarnings("unchecked") // caller is responsible for this
 		SerDes<T> serdes = (SerDes<T>) serdesRef;
@@ -53,7 +51,7 @@ public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicat
 		T obj = (T) objRef;
 		return sendAndReceive(serdes::serialize, receiveObj, obj);
 	}
-	private <T> T sendAndReceive(IOBiConsumer<DataOutput, T> sender, IOFunction<DataInput, T> receiver, T obj)
+	private <T> T sendAndReceive(Serializer<T> serializer, Deserializer<T> deserializer, T obj)
 	{
 		// We have to actually serialize and deserialize the object to be compatible with a "real" communicator
 		// in case the passed object is mutable or if any code relies on object identity.
@@ -69,7 +67,7 @@ public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicat
 				try(PipedOutputStream pipeOut = new PipedOutputStream(pipeIn); DataOutputStream out = new DataOutputStream(pipeOut))
 				{
 					pipeOutCreated.release();
-					sender.accept(out, obj);
+					serializer.serialize(out, obj);
 				} catch(IOException e)
 				{
 					serializationIOExceptionA.set(e);
@@ -85,7 +83,7 @@ public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicat
 			serdesThread.start();
 
 			pipeOutCreated.acquireUninterruptibly();
-			T result = receiver.apply(in);
+			T result = deserializer.deserialize(in);
 
 			doUninterruptible(serdesThread::join);
 

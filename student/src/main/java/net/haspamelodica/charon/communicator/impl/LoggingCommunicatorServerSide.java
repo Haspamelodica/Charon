@@ -65,14 +65,17 @@ public class LoggingCommunicatorServerSide<REF>
 	@Override
 	public REF send(REF serdesRef, DataInput objIn) throws IOException
 	{
-		log("send " + serdesRef + ", " + objIn);
-		return communicator.send(serdesRef, objIn);
+		logEnter("send " + serdesRef + ", " + objIn);
+		REF result = communicator.send(serdesRef, objIn);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public void receive(REF serdesRef, REF objRef, DataOutput objOut) throws IOException
 	{
-		log("receive " + serdesRef + ", " + objRef + ", " + objOut);
+		logEnter("receive " + serdesRef + ", " + objRef + ", " + objOut);
 		communicator.receive(serdesRef, objRef, objOut);
+		logExit();
 	}
 
 	private static class LoggingRefTranslatorCommunicatorServerSideSupplier

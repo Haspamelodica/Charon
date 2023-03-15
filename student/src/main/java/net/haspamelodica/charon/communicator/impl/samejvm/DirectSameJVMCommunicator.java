@@ -13,7 +13,7 @@ import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class DirectSameJVMCommunicator implements StudentSideCommunicator<Object>
 {
-	private final StudentSideCommunicatorCallbacks<Object> callbacks;
+	protected final StudentSideCommunicatorCallbacks<Object> callbacks;
 
 	public DirectSameJVMCommunicator(StudentSideCommunicatorCallbacks<Object> callbacks)
 	{

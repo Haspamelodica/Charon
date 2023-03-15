@@ -1,16 +1,13 @@
 package net.haspamelodica.charon.communicator.impl;
 
-import java.io.DataInput;
-import java.io.DataOutput;
-
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.impl.data.exercise.IOBiConsumer;
-import net.haspamelodica.charon.communicator.impl.data.exercise.IOFunction;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorClientSideSupplier;
+import net.haspamelodica.charon.marshaling.Deserializer;
+import net.haspamelodica.charon.marshaling.Serializer;
 
 public class LoggingCommunicatorClientSide<REF>
 		extends LoggingCommunicator<REF, StudentSideCommunicatorClientSide<REF>>
@@ -65,16 +62,20 @@ public class LoggingCommunicatorClientSide<REF>
 	}
 
 	@Override
-	public <T> REF send(REF serdesRef, IOBiConsumer<DataOutput, T> sendObj, T obj)
+	public <T> REF send(REF serdesRef, Serializer<T> serializer, T obj)
 	{
-		log("send " + serdesRef + ", " + sendObj + ", " + obj);
-		return communicator.send(serdesRef, sendObj, obj);
+		logEnter("send " + serdesRef + ", " + serializer + ", " + obj);
+		REF result = communicator.send(serdesRef, serializer, obj);
+		logExit(result);
+		return result;
 	}
 	@Override
-	public <T> T receive(REF serdesRef, IOFunction<DataInput, T> receiveObj, REF objRef)
+	public <T> T receive(REF serdesRef, Deserializer<T> deserializer, REF objRef)
 	{
-		log("send " + serdesRef + ", " + receiveObj + ", " + objRef);
-		return communicator.receive(serdesRef, receiveObj, objRef);
+		logEnter("receive " + serdesRef + ", " + deserializer + ", " + objRef);
+		T result = communicator.receive(serdesRef, deserializer, objRef);
+		logExit(result);
+		return result;
 	}
 
 	private static class LoggingRefTranslatorCommunicatorClientSideSupplier

@@ -50,7 +50,7 @@ public class DataCommunicatorServer
 	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorServerSideSupplier communicatorSupplier)
 	{
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
-		this.refManager = new SimpleLongRefManager(true);
+		this.refManager = new SimpleLongRefManager(false);
 		this.communicator = communicatorSupplier.createCommunicator(false, new RefTranslatorCommunicatorCallbacks<>()
 		{
 			@Override

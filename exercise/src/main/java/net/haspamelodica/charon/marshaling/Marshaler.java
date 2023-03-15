@@ -98,7 +98,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.send(serdes.studentSideSerDesRef(), serdes.serdes()::serialize, object);
+			return communicator.send(serdes.studentSideSerDesRef(), serdes.serdes(), object);
 
 		return translateFrom(object);
 	}
@@ -123,7 +123,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.receive(serdes.studentSideSerDesRef(), serdes.serdes()::deserialize, objRef);
+			return communicator.receive(serdes.studentSideSerDesRef(), serdes.serdes(), objRef);
 
 		return translateTo(objRef);
 	}

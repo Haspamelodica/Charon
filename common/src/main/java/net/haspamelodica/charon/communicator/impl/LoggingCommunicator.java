@@ -1,6 +1,8 @@
 package net.haspamelodica.charon.communicator.impl;
 
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
@@ -17,15 +19,23 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 
 	private final String prefix;
 
+	private final ThreadLocal<Integer>	threadId;
+	private final ThreadLocal<Integer>	nestingDepth;
+
 	public LoggingCommunicator(COMM communicator, String prefix)
 	{
-		this.communicator = communicator;
-		this.prefix = prefix;
+		this(c -> communicator, prefix);
 	}
 	public LoggingCommunicator(UninitializedStudentSideCommunicator<REF, COMM> communicator, StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
 	{
-		this.communicator = communicator.initialize(new LoggingStudentSideCommunicatorCallbacks(callbacks));
+		this(c -> communicator.initialize(c.new LoggingStudentSideCommunicatorCallbacks(callbacks)), prefix);
+	}
+	private LoggingCommunicator(Function<LoggingCommunicator<REF, COMM>, COMM> createCommunicator, String prefix)
+	{
+		this.communicator = createCommunicator.apply(this);
 		this.prefix = prefix;
+		this.threadId = ThreadLocal.withInitial(new AtomicInteger()::incrementAndGet);
+		this.nestingDepth = ThreadLocal.withInitial(() -> 0);
 	}
 
 	public static <REF> UninitializedStudentSideCommunicator<REF, ?>
@@ -70,77 +80,130 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 	@Override
 	public String getClassname(REF ref)
 	{
-		log("classname " + ref);
-		return communicator.getClassname(ref);
+		logEnter("classname " + ref);
+		String result = communicator.getClassname(ref);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public String getSuperclass(String cn)
 	{
-		log("superclass " + cn);
-		return communicator.getSuperclass(cn);
+		logEnter("superclass " + cn);
+		String result = communicator.getSuperclass(cn);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public List<String> getInterfaces(String cn)
 	{
-		log("interfaces " + cn);
-		return communicator.getInterfaces(cn);
+		logEnter("interfaces " + cn);
+		List<String> result = communicator.getInterfaces(cn);
+		logExit(result);
+		return result;
 	}
 
 	@Override
 	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
 	{
-		log("new " + cn + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs.toString());
-		return communicator.callConstructor(cn, params, argRefs);
+		logEnter("new " + cn + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs);
+		REF result = communicator.callConstructor(cn, params, argRefs);
+		logExit(result);
+		return result;
 	}
 
 	@Override
 	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs)
 	{
-		log(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs.toString());
-		return communicator.callStaticMethod(cn, name, returnClassname, params, argRefs);
+		logEnter(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs);
+		REF result = communicator.callStaticMethod(cn, name, returnClassname, params, argRefs);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public REF getStaticField(String cn, String name, String fieldClassname)
 	{
-		log(fieldClassname + " " + cn + "." + name);
-		return communicator.getStaticField(cn, name, fieldClassname);
+		logEnter(fieldClassname + " " + cn + "." + name);
+		REF result = communicator.getStaticField(cn, name, fieldClassname);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef)
 	{
-		log(fieldClassname + " " + cn + "." + name + " = " + valueRef);
+		logEnter(fieldClassname + " " + cn + "." + name + " = " + valueRef);
 		communicator.setStaticField(cn, name, fieldClassname, valueRef);
+		logExit();
 	}
 
 	@Override
 	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
 	{
-		log(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs.toString());
-		return communicator.callInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+		logEnter(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs);
+		REF result = communicator.callInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef)
 	{
-		log(fieldClassname + " " + cn + "." + name + ": " + receiverRef);
-		return communicator.getInstanceField(cn, name, fieldClassname, receiverRef);
+		logEnter(fieldClassname + " " + cn + "." + name + ": " + receiverRef);
+		REF result = communicator.getInstanceField(cn, name, fieldClassname, receiverRef);
+		logExit(result);
+		return result;
 	}
 	@Override
 	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef)
 	{
-		log(fieldClassname + " " + cn + "." + name + ": " + receiverRef + " = " + valueRef);
+		logEnter(fieldClassname + " " + cn + "." + name + ": " + receiverRef + " = " + valueRef);
 		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
+		logExit();
 	}
 
 	@Override
 	public REF createCallbackInstance(String interfaceCn)
 	{
-		log("new callback " + interfaceCn);
-		return communicator.createCallbackInstance(interfaceCn);
+		logEnter("new callback " + interfaceCn);
+		REF result = communicator.createCallbackInstance(interfaceCn);
+		logExit(result);
+		return result;
 	}
 
-	protected void log(String message)
+	protected void logEnter(String message)
 	{
-		System.err.println(prefix + message);
+		log(false, false, message);
+	}
+	protected void logExit()
+	{
+		log(false, true, null);
+	}
+	protected void logExit(Object result)
+	{
+		log(false, true, String.valueOf(result));
+	}
+	protected void logEnterCallback(String message)
+	{
+		log(true, false, message);
+	}
+	protected void logExitCallback()
+	{
+		log(true, true, null);
+	}
+	protected void logExitCallback(Object result)
+	{
+		log(true, true, String.valueOf(result));
+	}
+	protected void log(boolean callback, boolean exit, String message)
+	{
+		int nestingDepth = this.nestingDepth.get();
+		if(!exit)
+			nestingDepth ++;
+
+		System.err.println(prefix + "T" + threadId.get() + "\t".repeat(nestingDepth) + (callback ? exit ? "=>" : "<-" : exit ? "<=" : "->") +
+				(!exit || message != null ? " " + message : ""));
+
+		if(exit)
+			nestingDepth --;
+		this.nestingDepth.set(nestingDepth);
 	}
 
 	protected class LoggingStudentSideCommunicatorCallbacks implements StudentSideCommunicatorCallbacks<REF>
@@ -155,15 +218,19 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 		@Override
 		public String getCallbackInterfaceCn(REF ref)
 		{
-			log("callback interface " + ref);
-			return callbacks.getCallbackInterfaceCn(ref);
+			logEnterCallback("callback interface " + ref);
+			String result = callbacks.getCallbackInterfaceCn(ref);
+			logExitCallback(result);
+			return result;
 		}
 
 		@Override
 		public REF callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
 		{
-			log("callback " + returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs.toString());
-			return callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+			logEnterCallback("callback " + returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs);
+			REF result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+			logExitCallback(result);
+			return result;
 		}
 	}
 

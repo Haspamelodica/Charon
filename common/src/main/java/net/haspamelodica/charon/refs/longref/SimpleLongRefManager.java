@@ -34,6 +34,7 @@ public class SimpleLongRefManager implements LongRefManager<LongRef>
 	@Override
 	public LongRef unmarshalReceivedId(long id)
 	{
+		//TODO in computeIfAbsent, check if the received ID should not be a managed one
 		return id == 0 ? null : allRefs.computeIfAbsent(id, LongRef::new);
 	}
 
@@ -57,6 +58,12 @@ public class SimpleLongRefManager implements LongRefManager<LongRef>
 		private long id()
 		{
 			return id;
+		}
+
+		@Override
+		public String toString()
+		{
+			return "#" + id;
 		}
 	}
 }

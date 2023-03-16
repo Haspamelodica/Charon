@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
@@ -98,7 +99,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.send(serdes.studentSideSerDesRef(), serdes.serdes(), object);
+			return communicator.send(serdes.studentSideSerDesRef().get(), serdes.serdes(), object);
 
 		return translateFrom(object);
 	}
@@ -123,7 +124,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.receive(serdes.studentSideSerDesRef(), serdes.serdes(), objRef);
+			return communicator.receive(serdes.studentSideSerDesRef().get(), serdes.serdes(), objRef);
 
 		return translateTo(objRef);
 	}
@@ -164,11 +165,38 @@ public class Marshaler<REF>
 		return initializedSerDesesBySerDesClass.computeIfAbsent(serdesClass, c ->
 		{
 			SerDes<?> serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
-			REF serdesRef = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
+			LazyValue<REF> serdesRef = new LazyValue<>(() -> communicator.callConstructor(classToName(serdesClass), List.of(), List.of()));
 			return new InitializedSerDes<>(serdes, serdesRef);
 		});
 	}
 
-	private static record InitializedSerDes<REF, T>(SerDes<T> serdes, REF studentSideSerDesRef)
+	private static record InitializedSerDes<REF, T>(SerDes<T> serdes, LazyValue<REF> studentSideSerDesRef)
 	{}
+
+	private static class LazyValue<V>
+	{
+		private final Supplier<V> createValue;
+
+		private volatile V value;
+
+		public LazyValue(Supplier<V> createValue)
+		{
+			this.createValue = createValue;
+		}
+
+		public V get()
+		{
+			if(value != null)
+				return value;
+
+			synchronized(this)
+			{
+				if(value != null)
+					return value;
+
+				value = createValue.get();
+				return value;
+			}
+		}
+	}
 }

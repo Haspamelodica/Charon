@@ -31,12 +31,13 @@ public class MarshalingCommunicator<REF>
 				Object receiverObj = marshaler.translateTo(receiverRef);
 
 				CallbackMethod<M> callbackMethod = callbacks.lookupCallbackInstanceMethod(cn, name, returnClassname, params, receiverObj);
+				Marshaler<REF> marshalerWithAdditionalSerdeses = marshaler.withAdditionalSerDeses(callbackMethod.additionalSerdeses());
 
-				List<Object> argObjs = marshaler.receive(callbackMethod.paramTypes(), argRefs);
+				List<Object> argObjs = marshalerWithAdditionalSerdeses.receive(callbackMethod.paramTypes(), argRefs);
 
 				Object resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod, receiverObj, argObjs);
 
-				return marshaler.send(callbackMethod.returnType(), resultObj);
+				return marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(), resultObj);
 			}
 		});
 		this.marshaler = new Marshaler<>(this.communicator, callbacks, serdesClasses);

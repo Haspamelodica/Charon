@@ -8,6 +8,7 @@ public interface MarshalingCommunicatorCallbacks<M> extends RepresentationObject
 	/** This method will only be called for methods where lookupCallbackInstanceMethod has been called before. */
 	public Object callCallbackInstanceMethodChecked(CallbackMethod<M> callbackMethod, Object receiver, List<Object> args);
 
-	public static record CallbackMethod<M>(Class<?> receiverType, Class<?> returnType, List<Class<?>> paramTypes, M methodData)
+	public static record CallbackMethod<M>(Class<?> receiverType, Class<?> returnType, List<Class<?>> paramTypes,
+			List<Class<? extends SerDes<?>>> additionalSerdeses, M methodData)
 	{}
 }

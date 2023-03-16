@@ -1,5 +1,6 @@
 package net.haspamelodica.charon.impl;
 
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.doChecked;
 
@@ -43,7 +44,7 @@ import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 // ..Benefit: Handles non-immutable datastructures fine.
 public class StudentSideImpl implements StudentSide
 {
-	private final MarshalingCommunicator<?> marshalingCommunicator;
+	private final MarshalingCommunicator<?> globalMarshalingCommunicator;
 
 	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>>	prototypesByPrototypeClass;
 	private final Map<String, StudentSidePrototypeBuilder<?, ?>>							prototypeBuildersByStudentSideClassname;
@@ -51,7 +52,7 @@ public class StudentSideImpl implements StudentSide
 
 	public StudentSideImpl(UninitializedStudentSideCommunicatorClientSide<?> communicator)
 	{
-		this.marshalingCommunicator = new MarshalingCommunicator<>(communicator, new MarshalingCommunicatorCallbacks<Method>()
+		this.globalMarshalingCommunicator = new MarshalingCommunicator<>(communicator, new MarshalingCommunicatorCallbacks<Method>()
 		{
 			@Override
 			public <REF> Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
@@ -92,7 +93,7 @@ public class StudentSideImpl implements StudentSide
 		if(prototype != null)
 			return prototype;
 
-		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(marshalingCommunicator, prototypeClass);
+		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
 
 		synchronized(prototypesByPrototypeClass)
 		{
@@ -152,8 +153,8 @@ public class StudentSideImpl implements StudentSide
 			return Stream.of();
 
 		return Stream.concat(
-				streamPrototypeBuilders(marshalingCommunicator.getSuperclass(studentSideCN)),
-				marshalingCommunicator
+				streamPrototypeBuilders(globalMarshalingCommunicator.getSuperclass(studentSideCN)),
+				globalMarshalingCommunicator
 						.getInterfaces(studentSideCN)
 						.stream()
 						.flatMap(this::streamPrototypeBuilders));
@@ -196,7 +197,7 @@ public class StudentSideImpl implements StudentSide
 			if(!method.isAnnotationPresent(SafeForCallByStudent.class))
 				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback: "
 						+ callbackMethodToString(clazz, name, params));
-			return new CallbackMethod<>(clazz, method.getReturnType(), List.of(method.getParameterTypes()), method);
+			return new CallbackMethod<>(clazz, method.getReturnType(), List.of(method.getParameterTypes()), getSerDeses(method), method);
 		}
 
 		throw new IllegalArgumentException("Method not found: " + callbackMethodToString(clazz, name, params));

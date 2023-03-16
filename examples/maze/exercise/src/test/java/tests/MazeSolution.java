@@ -60,4 +60,14 @@ public class MazeSolution implements Maze
 	{
 		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
 	}
+
+	// If we don't mark toString as callable by student,
+	// debugging the student submission becomes hard because
+	// many debuggers automatically call toString on relevant objects.
+	@Override
+	@SafeForCallByStudent
+	public String toString()
+	{
+		return "MazeSolution[???]";
+	}
 }

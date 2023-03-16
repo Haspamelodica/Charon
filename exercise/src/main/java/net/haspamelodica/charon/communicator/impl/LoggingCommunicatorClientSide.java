@@ -1,5 +1,7 @@
 package net.haspamelodica.charon.communicator.impl;
 
+import java.util.function.Function;
+
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
@@ -22,6 +24,11 @@ public class LoggingCommunicatorClientSide<REF>
 			StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
 	{
 		super(communicator, callbacks, prefix);
+	}
+	protected LoggingCommunicatorClientSide(Function<LoggingCommunicator<REF, StudentSideCommunicatorClientSide<REF>>,
+			StudentSideCommunicatorClientSide<REF>> createCommunicator, String prefix)
+	{
+		super(createCommunicator, prefix);
 	}
 
 	public static <REF> UninitializedStudentSideCommunicatorClientSide<REF>
@@ -64,7 +71,7 @@ public class LoggingCommunicatorClientSide<REF>
 	@Override
 	public <T> REF send(REF serdesRef, Serializer<T> serializer, T obj)
 	{
-		logEnter("send " + serdesRef + ", " + serializer + ", " + obj);
+		logEnter("send " + obj + " with " + serdesRef + " / " + serializer);
 		REF result = communicator.send(serdesRef, serializer, obj);
 		logExit(result);
 		return result;
@@ -72,7 +79,7 @@ public class LoggingCommunicatorClientSide<REF>
 	@Override
 	public <T> T receive(REF serdesRef, Deserializer<T> deserializer, REF objRef)
 	{
-		logEnter("receive " + serdesRef + ", " + deserializer + ", " + objRef);
+		logEnter("receive " + objRef + " with " + serdesRef + " / " + deserializer);
 		T result = communicator.receive(serdesRef, deserializer, objRef);
 		logExit(result);
 		return result;
@@ -91,7 +98,8 @@ public class LoggingCommunicatorClientSide<REF>
 		public <REF_TO> StudentSideCommunicatorClientSide<REF_TO> createCommunicator(
 				boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 		{
-			return new LoggingCommunicatorClientSide<>(communicatorSupplier.createCommunicator(storeRefsIdentityBased, callbacks), prefix);
+			return new LoggingCommunicatorClientSide<>(comm -> communicatorSupplier.createCommunicator(
+					storeRefsIdentityBased, comm.new LoggingRefTranslatorCommunicatorCallbacks(callbacks)), prefix);
 		}
 	}
 }

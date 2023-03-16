@@ -10,6 +10,7 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 
 public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>> implements StudentSideCommunicator<REF>
 {
@@ -28,9 +29,9 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 	}
 	public LoggingCommunicator(UninitializedStudentSideCommunicator<REF, COMM> communicator, StudentSideCommunicatorCallbacks<REF> callbacks, String prefix)
 	{
-		this(c -> communicator.initialize(c.new LoggingStudentSideCommunicatorCallbacks(callbacks)), prefix);
+		this(c -> communicator.initialize(c.new LoggingStudentSideCommunicatorCallbacks<>(callbacks)), prefix);
 	}
-	private LoggingCommunicator(Function<LoggingCommunicator<REF, COMM>, COMM> createCommunicator, String prefix)
+	protected LoggingCommunicator(Function<LoggingCommunicator<REF, COMM>, COMM> createCommunicator, String prefix)
 	{
 		this.communicator = createCommunicator.apply(this);
 		this.prefix = prefix;
@@ -206,11 +207,11 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 		this.nestingDepth.set(nestingDepth);
 	}
 
-	protected class LoggingStudentSideCommunicatorCallbacks implements StudentSideCommunicatorCallbacks<REF>
+	protected class LoggingStudentSideCommunicatorCallbacks<CB extends StudentSideCommunicatorCallbacks<REF>> implements StudentSideCommunicatorCallbacks<REF>
 	{
-		private final StudentSideCommunicatorCallbacks<REF> callbacks;
+		protected final CB callbacks;
 
-		public LoggingStudentSideCommunicatorCallbacks(StudentSideCommunicatorCallbacks<REF> callbacks)
+		public LoggingStudentSideCommunicatorCallbacks(CB callbacks)
 		{
 			this.callbacks = callbacks;
 		}
@@ -234,6 +235,21 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 		}
 	}
 
+	protected class LoggingRefTranslatorCommunicatorCallbacks extends LoggingStudentSideCommunicatorCallbacks<RefTranslatorCommunicatorCallbacks<REF>>
+			implements RefTranslatorCommunicatorCallbacks<REF>
+	{
+		public LoggingRefTranslatorCommunicatorCallbacks(RefTranslatorCommunicatorCallbacks<REF> callbacks)
+		{
+			super(callbacks);
+		}
+
+		@Override
+		public <REF_FROM> REF createForwardRef(UntranslatedRef<REF_FROM> untranslatedRef)
+		{
+			return callbacks.createForwardRef(untranslatedRef);
+		}
+	}
+
 	protected static class LoggingRefTranslatorCommunicatorSupplier<SUPP extends RefTranslatorCommunicatorSupplier>
 			implements RefTranslatorCommunicatorSupplier
 	{
@@ -250,7 +266,8 @@ public class LoggingCommunicator<REF, COMM extends StudentSideCommunicator<REF>>
 		public <REF_TO> StudentSideCommunicator<REF_TO> createCommunicator(
 				boolean storeRefsIdentityBased, RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
 		{
-			return new LoggingCommunicator<>(communicatorSupplier.createCommunicator(storeRefsIdentityBased, callbacks), prefix);
+			return new LoggingCommunicator<>(comm -> communicatorSupplier.createCommunicator(
+					storeRefsIdentityBased, comm.new LoggingRefTranslatorCommunicatorCallbacks(callbacks)), prefix);
 		}
 	}
 }

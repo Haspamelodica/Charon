@@ -2,6 +2,8 @@ package tests;
 
 import maze.Maze;
 import net.haspamelodica.charon.annotations.SafeForCallByStudent;
+import net.haspamelodica.charon.annotations.UseSerDes;
+import net.haspamelodica.charon.marshaling.StringSerDes;
 
 public class MazeSolution implements Maze
 {
@@ -66,8 +68,9 @@ public class MazeSolution implements Maze
 	// many debuggers automatically call toString on relevant objects.
 	@Override
 	@SafeForCallByStudent
+	@UseSerDes(StringSerDes.class)
 	public String toString()
 	{
-		return "MazeSolution[???]";
+		return "MazeSolution";
 	}
 }

@@ -2,7 +2,7 @@ package net.haspamelodica.charon.communicator;
 
 import java.util.List;
 
-public interface StudentSideCommunicator<REF>
+public interface StudentSideCommunicator<REF, TC extends Transceiver, CM extends CallbackManager>
 {
 	public boolean storeRefsIdentityBased();
 
@@ -20,5 +20,6 @@ public interface StudentSideCommunicator<REF>
 	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
 	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
 
-	public REF createCallbackInstance(String interfaceCn);
+	public TC getTransceiver();
+	public CM getCallbackManager();
 }

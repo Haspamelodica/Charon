@@ -2,7 +2,9 @@ package net.haspamelodica.charon;
 
 import java.io.IOException;
 
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.communication.Communication;
@@ -25,7 +27,7 @@ public class WrappedCommunicator implements AutoCloseable
 		this.client = new UninitializedDataCommunicatorClient(communication.getIn(), communication.getOut());
 	}
 
-	public UninitializedStudentSideCommunicatorClientSide<LongRef> getClient()
+	public UninitializedStudentSideCommunicator<LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>> getClient()
 	{
 		return client;
 	}

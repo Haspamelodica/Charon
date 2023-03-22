@@ -1,9 +1,10 @@
 package net.haspamelodica.charon;
 
-import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorClientSide.maybeWrapLoggingC;
+import static net.haspamelodica.charon.communicator.ClientSideCommunicatorUtils.maybeWrapLoggingIntClient;
 
 import java.io.IOException;
 
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
@@ -23,7 +24,8 @@ public class WrappedStudentSide implements AutoCloseable
 	{
 		WrappedCommunicator communicator = new WrappedCommunicator(communication);
 		this.communicator = communicator;
-		this.studentSide = new StudentSideImpl(maybeWrapLoggingC(communicator.getClient(), communication.getLogging()));
+		this.studentSide = new StudentSideImpl<>(
+				maybeWrapLoggingIntClient(communication.getLogging(), new CommunicationLogger(), communicator.getClient()));
 	}
 
 	public StudentSide getStudentSide()

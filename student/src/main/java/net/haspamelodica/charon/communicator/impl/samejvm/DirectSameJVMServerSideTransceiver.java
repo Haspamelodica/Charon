@@ -4,15 +4,13 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
+import net.haspamelodica.charon.communicator.ServerSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.marshaling.SerDes;
 
-public class DirectSameJVMCommunicatorServerSide
-		extends DirectSameJVMCommunicator
-		implements StudentSideCommunicatorServerSide<Object>
+public class DirectSameJVMServerSideTransceiver extends DirectSameJVMTransceiverImpl implements ServerSideTransceiver<Object>
 {
-	public DirectSameJVMCommunicatorServerSide(StudentSideCommunicatorCallbacks<Object> callbacks)
+	public DirectSameJVMServerSideTransceiver(StudentSideCommunicatorCallbacks<Object> callbacks)
 	{
 		super(callbacks);
 	}

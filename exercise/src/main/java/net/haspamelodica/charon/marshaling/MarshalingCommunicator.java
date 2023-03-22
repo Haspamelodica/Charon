@@ -3,19 +3,22 @@ package net.haspamelodica.charon.marshaling;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 
 public class MarshalingCommunicator<REF>
 {
-	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final Marshaler<REF>							marshaler;
+	private final StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>	communicator;
+	private final Marshaler<REF>																								marshaler;
 
-	public <M> MarshalingCommunicator(UninitializedStudentSideCommunicatorClientSide<REF> communicator,
-			MarshalingCommunicatorCallbacks<M> callbacks, List<Class<? extends SerDes<?>>> serdesClasses)
+	public <M> MarshalingCommunicator(
+			UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
+			MarshalingCommunicatorCallbacks<REF, M> callbacks, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
 		{
@@ -42,7 +45,9 @@ public class MarshalingCommunicator<REF>
 		});
 		this.marshaler = new Marshaler<>(this.communicator, callbacks, serdesClasses);
 	}
-	public MarshalingCommunicator(StudentSideCommunicatorClientSide<REF> communicator, Marshaler<REF> marshaler)
+	public MarshalingCommunicator(
+			StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
+			Marshaler<REF> marshaler)
 	{
 		this.communicator = communicator;
 		this.marshaler = marshaler;

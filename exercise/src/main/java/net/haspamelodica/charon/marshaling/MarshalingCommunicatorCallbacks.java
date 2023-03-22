@@ -2,7 +2,7 @@ package net.haspamelodica.charon.marshaling;
 
 import java.util.List;
 
-public interface MarshalingCommunicatorCallbacks<M> extends RepresentationObjectMarshaler
+public interface MarshalingCommunicatorCallbacks<REF, M> extends RepresentationObjectMarshaler<REF>
 {
 	public CallbackMethod<M> lookupCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiver);
 	/** This method will only be called for methods where lookupCallbackInstanceMethod has been called before. */

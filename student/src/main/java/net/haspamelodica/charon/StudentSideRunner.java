@@ -1,16 +1,15 @@
 package net.haspamelodica.charon;
 
-import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorServerSide.maybeWrapLoggingS;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.maybeWrapLoggingExtServer;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
-import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
@@ -36,10 +35,10 @@ public class StudentSideRunner
 
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
-		UninitializedStudentSideCommunicatorServerSide<Object> directComm = DirectSameJVMCommunicatorServerSide::new;
-		RefTranslatorCommunicatorServerSideSupplier translatedSupp = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
-		RefTranslatorCommunicatorServerSideSupplier loggingSupp = maybeWrapLoggingS(translatedSupp, logging);
-		DataCommunicatorServer server = new DataCommunicatorServer(in, out, loggingSupp);
+		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
+				maybeWrapLoggingExtServer(logging, new CommunicationLogger(),
+						wrapReftransExtServer(
+								createDirectCommServer())));
 		server.run();
 	}
 }

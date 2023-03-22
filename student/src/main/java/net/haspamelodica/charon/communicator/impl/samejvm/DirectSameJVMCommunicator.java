@@ -6,18 +6,27 @@ import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyIns
 import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClass;
 
 import java.util.List;
+import java.util.function.Function;
 
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.Transceiver;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class DirectSameJVMCommunicator implements StudentSideCommunicator<Object>
+public class DirectSameJVMCommunicator<TC extends Transceiver>
+		implements StudentSideCommunicator<Object, TC, InternalCallbackManager<Object>>, InternalCallbackManager<Object>
 {
-	protected final StudentSideCommunicatorCallbacks<Object> callbacks;
+	private final StudentSideCommunicatorCallbacks<Object> callbacks;
 
-	public DirectSameJVMCommunicator(StudentSideCommunicatorCallbacks<Object> callbacks)
+	private final TC transceiver;
+
+	public DirectSameJVMCommunicator(StudentSideCommunicatorCallbacks<Object> callbacks,
+			Function<StudentSideCommunicatorCallbacks<Object>, TC> createTransceiver)
 	{
 		this.callbacks = callbacks;
+		this.transceiver = createTransceiver.apply(this.callbacks);
 	}
 
 	@Override
@@ -122,9 +131,27 @@ public class DirectSameJVMCommunicator implements StudentSideCommunicator<Object
 	}
 
 	@Override
+	public TC getTransceiver()
+	{
+		return transceiver;
+	}
+
+	@Override
 	public Object createCallbackInstance(String interfaceCn)
 	{
 		return createProxyInstance(nameToClass(interfaceCn), (proxy, method, args) -> callbacks.callCallbackInstanceMethod(
 				interfaceCn, method.getName(), classToName(method.getReturnType()), classToName(method.getParameterTypes()), proxy, argsToList(args)));
+	}
+
+	@Override
+	public InternalCallbackManager<Object> getCallbackManager()
+	{
+		return this;
+	}
+
+	public static <TC extends Transceiver> UninitializedStudentSideCommunicator<Object, TC, InternalCallbackManager<Object>>
+			createUninitializedCommunicator(Function<StudentSideCommunicatorCallbacks<Object>, TC> createTransceiver)
+	{
+		return callbacks -> new DirectSameJVMCommunicator<>(callbacks, createTransceiver);
 	}
 }

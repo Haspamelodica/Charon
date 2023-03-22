@@ -17,7 +17,9 @@ import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.SafeForCallByStudent;
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
@@ -42,7 +44,7 @@ import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 // ..Problem: what about non-immutable datastructures?
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
-public class StudentSideImpl implements StudentSide
+public class StudentSideImpl<REF> implements StudentSide
 {
 	private final MarshalingCommunicator<?> globalMarshalingCommunicator;
 
@@ -50,12 +52,12 @@ public class StudentSideImpl implements StudentSide
 	private final Map<String, StudentSidePrototypeBuilder<?, ?>>							prototypeBuildersByStudentSideClassname;
 	private final Map<Class<?>, StudentSidePrototypeBuilder<?, ?>>							prototypeBuildersByInstanceClass;
 
-	public StudentSideImpl(UninitializedStudentSideCommunicatorClientSide<?> communicator)
+	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
-		this.globalMarshalingCommunicator = new MarshalingCommunicator<>(communicator, new MarshalingCommunicatorCallbacks<Method>()
+		this.globalMarshalingCommunicator = new MarshalingCommunicator<>(communicator, new MarshalingCommunicatorCallbacks<REF, Method>()
 		{
 			@Override
-			public <REF> Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
+			public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
 			{
 				return StudentSideImpl.this.createRepresentationObject(untranslatedRef);
 			}

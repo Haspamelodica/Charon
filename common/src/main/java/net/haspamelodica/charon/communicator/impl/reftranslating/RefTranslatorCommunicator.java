@@ -1,21 +1,38 @@
 package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import java.util.List;
+import java.util.function.BiFunction;
 
+import net.haspamelodica.charon.communicator.CallbackManager;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 
-public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSideCommunicator<REF_FROM>>
-		implements StudentSideCommunicator<REF_TO>
+public class RefTranslatorCommunicator<
+		REF_TO,
+		TC_TO extends Transceiver,
+		CM_TO extends CallbackManager,
+		REF_FROM,
+		TC_FROM extends Transceiver>
+		implements StudentSideCommunicator<REF_TO, TC_TO, CM_TO>
 {
-	protected final COMM	communicator;
-	private final boolean	storeRefsIdentityBased;
+	private final StudentSideCommunicator<REF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
+	private final RefTranslator<REF_TO, REF_FROM>																	translator;
 
-	protected final RefTranslator<REF_TO, REF_FROM> translator;
+	private final boolean storeRefsIdentityBased;
 
-	public RefTranslatorCommunicator(UninitializedStudentSideCommunicator<REF_FROM, COMM> communicator, boolean storeRefsIdentityBased,
-			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks)
+	private final TC_TO	transceiver;
+	private final CM_TO	callbackManager;
+
+	public RefTranslatorCommunicator(UninitializedStudentSideCommunicator<REF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
+			boolean storeRefsIdentityBased,
+			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks,
+			BiFunction<StudentSideCommunicator<REF_FROM, ? extends TC_FROM,
+					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver,
+			BiFunction<StudentSideCommunicator<REF_FROM, ? extends TC_FROM,
+					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
 	{
 		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
 		{
@@ -46,9 +63,12 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 			@Override
 			public REF_FROM createBackwardRef(REF_TO translatedRef)
 			{
-				return RefTranslatorCommunicator.this.communicator.createCallbackInstance(callbacks.getCallbackInterfaceCn(translatedRef));
+				return RefTranslatorCommunicator.this.communicator.getCallbackManager().createCallbackInstance(callbacks.getCallbackInterfaceCn(translatedRef));
 			}
 		});
+
+		this.transceiver = createTransceiver.apply(this.communicator, this.translator);
+		this.callbackManager = createCallbackManager.apply(this.communicator, this.translator);
 	}
 
 	@Override
@@ -110,8 +130,14 @@ public class RefTranslatorCommunicator<REF_TO, REF_FROM, COMM extends StudentSid
 	}
 
 	@Override
-	public REF_TO createCallbackInstance(String interfaceCn)
+	public TC_TO getTransceiver()
 	{
-		return translator.translateTo(communicator.createCallbackInstance(interfaceCn));
+		return transceiver;
+	}
+
+	@Override
+	public CM_TO getCallbackManager()
+	{
+		return callbackManager;
 	}
 }

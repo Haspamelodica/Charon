@@ -35,8 +35,10 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
@@ -60,7 +62,10 @@ import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 
 // TODO server, client or both crash on shutdown sometimes
-public class DataCommunicatorClient implements StudentSideCommunicatorClientSide<LongRef>
+public class DataCommunicatorClient
+		implements StudentSideCommunicator<LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>,
+		ClientSideTransceiver<LongRef>,
+		InternalCallbackManager<LongRef>
 {
 	private final StudentSideCommunicatorCallbacks<LongRef> callbacks;
 
@@ -176,6 +181,12 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	}
 
 	@Override
+	public ClientSideTransceiver<LongRef> getTransceiver()
+	{
+		return this;
+	}
+
+	@Override
 	public LongRef callConstructor(String cn, List<String> params, List<LongRef> argRefs)
 	{
 		return executeRefCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
@@ -257,8 +268,20 @@ public class DataCommunicatorClient implements StudentSideCommunicatorClientSide
 	@Override
 	public LongRef createCallbackInstance(String interfaceCn)
 	{
-		//TODO callbacks need a Ref managed by the exercise side
-		return executeRefCommand(CREATE_CALLBACK_INSTANCE, DISALLOW_CALLBACKS, out -> out.writeUTF(interfaceCn));
+		LongRef callbackRef = refManager.createManagedRef();
+		executeVoidCommand(CREATE_CALLBACK_INSTANCE, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, callbackRef);
+			out.writeUTF(interfaceCn);
+		});
+
+		return callbackRef;
+	}
+
+	@Override
+	public InternalCallbackManager<LongRef> getCallbackManager()
+	{
+		return this;
 	}
 
 	private void refDeleted(int id, int receivedCount)

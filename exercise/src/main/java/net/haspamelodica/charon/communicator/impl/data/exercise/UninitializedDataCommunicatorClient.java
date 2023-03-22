@@ -3,12 +3,14 @@ package net.haspamelodica.charon.communicator.impl.data.exercise;
 import java.io.InputStream;
 import java.io.OutputStream;
 
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 
-public class UninitializedDataCommunicatorClient implements UninitializedStudentSideCommunicatorClientSide<LongRef>
+public class UninitializedDataCommunicatorClient
+		implements UninitializedStudentSideCommunicator<LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>
 {
 	private final InputStream	rawIn;
 	private final OutputStream	rawOut;
@@ -22,7 +24,7 @@ public class UninitializedDataCommunicatorClient implements UninitializedStudent
 	}
 
 	@Override
-	public StudentSideCommunicatorClientSide<LongRef> initialize(StudentSideCommunicatorCallbacks<LongRef> callbacks)
+	public DataCommunicatorClient initialize(StudentSideCommunicatorCallbacks<LongRef> callbacks)
 	{
 		if(client != null)
 			throw new IllegalStateException("Client already initialized");

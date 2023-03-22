@@ -16,7 +16,9 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.ExternalCallbackManager;
+import net.haspamelodica.charon.communicator.ServerSideTransceiver;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
@@ -24,7 +26,7 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
@@ -39,7 +41,8 @@ public class DataCommunicatorServer
 {
 	protected final DataStreamMultiplexer multiplexer;
 
-	private final StudentSideCommunicatorServerSide<LongRef> communicator;
+	private final StudentSideCommunicator<LongRef, ? extends ServerSideTransceiver<LongRef>,
+			? extends ExternalCallbackManager<LongRef>> communicator;
 
 	private final LongRefManager<LongRef> refManager;
 
@@ -47,7 +50,8 @@ public class DataCommunicatorServer
 
 	private final AtomicBoolean running;
 
-	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorServerSideSupplier communicatorSupplier)
+	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorSupplier<LongRef,
+			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>> communicatorSupplier)
 	{
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 		this.refManager = new SimpleLongRefManager(false);
@@ -286,12 +290,12 @@ public class DataCommunicatorServer
 
 	private void respondCreateCallbackInstance(DataInput in, DataOutput out) throws IOException
 	{
+		LongRef callbackRef = readRef(in);
 		String interfaceCn = in.readUTF();
 
-		LongRef result = communicator.createCallbackInstance(interfaceCn);
+		communicator.getCallbackManager().createCallbackInstance(callbackRef, interfaceCn);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeRef(out, result);
 	}
 
 	private void respondSend(DataInput in, DataOutput out) throws IOException
@@ -299,7 +303,7 @@ public class DataCommunicatorServer
 		LongRef serdesRef = readRef(in);
 		int serdesInID = in.readInt();
 
-		LongRef result = communicator.send(serdesRef, multiplexer.getIn(serdesInID));
+		LongRef result = communicator.getTransceiver().send(serdesRef, multiplexer.getIn(serdesInID));
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
@@ -313,7 +317,7 @@ public class DataCommunicatorServer
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		out.flush();
-		communicator.receive(serdesRef, objRef, serdesOut);
+		communicator.getTransceiver().receive(serdesRef, objRef, serdesOut);
 		serdesOut.flush();
 	}
 

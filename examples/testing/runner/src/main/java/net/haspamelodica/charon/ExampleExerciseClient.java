@@ -1,8 +1,11 @@
 package net.haspamelodica.charon;
 
 import static net.haspamelodica.charon.ExampleExercise.run;
-import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorClientSide.maybeWrapLoggingC;
-import static net.haspamelodica.charon.communicator.impl.LoggingCommunicatorServerSide.maybeWrapLoggingS;
+import static net.haspamelodica.charon.communicator.ClientSideCommunicatorUtils.maybeWrapLoggingIntClient;
+import static net.haspamelodica.charon.communicator.ClientSideSameJVMCommunicatorUtils.createDirectCommClient;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.maybeWrapLoggingExtServer;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
 import java.io.IOException;
 import java.io.PipedInputStream;
@@ -12,13 +15,9 @@ import java.net.Socket;
 import java.net.UnknownHostException;
 import java.util.concurrent.Semaphore;
 
-import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicatorServerSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplier;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorServerSideSupplierImpl;
-import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorClientSide;
-import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMCommunicatorServerSide;
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 
 public class ExampleExerciseClient
@@ -51,7 +50,9 @@ public class ExampleExerciseClient
 
 	private static void runDirect()
 	{
-		run(new StudentSideImpl(maybeWrapLoggingC(DirectSameJVMCommunicatorClientSide::new, LOGGING)));
+		run(new StudentSideImpl<>(
+				maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger(),
+						createDirectCommClient())));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -64,10 +65,10 @@ public class ExampleExerciseClient
 				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
 				{
 					serverConnected.release();
-					UninitializedStudentSideCommunicatorServerSide<?> directComm = DirectSameJVMCommunicatorServerSide::new;
-					RefTranslatorCommunicatorServerSideSupplier translatedSupp = new RefTranslatorCommunicatorServerSideSupplierImpl<>(directComm);
-					RefTranslatorCommunicatorServerSideSupplier loggingComm = maybeWrapLoggingS(translatedSupp, "SERVER: ", LOGGING);
-					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut, loggingComm);
+					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
+							maybeWrapLoggingExtServer(LOGGING, new CommunicationLogger("SERVER: "),
+									wrapReftransExtServer(
+											createDirectCommServer())));
 					server.run();
 				} catch(IOException e)
 				{
@@ -81,7 +82,7 @@ public class ExampleExerciseClient
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
-			run(new StudentSideImpl(maybeWrapLoggingC(client, "CLIENT: ", LOGGING)));
+			run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger("CLIENT: "), client)));
 			client.shutdown();
 		}
 	}
@@ -94,7 +95,7 @@ public class ExampleExerciseClient
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				run(new StudentSideImpl(maybeWrapLoggingC(client, LOGGING)));
+				run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger(), client)));
 			} finally
 			{
 				client.shutdown();

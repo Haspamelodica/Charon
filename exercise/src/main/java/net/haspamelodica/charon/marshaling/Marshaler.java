@@ -11,7 +11,9 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
@@ -19,15 +21,17 @@ import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class Marshaler<REF>
 {
-	private final StudentSideCommunicatorClientSide<REF>	communicator;
-	private final RefTranslator<Object, REF>				translator;
-	private final List<Class<? extends SerDes<?>>>			serdesClasses;
+	private final StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
+
+	private final RefTranslator<Object, REF>		translator;
+	private final List<Class<? extends SerDes<?>>>	serdesClasses;
 
 	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<REF, ?>> initializedSerDesesBySerDesClass;
 
 	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(StudentSideCommunicatorClientSide<REF> communicator, RepresentationObjectMarshaler representationObjectMarshaler,
+	public Marshaler(StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
+			RepresentationObjectMarshaler<REF> representationObjectMarshaler,
 			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.communicator = communicator;
@@ -42,7 +46,7 @@ public class Marshaler<REF>
 			@Override
 			public REF createBackwardRef(Object translatedRef)
 			{
-				return communicator.createCallbackInstance(representationObjectMarshaler.getCallbackInterfaceCn(translatedRef));
+				return communicator.getCallbackManager().createCallbackInstance(representationObjectMarshaler.getCallbackInterfaceCn(translatedRef));
 			}
 		});
 		this.serdesClasses = List.copyOf(serdesClasses);
@@ -99,7 +103,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.send(serdes.studentSideSerDesRef().get(), serdes.serdes(), object);
+			return communicator.getTransceiver().send(serdes.studentSideSerDesRef().get(), serdes.serdes(), object);
 
 		return translateFrom(object);
 	}
@@ -124,7 +128,7 @@ public class Marshaler<REF>
 
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
-			return communicator.receive(serdes.studentSideSerDesRef().get(), serdes.serdes(), objRef);
+			return communicator.getTransceiver().receive(serdes.studentSideSerDesRef().get(), serdes.serdes(), objRef);
 
 		return translateTo(objRef);
 	}

@@ -14,10 +14,10 @@ import net.haspamelodica.charon.reflection.ReflectionUtils;
 public class MockclassesInvocationHandler<REF>
 		implements DynamicInvocationHandler<TypeDefinition, MethodDescription, MethodDescription, MethodDescription, REF>
 {
-	private final MarshalingCommunicator<REF>		marshalingCommunicator;
-	private final MockclassesMarshalingTransformer	transformer;
+	private final MarshalingCommunicator<REF>			marshalingCommunicator;
+	private final MockclassesMarshalingTransformer<REF>	transformer;
 
-	public MockclassesInvocationHandler(MarshalingCommunicator<REF> marshalingCommunicator, MockclassesMarshalingTransformer transformer)
+	public MockclassesInvocationHandler(MarshalingCommunicator<REF> marshalingCommunicator, MockclassesMarshalingTransformer<REF> transformer)
 	{
 		this.marshalingCommunicator = marshalingCommunicator;
 		this.transformer = transformer;

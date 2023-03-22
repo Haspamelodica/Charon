@@ -19,7 +19,7 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 
-public class MockclassesMarshalingTransformer implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<Method>
+public class MockclassesMarshalingTransformer<REF> implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<REF, Method>
 {
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
@@ -83,7 +83,7 @@ public class MockclassesMarshalingTransformer implements DynamicClassTransformer
 	}
 
 	@Override
-	public <REF> Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
+	public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
 	{
 		try
 		{

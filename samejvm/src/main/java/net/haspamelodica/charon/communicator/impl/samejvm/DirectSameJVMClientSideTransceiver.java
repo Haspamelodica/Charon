@@ -9,8 +9,8 @@ import java.io.UncheckedIOException;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicReference;
 
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.StudentSideCommunicatorClientSide;
 import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.impl.StudentSideImpl;
@@ -28,9 +28,9 @@ import net.haspamelodica.charon.marshaling.Serializer;
  * compared to a {@link DataCommunicatorClient} and {@link DataCommunicatorServer} in the same JVM.
  */
 //TODO better exception handling. Use StudentSideException
-public class DirectSameJVMCommunicatorClientSide extends DirectSameJVMCommunicator implements StudentSideCommunicatorClientSide<Object>
+public class DirectSameJVMClientSideTransceiver extends DirectSameJVMServerSideTransceiver implements ClientSideTransceiver<Object>
 {
-	public DirectSameJVMCommunicatorClientSide(StudentSideCommunicatorCallbacks<Object> callbacks)
+	public DirectSameJVMClientSideTransceiver(StudentSideCommunicatorCallbacks<Object> callbacks)
 	{
 		super(callbacks);
 	}

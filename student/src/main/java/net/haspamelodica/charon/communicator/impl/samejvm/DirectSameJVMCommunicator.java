@@ -9,10 +9,12 @@ import java.util.List;
 import java.util.function.Function;
 
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class DirectSameJVMCommunicator<TC extends Transceiver>
@@ -54,16 +56,17 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Object callConstructor(String cn, List<String> params, List<Object> argRefs)
+	public RefOrError<Object> callConstructor(String cn, List<String> params, List<Object> argRefs)
 	{
-		return ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), argRefs);
+		return handleTargetExceptions(() -> ReflectionUtils.callConstructor(nameToClass(cn), nameToClass(params), argRefs));
 	}
 
 	@Override
-	public Object callStaticMethod(String cn, String name, String returnClassname, List<String> params,
+	public RefOrError<Object> callStaticMethod(String cn, String name, String returnClassname, List<String> params,
 			List<Object> argRefs)
 	{
-		return ReflectionUtils.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params), argRefs);
+		return handleTargetExceptions(() -> ReflectionUtils
+				.callStaticMethod(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params), argRefs));
 	}
 
 	@Override
@@ -86,19 +89,19 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Object callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+	public RefOrError<Object> callInstanceMethod(String cn, String name, String returnClassname, List<String> params,
 			Object receiverRef, List<Object> argRefs)
 	{
 		return callInstanceMethod_(nameToClass(cn), name, nameToClass(returnClassname), nameToClass(params),
 				receiverRef, argRefs);
 	}
 	// extracted to method so the cast is expressible in Java
-	private <T> Object callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params,
+	private <T> RefOrError<Object> callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params,
 			Object receiver, List<Object> args)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
-		return ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args);
+		return handleTargetExceptions(() -> ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args));
 	}
 
 	@Override
@@ -139,8 +142,31 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	@Override
 	public Object createCallbackInstance(String interfaceCn)
 	{
-		return createProxyInstance(nameToClass(interfaceCn), (proxy, method, args) -> callbacks.callCallbackInstanceMethod(
-				interfaceCn, method.getName(), classToName(method.getReturnType()), classToName(method.getParameterTypes()), proxy, argsToList(args)));
+		return createProxyInstance(nameToClass(interfaceCn), (proxy, method, args) ->
+		{
+			RefOrError<Object> result = callbacks.callCallbackInstanceMethod(
+					interfaceCn, method.getName(), classToName(method.getReturnType()), classToName(method.getParameterTypes()),
+					proxy, argsToList(args));
+			if(result.isError())
+				throw (Throwable) result.resultOrErrorRef();
+			return result.resultOrErrorRef();
+		});
+	}
+
+	private RefOrError<Object> handleTargetExceptions(ReflectiveSupplier<Object> action)
+	{
+		try
+		{
+			return RefOrError.success(action.get());
+		} catch(ExceptionInTargetException e)
+		{
+			return RefOrError.error(e.getTargetThrowable());
+		}
+	}
+	@FunctionalInterface
+	private static interface ReflectiveSupplier<R>
+	{
+		public R get() throws ExceptionInTargetException;
 	}
 
 	@Override

@@ -4,6 +4,7 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXER
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse.SHUTDOWN_FINISHED;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.CALL_CALLBACK_INSTANCE_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.GET_CALLBACK_INTERFACE_CN;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_ERROR;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_FINISHED;
 
 import java.io.DataInput;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import net.haspamelodica.charon.communicator.ExternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.ServerSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
@@ -77,7 +79,7 @@ public class DataCommunicatorServer
 			}
 
 			@Override
-			public LongRef callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			public RefOrError<LongRef> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
 					LongRef receiverRef, List<LongRef> argRefs)
 			{
 				try
@@ -127,7 +129,7 @@ public class DataCommunicatorServer
 		}
 	}
 
-	private void handleExerciseSideCommandsUntilFinished(DataInput in, DataOutputStream out)
+	private boolean handleExerciseSideCommandsUntilFinished(DataInput in, DataOutputStream out)
 	{
 		try
 		{
@@ -137,7 +139,11 @@ public class DataCommunicatorServer
 				{
 					case EXERCISE_FINISHED ->
 					{
-						return;
+						return false;
+					}
+					case EXERCISE_ERROR ->
+					{
+						return true;
 					}
 					case GET_CLASSNAME -> respondGetClassname(in, out);
 					case GET_SUPERCLASS -> respondGetSuperclass(in, out);
@@ -159,7 +165,7 @@ public class DataCommunicatorServer
 		{
 			if(!running.get())
 				// ignore; we are shutting down
-				return;
+				return true;
 
 			//TODO log to somewhere instead of rethrowing
 			throw e;
@@ -167,7 +173,7 @@ public class DataCommunicatorServer
 		{
 			if(!running.get())
 				// ignore; we are shutting down
-				return;
+				return true;
 
 			//TODO do we need to do something with this exception?
 			// I don't think so because once StreamMultiplexer or one of its streams throws any exception,
@@ -209,10 +215,9 @@ public class DataCommunicatorServer
 		String cn = in.readUTF();
 		Args args = readArgs(in);
 
-		LongRef result = communicator.callConstructor(cn, args.params(), args.argRefs());
+		RefOrError<LongRef> result = communicator.callConstructor(cn, args.params(), args.argRefs());
 
-		writeThreadResponse(out, STUDENT_FINISHED);
-		writeRef(out, result);
+		writeResponseAndRef(out, result);
 	}
 
 	private void respondCallStaticMethod(DataInput in, DataOutput out) throws IOException
@@ -222,10 +227,9 @@ public class DataCommunicatorServer
 		String returnClassname = in.readUTF();
 		Args args = readArgs(in);
 
-		LongRef result = communicator.callStaticMethod(cn, name, returnClassname, args.params(), args.argRefs());
+		RefOrError<LongRef> result = communicator.callStaticMethod(cn, name, returnClassname, args.params(), args.argRefs());
 
-		writeThreadResponse(out, STUDENT_FINISHED);
-		writeRef(out, result);
+		writeResponseAndRef(out, result);
 	}
 	private void respondGetStaticField(DataInput in, DataOutput out) throws IOException
 	{
@@ -258,10 +262,9 @@ public class DataCommunicatorServer
 		Args args = readArgs(in);
 		LongRef receiverRef = readRef(in);
 
-		LongRef result = communicator.callInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs());
+		RefOrError<LongRef> result = communicator.callInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs());
 
-		writeThreadResponse(out, STUDENT_FINISHED);
-		writeRef(out, result);
+		writeResponseAndRef(out, result);
 	}
 	private void respondGetInstanceField(DataInput in, DataOutput out) throws IOException
 	{
@@ -355,7 +358,7 @@ public class DataCommunicatorServer
 			throw new IllegalStateException("Exercise side didn't respond with " + EXERCISE_FINISHED);
 		return in.readUTF();
 	}
-	private LongRef callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+	private RefOrError<LongRef> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
 			LongRef receiverRef, List<LongRef> argRefs) throws IOException
 	{
 		ExerciseSideThread exerciseSideThread = getExerciseSideThread();
@@ -371,8 +374,8 @@ public class DataCommunicatorServer
 
 		out.flush();
 
-		handleExerciseSideCommandsUntilFinished(in, out);
-		return readRef(in);
+		boolean isError = handleExerciseSideCommandsUntilFinished(in, out);
+		return new RefOrError<>(readRef(in), isError);
 	}
 
 	private ThreadCommand readThreadCommand(DataInput in) throws IOException
@@ -392,6 +395,12 @@ public class DataCommunicatorServer
 	private void writeArgs(DataOutput out, List<String> params, List<LongRef> argRefs) throws IOException
 	{
 		DataCommunicatorUtils.writeArgs(out, params, argRefs, IllegalArgumentException::new, this::writeRef);
+	}
+
+	private void writeResponseAndRef(DataOutput out, RefOrError<LongRef> result) throws IOException
+	{
+		writeThreadResponse(out, result.isError() ? STUDENT_ERROR : STUDENT_FINISHED);
+		writeRef(out, result.resultOrErrorRef());
 	}
 
 	protected final LongRef readRef(DataInput in) throws IOException

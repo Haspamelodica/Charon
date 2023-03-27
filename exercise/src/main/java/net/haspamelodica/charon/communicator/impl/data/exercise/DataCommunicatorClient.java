@@ -4,6 +4,7 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_INSTANCE_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_STATIC_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CREATE_CALLBACK_INSTANCE;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_ERROR;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_FINISHED;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_CLASSNAME;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
@@ -19,6 +20,7 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentC
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand.SHUTDOWN;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.CALL_CALLBACK_INSTANCE_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.GET_CALLBACK_INTERFACE_CN;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_ERROR;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_FINISHED;
 import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient.AllowedThreadCallbacks.ALLOW_CALLBACKS;
 import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient.AllowedThreadCallbacks.DISALLOW_CALLBACKS;
@@ -37,6 +39,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
@@ -49,6 +52,7 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
+import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.marshaling.Deserializer;
 import net.haspamelodica.charon.marshaling.Serializer;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
@@ -172,8 +176,10 @@ public class DataCommunicatorClient
 			out.writeInt(serdesIn.getStreamID());
 
 			return serdesIn;
-		}, (in, serdesIn) ->
+		}, (in, serdesIn, error) ->
 		{
+			if(error)
+				throw new StudentSideCausedException("Student side returned error in response to " + RECEIVE + ", which shouldn't be possible");
 			T result = deserializer.deserialize(serdesIn);
 			freeStreamsForReceiving.add(serdesIn);
 			return result;
@@ -187,9 +193,9 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public LongRef callConstructor(String cn, List<String> params, List<LongRef> argRefs)
+	public RefOrError<LongRef> callConstructor(String cn, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
+		return executeRefOrErrorCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			writeArgs(out, params, argRefs);
@@ -197,9 +203,9 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public LongRef callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
+	public RefOrError<LongRef> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_STATIC_METHOD, ALLOW_CALLBACKS, out ->
+		return executeRefOrErrorCommand(CALL_STATIC_METHOD, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -230,9 +236,9 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public LongRef callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
+	public RefOrError<LongRef> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
 	{
-		return executeRefCommand(CALL_INSTANCE_METHOD, ALLOW_CALLBACKS, out ->
+		return executeRefOrErrorCommand(CALL_INSTANCE_METHOD, ALLOW_CALLBACKS, out ->
 		{
 			out.writeUTF(cn);
 			out.writeUTF(name);
@@ -302,17 +308,32 @@ public class DataCommunicatorClient
 	{
 		return executeCommand(command, allowedCallbacks, sendParams, this::readRef);
 	}
+	private RefOrError<LongRef> executeRefOrErrorCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
+			IOConsumer<DataOutputStream> sendParams)
+	{
+		return executeCommand(command, allowedCallbacks, sendParams, this::readRefOrError);
+	}
 	private <R> R executeCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
 			IOConsumer<DataOutputStream> sendParams, IOFunction<DataInput, R> parseResponse)
+	{
+		return executeCommand(command, allowedCallbacks, sendParams, (in, error) ->
+		{
+			if(error)
+				throw new StudentSideCausedException("Student side returned error in response to " + command + ", which shouldn't be possible");
+			return parseResponse.apply(in);
+		});
+	}
+	private <R> R executeCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
+			IOConsumer<DataOutputStream> sendParams, IOBiFunction<DataInput, Boolean, R> parseResponse)
 	{
 		return executeCommand(command, allowedCallbacks, out ->
 		{
 			sendParams.accept(out);
 			return null;
-		}, (in, params) -> parseResponse.apply(in));
+		}, (in, params, error) -> parseResponse.apply(in, error));
 	}
 	private <R, P> R executeCommand(ThreadCommand command, AllowedThreadCallbacks allowedCallbacks,
-			IOFunction<DataOutputStream, P> sendParams, IOBiFunction<DataInput, P, R> parseResponse)
+			IOFunction<DataOutputStream, P> sendParams, IOTriFunction<DataInput, P, Boolean, R> parseResponse)
 	{
 		try
 		{
@@ -324,8 +345,8 @@ public class DataCommunicatorClient
 			P params = sendParams.apply(out);
 			out.flush();
 
-			handleStudentSideResponsesUntilFinished(allowedCallbacks, in, out);
-			return parseResponse.apply(in, params);
+			boolean error = handleStudentSideResponsesUntilFinished(allowedCallbacks, in, out);
+			return parseResponse.apply(in, params, error);
 		} catch(UnexpectedResponseException e)
 		{
 			return wrapUnexpectedResponseException(e);
@@ -335,7 +356,7 @@ public class DataCommunicatorClient
 		}
 	}
 
-	private void handleStudentSideResponsesUntilFinished(AllowedThreadCallbacks allowedCallbacks, DataInput in, DataOutputStream out) throws IOException
+	private boolean handleStudentSideResponsesUntilFinished(AllowedThreadCallbacks allowedCallbacks, DataInput in, DataOutputStream out) throws IOException
 	{
 		for(;;)
 		{
@@ -346,7 +367,11 @@ public class DataCommunicatorClient
 			{
 				case STUDENT_FINISHED ->
 				{
-					return;
+					return false;
+				}
+				case STUDENT_ERROR ->
+				{
+					return true;
 				}
 				case CALL_CALLBACK_INSTANCE_METHOD ->
 				{
@@ -356,10 +381,12 @@ public class DataCommunicatorClient
 					Args args = readArgs(in);
 					LongRef receiverRef = readRef(in);
 
-					LongRef result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs());
+					//TODO maybe we want to abort callback if a CharonException is thrown?
+					RefOrError<LongRef> result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, args.params(),
+							receiverRef, args.argRefs());
 
-					writeThreadCommand(out, EXERCISE_FINISHED);
-					writeRef(out, result);
+					writeThreadCommand(out, result.isError() ? EXERCISE_ERROR : EXERCISE_FINISHED);
+					writeRef(out, result.resultOrErrorRef());
 				}
 				case GET_CALLBACK_INTERFACE_CN ->
 				{
@@ -464,6 +491,11 @@ public class DataCommunicatorClient
 		out.writeByte(command.encode());
 	}
 
+	private RefOrError<LongRef> readRefOrError(DataInput in, boolean error) throws IOException
+	{
+		return new RefOrError<>(readRef(in), error);
+	}
+
 	private LongRef readRef(DataInput in) throws IOException
 	{
 		return refManager.unmarshalReceivedId(in.readLong());
@@ -488,8 +520,8 @@ public class DataCommunicatorClient
 
 	protected static enum AllowedThreadCallbacks
 	{
-		DISALLOW_CALLBACKS(STUDENT_FINISHED),
-		ALLOW_CALLBACKS(STUDENT_FINISHED, GET_CALLBACK_INTERFACE_CN, CALL_CALLBACK_INSTANCE_METHOD);
+		DISALLOW_CALLBACKS(STUDENT_FINISHED, STUDENT_ERROR),
+		ALLOW_CALLBACKS(STUDENT_FINISHED, STUDENT_ERROR, GET_CALLBACK_INTERFACE_CN, CALL_CALLBACK_INSTANCE_METHOD);
 
 		private final Set<ThreadResponse> allowedResponses;
 

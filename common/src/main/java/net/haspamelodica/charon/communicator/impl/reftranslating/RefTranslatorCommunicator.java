@@ -5,6 +5,7 @@ import java.util.function.BiFunction;
 
 import net.haspamelodica.charon.communicator.CallbackManager;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.Transceiver;
@@ -37,7 +38,7 @@ public class RefTranslatorCommunicator<
 		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
 		{
 			@Override
-			public REF_FROM callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			public RefOrError<REF_FROM> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
 					REF_FROM receiverRef, List<REF_FROM> argRefs)
 			{
 				return translator.translateFrom(callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params,
@@ -93,12 +94,12 @@ public class RefTranslatorCommunicator<
 		return communicator.getInterfaces(cn);
 	}
 	@Override
-	public REF_TO callConstructor(String cn, List<String> params, List<REF_TO> argRefs)
+	public RefOrError<REF_TO> callConstructor(String cn, List<String> params, List<REF_TO> argRefs)
 	{
 		return translator.translateTo(communicator.callConstructor(cn, params, translator.translateFrom(argRefs)));
 	}
 	@Override
-	public REF_TO callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF_TO> argRefs)
+	public RefOrError<REF_TO> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF_TO> argRefs)
 	{
 		return translator.translateTo(communicator.callStaticMethod(cn, name, returnClassname, params, translator.translateFrom(argRefs)));
 	}
@@ -113,7 +114,7 @@ public class RefTranslatorCommunicator<
 		communicator.setStaticField(cn, name, fieldClassname, translator.translateFrom(valueRef));
 	}
 	@Override
-	public REF_TO callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF_TO receiverRef, List<REF_TO> argRefs)
+	public RefOrError<REF_TO> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF_TO receiverRef, List<REF_TO> argRefs)
 	{
 		return translator.translateTo(communicator.callInstanceMethod(cn, name, returnClassname, params,
 				translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));

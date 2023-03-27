@@ -53,7 +53,7 @@ public class MockclassesInvocationHandler<REF>
 	}
 
 	@Override
-	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args)
+	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args) throws Throwable
 	{
 		return marshalingCommunicator.callStaticMethod(
 				toStudentSideType(classContext),
@@ -63,7 +63,7 @@ public class MockclassesInvocationHandler<REF>
 				Arrays.asList(args));
 	}
 	@Override
-	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args)
+	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args) throws Throwable
 	{
 		return marshalingCommunicator.callConstructorExistingRepresentationObject(
 				toStudentSideType(classContext),
@@ -72,7 +72,8 @@ public class MockclassesInvocationHandler<REF>
 				receiver);
 	}
 	@Override
-	public Object invokeInstanceMethod(TypeDefinition classContext, MethodDescription methodContext, Object receiver, REF receiverContext, Object[] args)
+	public Object invokeInstanceMethod(TypeDefinition classContext, MethodDescription methodContext, Object receiver, REF receiverContext,
+			Object[] args) throws Throwable
 	{
 		return marshalingCommunicator.callInstanceMethodRawReceiver(
 				toStudentSideType(classContext),

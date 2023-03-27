@@ -2,6 +2,7 @@ package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import java.util.List;
 
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.utils.maps.BidirectionalMap;
 
 public class RefTranslator<REF_TO, REF_FROM>
@@ -40,6 +41,14 @@ public class RefTranslator<REF_TO, REF_FROM>
 	public List<REF_TO> translateTo(List<REF_FROM> refsFrom)
 	{
 		return refsFrom.stream().map(this::translateTo).toList();
+	}
+	public RefOrError<REF_FROM> translateFrom(RefOrError<REF_TO> refTo)
+	{
+		return new RefOrError<>(translateFrom(refTo.resultOrErrorRef()), refTo.isError());
+	}
+	public RefOrError<REF_TO> translateTo(RefOrError<REF_FROM> refFrom)
+	{
+		return new RefOrError<>(translateTo(refFrom.resultOrErrorRef()), refFrom.isError());
 	}
 	public REF_FROM translateFrom(REF_TO refTo)
 	{

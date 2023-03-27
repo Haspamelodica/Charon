@@ -14,7 +14,7 @@ public interface DynamicInvocationHandler<CCTX, MCTX, SCTX, TCTX, ICTX>
 		// by default, do nothing
 	}
 
-	public Object invokeStaticMethod(CCTX classContext, SCTX methodContext, Object[] args);
-	public ICTX invokeConstructor(CCTX classContext, TCTX constructorContext, Object receiver, Object[] args);
-	public Object invokeInstanceMethod(CCTX classContext, MCTX methodContext, Object receiver, ICTX receiverContext, Object[] args);
+	public Object invokeStaticMethod(CCTX classContext, SCTX methodContext, Object[] args) throws Throwable;
+	public ICTX invokeConstructor(CCTX classContext, TCTX constructorContext, Object receiver, Object[] args) throws Throwable;
+	public Object invokeInstanceMethod(CCTX classContext, MCTX methodContext, Object receiver, ICTX receiverContext, Object[] args) throws Throwable;
 }

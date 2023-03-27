@@ -3,6 +3,8 @@ package net.haspamelodica.charon.communicator.impl.data;
 public enum ThreadResponse
 {
 	STUDENT_FINISHED,
+	STUDENT_ERROR,
+
 	GET_CALLBACK_INTERFACE_CN,
 	CALL_CALLBACK_INSTANCE_METHOD,
 	;

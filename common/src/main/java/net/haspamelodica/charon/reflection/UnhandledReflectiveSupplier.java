@@ -2,8 +2,8 @@ package net.haspamelodica.charon.reflection;
 
 import java.lang.reflect.InvocationTargetException;
 
-public interface ReflectiveRunnable
+public interface UnhandledReflectiveSupplier<R>
 {
-	public void run() throws InvocationTargetException, InstantiationException, IllegalAccessException, IllegalArgumentException,
+	public R get() throws InvocationTargetException, InstantiationException, IllegalAccessException, IllegalArgumentException,
 			NoSuchMethodException, NoSuchFieldException, SecurityException, ClassNotFoundException;
 }

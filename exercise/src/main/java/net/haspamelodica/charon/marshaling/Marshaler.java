@@ -11,12 +11,16 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.function.Supplier;
 
-import net.haspamelodica.charon.communicator.InternalCallbackManager;
-import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
+import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.exceptions.ExerciseCausedException;
+import net.haspamelodica.charon.exceptions.StudentSideCausedException;
+import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class Marshaler<REF>
@@ -89,6 +93,15 @@ public class Marshaler<REF>
 		for(int i = 0; i < classes.size(); i ++)
 			result.add(receive(classes.get(i), objRefs.get(i)));
 		return result;
+	}
+
+	public <T> T receiveOrThrow(Class<T> clazz, RefOrError<REF> objRef) throws Throwable
+	{
+		//TODO maybe we want to check if the exception class actually can be thrown here
+		if(objRef.isError())
+			throw receive(Throwable.class, objRef.resultOrErrorRef());
+
+		return receive(clazz, objRef.resultOrErrorRef());
 	}
 
 	public <T> REF send(Class<T> clazz, Object obj)
@@ -168,8 +181,22 @@ public class Marshaler<REF>
 	{
 		return initializedSerDesesBySerDesClass.computeIfAbsent(serdesClass, c ->
 		{
-			SerDes<?> serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
-			LazyValue<REF> serdesRef = new LazyValue<>(() -> communicator.callConstructor(classToName(serdesClass), List.of(), List.of()));
+			SerDes<?> serdes;
+			try
+			{
+				serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
+			} catch(ExceptionInTargetException e)
+			{
+				throw new ExerciseCausedException("Error while creating SerDes for class " + serdesClass, e);
+			}
+			LazyValue<REF> serdesRef = new LazyValue<>(() ->
+			{
+				RefOrError<REF> result = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
+				if(result.isError())
+					//TODO maybe we want to make resultOrErrorRef accessible somehow
+					throw new StudentSideCausedException("Error while creating student-side SerDes for class " + serdesClass);
+				return result.resultOrErrorRef();
+			});
 			return new InitializedSerDes<>(serdes, serdesRef);
 		});
 	}

@@ -3,13 +3,15 @@ package net.haspamelodica.charon.marshaling;
 import java.util.List;
 import java.util.stream.Stream;
 
+import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
-import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
+import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 
 public class MarshalingCommunicator<REF>
 {
@@ -29,7 +31,8 @@ public class MarshalingCommunicator<REF>
 			}
 
 			@Override
-			public REF callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+			public RefOrError<REF> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+					REF receiverRef, List<REF> argRefs)
 			{
 				Object receiverObj = marshaler.translateTo(receiverRef);
 
@@ -38,9 +41,17 @@ public class MarshalingCommunicator<REF>
 
 				List<Object> argObjs = marshalerWithAdditionalSerdeses.receive(callbackMethod.paramTypes(), argRefs);
 
-				Object resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod, receiverObj, argObjs);
+				Object resultObj;
+				try
+				{
+					resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod, receiverObj, argObjs);
+				} catch(ExceptionInTargetException e)
+				{
+					//TODO transmit exception somehow
+					return RefOrError.error(null);
+				}
 
-				return marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(), resultObj);
+				return RefOrError.success(marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(), resultObj));
 			}
 		});
 		this.marshaler = new Marshaler<>(this.communicator, callbacks, serdesClasses);
@@ -71,34 +82,40 @@ public class MarshalingCommunicator<REF>
 		return communicator.getInterfaces(cn);
 	}
 
-	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args)
+	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args) throws Throwable
 	{
-		REF resultRef = callConstructorRawRef(type, params, args);
+		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 
-		return marshaler.receive(type.localType(), resultRef);
+		return marshaler.receiveOrThrow(type.localType(), resultRef);
 	}
 	// Neccessary for the Mockclasses frontend
 	public REF callConstructorExistingRepresentationObject(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args,
-			Object representationObject)
+			Object representationObject) throws Throwable
 	{
-		REF resultRef = callConstructorRawRef(type, params, args);
-		marshaler.setRepresentationObjectRefPair(resultRef, representationObject);
+		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
+		if(resultRef.isError())
+			throw marshaler.receive(Throwable.class, resultRef.resultOrErrorRef());
+
+		marshaler.setRepresentationObjectRefPair(resultRef.resultOrErrorRef(), representationObject);
+		return resultRef.resultOrErrorRef();
+	}
+	private RefOrError<REF> callConstructorRawRef(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args)
+	{
+		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
+
+		RefOrError<REF> resultRef = communicator.callConstructor(type.studentSideCN(), extractStudentSideCNs(params), argRefs);
+
 		return resultRef;
 	}
-	private REF callConstructorRawRef(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args)
+
+	public <T> T callStaticMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
+			List<Object> args) throws Throwable
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
-		return communicator.callConstructor(type.studentSideCN(), extractStudentSideCNs(params), argRefs);
-	}
+		RefOrError<REF> resultRef = communicator.callStaticMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params), argRefs);
 
-	public <T> T callStaticMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params, List<Object> args)
-	{
-		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
-
-		REF resultRef = communicator.callStaticMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params), argRefs);
-
-		return marshaler.receive(returnType.localType(), resultRef);
+		return marshaler.receiveOrThrow(returnType.localType(), resultRef);
 	}
 
 	public <T> T getStaticField(StudentSideType<?> type, String name, StudentSideType<T> fieldType)
@@ -116,7 +133,7 @@ public class MarshalingCommunicator<REF>
 	}
 
 	public <T> T callInstanceMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			Object receiver, List<Object> args)
+			Object receiver, List<Object> args) throws Throwable
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
 
@@ -124,14 +141,14 @@ public class MarshalingCommunicator<REF>
 	}
 	// Neccessary for the Mockclasses frontend
 	public <T> T callInstanceMethodRawReceiver(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			REF receiverRef, List<Object> args)
+			REF receiverRef, List<Object> args) throws Throwable
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
-		REF resultRef = communicator.callInstanceMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params),
+		RefOrError<REF> resultRef = communicator.callInstanceMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params),
 				receiverRef, argRefs);
 
-		return marshaler.receive(returnType.localType(), resultRef);
+		return marshaler.receiveOrThrow(returnType.localType(), resultRef);
 	}
 
 	public <T> T getInstanceField(StudentSideType<?> type, String name, StudentSideType<T> fieldType, Object receiver)

@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 import net.haspamelodica.charon.communicator.CallbackManager;
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.Transceiver;
 
@@ -57,19 +58,19 @@ public class LoggingCommunicator<REF, TC extends Transceiver, CM extends Callbac
 	}
 
 	@Override
-	public REF callConstructor(String cn, List<String> params, List<REF> argRefs)
+	public RefOrError<REF> callConstructor(String cn, List<String> params, List<REF> argRefs)
 	{
 		logger.logEnter("new " + cn + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs);
-		REF result = communicator.callConstructor(cn, params, argRefs);
+		RefOrError<REF> result = communicator.callConstructor(cn, params, argRefs);
 		logger.logExit(result);
 		return result;
 	}
 
 	@Override
-	public REF callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs)
+	public RefOrError<REF> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs)
 	{
 		logger.logEnter(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + argRefs);
-		REF result = communicator.callStaticMethod(cn, name, returnClassname, params, argRefs);
+		RefOrError<REF> result = communicator.callStaticMethod(cn, name, returnClassname, params, argRefs);
 		logger.logExit(result);
 		return result;
 	}
@@ -90,10 +91,10 @@ public class LoggingCommunicator<REF, TC extends Transceiver, CM extends Callbac
 	}
 
 	@Override
-	public REF callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+	public RefOrError<REF> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
 	{
 		logger.logEnter(returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs);
-		REF result = communicator.callInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+		RefOrError<REF> result = communicator.callInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
 		logger.logExit(result);
 		return result;
 	}

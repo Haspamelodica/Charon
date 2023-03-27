@@ -17,8 +17,8 @@ import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.SafeForCallByStudent;
-import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
+import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
@@ -30,6 +30,7 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
+import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
 // TODO maybe provide syncWithStudentSide method for mutable serialized objects
@@ -76,6 +77,7 @@ public class StudentSideImpl<REF> implements StudentSide
 
 			@Override
 			public Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+					throws ExceptionInTargetException
 			{
 				return StudentSideImpl.this.callCallbackInstanceMethodChecked(callbackMethod, receiver, args);
 			}
@@ -150,6 +152,7 @@ public class StudentSideImpl<REF> implements StudentSide
 		StudentSidePrototypeBuilder<?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 		if(prototypeBuilder != null)
 			return Stream.of(prototypeBuilder);
+		//TODO there's not only no superclass for Object.class, but also if studentSideCN refers to an interface.
 		if(studentSideCN.equals(Object.class.getName()))
 			//TODO maybe introduce a global prototype for Object
 			return Stream.of();
@@ -211,6 +214,7 @@ public class StudentSideImpl<REF> implements StudentSide
 	}
 
 	private Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+			throws ExceptionInTargetException
 	{
 		return doChecked(() -> callbackMethod.methodData().invoke(receiver, args.toArray()));
 	}

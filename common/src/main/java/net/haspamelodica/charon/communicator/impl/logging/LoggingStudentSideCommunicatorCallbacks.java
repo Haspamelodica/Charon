@@ -3,6 +3,7 @@ package net.haspamelodica.charon.communicator.impl.logging;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 
 public class LoggingStudentSideCommunicatorCallbacks<REF, CB extends StudentSideCommunicatorCallbacks<REF>>
@@ -28,10 +29,11 @@ public class LoggingStudentSideCommunicatorCallbacks<REF, CB extends StudentSide
 	}
 
 	@Override
-	public REF callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs)
+	public RefOrError<REF> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			REF receiverRef, List<REF> argRefs)
 	{
 		logger.logEnterCallback("callback " + returnClassname + " " + cn + "." + name + params.stream().collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs);
-		REF result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
+		RefOrError<REF> result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
 		logger.logExitCallback(result);
 		return result;
 	}

@@ -171,7 +171,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends ClassLoade
 	public static interface StaticMethodHandler
 	{
 		// When renaming this method or changing its interface, remember to adjust corresponding Method constant
-		public Object call(Object[] args);
+		public Object call(Object[] args) throws Throwable;
 	}
 	/**
 	 * See {@link StaticMethodHandler}
@@ -179,7 +179,7 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends ClassLoade
 	public static interface ConstructorMethodHandler
 	{
 		// When renaming this method or changing its interface, remember to adjust corresponding Method constant
-		public Object call(Object receiver, Object[] args);
+		public Object call(Object receiver, Object[] args) throws Throwable;
 	}
 	/**
 	 * See {@link StaticMethodHandler}
@@ -187,6 +187,6 @@ public class DynamicClassLoader<CCTX, MCTX, SCTX, TCTX, ICTX> extends ClassLoade
 	public static interface InstanceMethodHandler<ICTX>
 	{
 		// When renaming this method or changing its interface, remember to adjust corresponding Method constant
-		public Object call(Object receiver, ICTX receiverContext, Object[] args);
+		public Object call(Object receiver, ICTX receiverContext, Object[] args) throws Throwable;
 	}
 }

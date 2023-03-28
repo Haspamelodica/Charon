@@ -6,6 +6,7 @@ import java.util.stream.Stream;
 
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
+import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
@@ -53,7 +54,7 @@ public class MockclassesInvocationHandler<REF>
 	}
 
 	@Override
-	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args) throws Throwable
+	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callStaticMethod(
 				toStudentSideType(classContext),
@@ -63,7 +64,7 @@ public class MockclassesInvocationHandler<REF>
 				Arrays.asList(args));
 	}
 	@Override
-	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args) throws Throwable
+	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callConstructorExistingRepresentationObject(
 				toStudentSideType(classContext),
@@ -73,7 +74,7 @@ public class MockclassesInvocationHandler<REF>
 	}
 	@Override
 	public Object invokeInstanceMethod(TypeDefinition classContext, MethodDescription methodContext, Object receiver, REF receiverContext,
-			Object[] args) throws Throwable
+			Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callInstanceMethodRawReceiver(
 				toStudentSideType(classContext),

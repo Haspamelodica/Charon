@@ -19,9 +19,12 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCallbacks;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
+import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
+import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
 public class Marshaler<REF>
 {
@@ -95,12 +98,9 @@ public class Marshaler<REF>
 		return result;
 	}
 
-	public <T> T receiveOrThrow(Class<T> clazz, RefOrError<REF> objRef) throws Throwable
+	public <T> T receiveOrThrow(Class<T> clazz, RefOrError<REF> objRef) throws StudentSideException
 	{
-		//TODO maybe we want to check if the exception class actually can be thrown here
-		if(objRef.isError())
-			throw receive(Throwable.class, objRef.resultOrErrorRef());
-
+		throwIfError(objRef);
 		return receive(clazz, objRef.resultOrErrorRef());
 	}
 
@@ -152,6 +152,18 @@ public class Marshaler<REF>
 	public List<Object> translateTo(List<REF> objRefs)
 	{
 		return translator.translateTo(objRefs);
+	}
+
+	public void throwIfError(RefOrError<REF> objRef) throws StudentSideException
+	{
+		if(!objRef.isError())
+			return;
+
+		Object errorSSIUnchecked = translateTo(objRef.resultOrErrorRef());
+		//TODO this is specific to the SSI frontend
+		if(!(errorSSIUnchecked instanceof ThrowableSSI errorSSI))
+			throw new FrameworkCausedException("Error ref doesn't refer to a Throwable");
+		throw new StudentSideException(errorSSI, communicator.getClassname(objRef.resultOrErrorRef()));
 	}
 
 	public void setRepresentationObjectRefPair(REF ref, Object representationObject)

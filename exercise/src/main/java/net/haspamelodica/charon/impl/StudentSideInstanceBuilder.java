@@ -1,7 +1,6 @@
 package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.defaultHandler;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.mapToStudentSide;
@@ -109,17 +108,16 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
 		MarshalingCommunicator<?> methodWideMarshalingCommunicator = instanceWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 
-		MethodHandler defaultHandler = defaultHandler(method);
-		return handlerFor(method, StudentSideInstanceMethodKind.class, defaultHandler,
+		return handlerFor(method, StudentSideInstanceMethodKind.class,
 				(kind, name, nameOverridden) -> switch(kind.value())
 				{
-					case INSTANCE_METHOD -> methodHandler(methodWideMarshalingCommunicator, method, name);
-					case INSTANCE_FIELD_GETTER -> fieldGetterHandler(methodWideMarshalingCommunicator, method, name);
-					case INSTANCE_FIELD_SETTER -> fieldSetterHandler(methodWideMarshalingCommunicator, method, name);
+					case INSTANCE_METHOD -> instanceMethodHandler(methodWideMarshalingCommunicator, method, name);
+					case INSTANCE_FIELD_GETTER -> instanceFieldGetterHandler(methodWideMarshalingCommunicator, method, name);
+					case INSTANCE_FIELD_SETTER -> instanceFieldSetterHandler(methodWideMarshalingCommunicator, method, name);
 				});
 	}
 
-	private MethodHandler methodHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
+	private MethodHandler instanceMethodHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
 	{
 		StudentSideType<?> returnType = mapToStudentSide(method.getReturnType());
 		List<StudentSideType<?>> params = mapToStudentSide(Arrays.asList(method.getParameterTypes()));
@@ -127,7 +125,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		return (proxy, args) -> methodWideMarshalingCommunicator.callInstanceMethod(instanceStudentSideType, name, returnType, params, proxy, argsToList(args));
 	}
 
-	private MethodHandler fieldGetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
+	private MethodHandler instanceFieldGetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
 	{
 		if(kind != Kind.CLASS)
 			throw new InconsistentHierarchyException("Only student-side classes can have field getters: " + method);
@@ -144,7 +142,7 @@ public final class StudentSideInstanceBuilder<SI extends StudentSideInstance>
 		return (proxy, args) -> methodWideMarshalingCommunicator.getInstanceField(instanceStudentSideType, name, fieldType, proxy);
 	}
 
-	private MethodHandler fieldSetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
+	private MethodHandler instanceFieldSetterHandler(MarshalingCommunicator<?> methodWideMarshalingCommunicator, Method method, String name)
 	{
 		if(kind != Kind.CLASS)
 			throw new InconsistentHierarchyException("Only student-side classes can have field setters: " + method);

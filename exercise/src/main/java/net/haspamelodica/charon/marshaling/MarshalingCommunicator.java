@@ -9,6 +9,7 @@ import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
@@ -82,7 +83,7 @@ public class MarshalingCommunicator<REF>
 		return communicator.getInterfaces(cn);
 	}
 
-	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args) throws Throwable
+	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args) throws StudentSideException
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 
@@ -90,11 +91,10 @@ public class MarshalingCommunicator<REF>
 	}
 	// Neccessary for the Mockclasses frontend
 	public REF callConstructorExistingRepresentationObject(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args,
-			Object representationObject) throws Throwable
+			Object representationObject) throws StudentSideException
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
-		if(resultRef.isError())
-			throw marshaler.receive(Throwable.class, resultRef.resultOrErrorRef());
+		marshaler.throwIfError(resultRef);
 
 		marshaler.setRepresentationObjectRefPair(resultRef.resultOrErrorRef(), representationObject);
 		return resultRef.resultOrErrorRef();
@@ -109,7 +109,7 @@ public class MarshalingCommunicator<REF>
 	}
 
 	public <T> T callStaticMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			List<Object> args) throws Throwable
+			List<Object> args) throws StudentSideException
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
@@ -133,7 +133,7 @@ public class MarshalingCommunicator<REF>
 	}
 
 	public <T> T callInstanceMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			Object receiver, List<Object> args) throws Throwable
+			Object receiver, List<Object> args) throws StudentSideException
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
 
@@ -141,7 +141,7 @@ public class MarshalingCommunicator<REF>
 	}
 	// Neccessary for the Mockclasses frontend
 	public <T> T callInstanceMethodRawReceiver(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			REF receiverRef, List<Object> args) throws Throwable
+			REF receiverRef, List<Object> args) throws StudentSideException
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 

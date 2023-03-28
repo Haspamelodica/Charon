@@ -12,6 +12,7 @@ import net.haspamelodica.charon.WrappedCommunicator;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
@@ -129,19 +130,20 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		}
 
 		@Override
-		public Object invokeStaticMethod(CCTX classContext, SCTX methodContext, Object[] args) throws Throwable
+		public Object invokeStaticMethod(CCTX classContext, SCTX methodContext, Object[] args) throws StudentSideException
 		{
 			return handler().invokeStaticMethod(classContext, methodContext, args);
 		}
 
 		@Override
-		public ICTX invokeConstructor(CCTX classContext, TCTX constructorContext, Object receiver, Object[] args) throws Throwable
+		public ICTX invokeConstructor(CCTX classContext, TCTX constructorContext, Object receiver, Object[] args) throws StudentSideException
 		{
 			return handler().invokeConstructor(classContext, constructorContext, receiver, args);
 		}
 
 		@Override
-		public Object invokeInstanceMethod(CCTX classContext, MCTX methodContext, Object receiver, ICTX receiverContext, Object[] args) throws Throwable
+		public Object invokeInstanceMethod(CCTX classContext, MCTX methodContext, Object receiver,
+				ICTX receiverContext, Object[] args) throws StudentSideException
 		{
 			return handler().invokeInstanceMethod(classContext, methodContext, receiver, receiverContext, args);
 		}

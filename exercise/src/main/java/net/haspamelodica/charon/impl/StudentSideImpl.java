@@ -7,9 +7,7 @@ import static net.haspamelodica.charon.reflection.ReflectionUtils.doChecked;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -25,12 +23,14 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntransl
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.charon.exceptions.MissingSerDesException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
+import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 
 // TODO find better names for StudentSideInstance/Prototype and configuration annotations.
 // TODO maybe provide syncWithStudentSide method for mutable serialized objects
@@ -49,9 +49,10 @@ public class StudentSideImpl<REF> implements StudentSide
 {
 	private final MarshalingCommunicator<?> globalMarshalingCommunicator;
 
-	private final Map<Class<? extends StudentSidePrototype<?>>, StudentSidePrototype<?>>	prototypesByPrototypeClass;
-	private final Map<String, StudentSidePrototypeBuilder<?, ?>>							prototypeBuildersByStudentSideClassname;
-	private final Map<Class<?>, StudentSidePrototypeBuilder<?, ?>>							prototypeBuildersByInstanceClass;
+	private final UnidirectionalMap<StudentSidePrototype<?>, StudentSidePrototypeBuilder<?, ?>>	prototypeBuildersByPrototype;
+	private final UnidirectionalMap<String, StudentSidePrototypeBuilder<?, ?>>					prototypeBuildersByStudentSideClassname;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<?, ?>>				prototypeBuildersByInstanceClass;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<?, ?>>				prototypeBuildersByPrototypeClass;
 
 	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
@@ -82,30 +83,41 @@ public class StudentSideImpl<REF> implements StudentSide
 				return StudentSideImpl.this.callCallbackInstanceMethodChecked(callbackMethod, receiver, args);
 			}
 		}, PrimitiveSerDes.PRIMITIVE_SERDESES);
-		this.prototypesByPrototypeClass = new ConcurrentHashMap<>();
-		this.prototypeBuildersByStudentSideClassname = new ConcurrentHashMap<>();
-		this.prototypeBuildersByInstanceClass = new ConcurrentHashMap<>();
+
+		this.prototypeBuildersByPrototype = UnidirectionalMap.builder().identityMap().concurrent().build();
+		this.prototypeBuildersByStudentSideClassname = UnidirectionalMap.builder().concurrent().build();
+		this.prototypeBuildersByInstanceClass = UnidirectionalMap.builder().concurrent().build();
+		this.prototypeBuildersByPrototypeClass = UnidirectionalMap.builder().concurrent().build();
+
+		StudentSidePrototype.DEFAULT_PROTOTYPES.forEach(this::createPrototypeCaptureSI);
+	}
+
+	// Neccessary to capture the type argument to StudentSidePrototype.
+	private <SI extends StudentSideInstance> StudentSidePrototype<SI> createPrototypeCaptureSI(Class<? extends StudentSidePrototype<SI>> clazz)
+			throws InconsistentHierarchyException, MissingSerDesException
+	{
+		return createPrototype(clazz);
 	}
 
 	@Override
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP createPrototype(Class<SP> prototypeClass)
+			throws InconsistentHierarchyException, MissingSerDesException
 	{
 		// computeIfAbsent would be nicer algorithmically, but results in very ugly generic casts
 
 		// fast path. Not neccessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
-		SP prototype = tryGetPrototype(prototypeClass);
-		if(prototype != null)
-			return prototype;
+		SP prototypeIfExists = tryGetPrototype(prototypeClass);
+		if(prototypeIfExists != null)
+			return prototypeIfExists;
 
-		StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
-
-		synchronized(prototypesByPrototypeClass)
+		synchronized(prototypeBuildersByPrototype)
 		{
 			// re-get to see if some other thread was faster
-			prototype = tryGetPrototype(prototypeClass);
-			if(prototype != null)
-				return prototype;
+			prototypeIfExists = tryGetPrototype(prototypeClass);
+			if(prototypeIfExists != null)
+				return prototypeIfExists;
 
+			StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
 			String studentSideCN = prototypeBuilder.instanceBuilder.instanceStudentSideType.studentSideCN();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
@@ -119,20 +131,54 @@ public class StudentSideImpl<REF> implements StudentSide
 							prototypeBuilder.instanceClass + " and " + otherPrototypeBuilder.instanceClass);
 			}
 
-			prototype = prototypeBuilder.getPrototype();
+			prototypeBuildersByPrototype.put(prototypeBuilder.prototype, prototypeBuilder);
 			prototypeBuildersByStudentSideClassname.put(studentSideCN, prototypeBuilder);
 			prototypeBuildersByInstanceClass.put(prototypeBuilder.instanceClass, prototypeBuilder);
-			prototypesByPrototypeClass.put(prototypeClass, prototype);
-			return prototype;
+			prototypeBuildersByPrototypeClass.put(prototypeClass, prototypeBuilder);
+
+			return prototypeBuilder.prototype;
 		}
+	}
+
+	@Override
+	public String getStudentSideClassname(StudentSideInstance ssi)
+	{
+		return globalMarshalingCommunicator.getClassname(ssi);
+	}
+	@Override
+	public String getStudentSideClassname(StudentSidePrototype<?> prototype)
+	{
+		return prototypeBuildersByPrototype.get(prototype).instanceStudentSideType.studentSideCN();
+	}
+	@Override
+	public boolean isInstance(StudentSidePrototype<?> prototype, StudentSideInstance ssi)
+	{
+		return prototypeBuildersByPrototype.get(prototype).instanceClass.isInstance(ssi);
+	}
+	@Override
+	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SI cast(SP prototype, StudentSideInstance ssi)
+	{
+		String prototypeStudentSideCn = getStudentSideClassname(prototype);
+
+		if(!isInstance(prototype, ssi))
+			throw new ExerciseCausedException("" +
+					"The given StudentSideInstance has student-side type " + getStudentSideClassname(ssi)
+					+ ", which is not an instance of student-side type " + prototypeStudentSideCn);
+
+		@SuppressWarnings("unchecked")
+		StudentSidePrototypeBuilder<SI, SP> studentSidePrototypeBuilder =
+				(StudentSidePrototypeBuilder<SI, SP>) prototypeBuildersByPrototype.get(prototype);
+
+		return studentSidePrototypeBuilder.instanceClass.cast(ssi);
 	}
 
 	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP tryGetPrototype(Class<SP> prototypeClass)
 	{
-		StudentSidePrototype<?> prototypeGeneric = prototypesByPrototypeClass.get(prototypeClass);
-		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into availablePrototypes
-		SP prototype = (SP) prototypeGeneric;
-		return prototype;
+		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
+		StudentSidePrototypeBuilder<SI, SP> prototypeBuilderGeneric =
+				(StudentSidePrototypeBuilder<SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+
+		return prototypeBuilderGeneric == null ? null : prototypeBuilderGeneric.prototype;
 	}
 
 	private Object createRepresentationObject(UntypedUntranslatedRef untranslatedRef)

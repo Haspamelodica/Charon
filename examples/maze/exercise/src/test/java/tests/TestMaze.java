@@ -1,5 +1,6 @@
 package tests;
 
+import static net.haspamelodica.charon.junitextension.CharonJUnitUtils.assertStudentThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.BeforeAll;
@@ -24,6 +25,12 @@ public class TestMaze
 		MazeP = studentSide.createPrototype(Maze.Prototype.class);
 		studentSide.createPrototype(MazeBuilder.Prototype.class);
 		MazeSolverP = studentSide.createPrototype(MazeSolver.Prototype.class);
+	}
+
+	@Test
+	public void testSolveNPE(StudentSide studentSide)
+	{
+		assertStudentThrows(studentSide, NullPointerExceptionSSI.Prototype.class, () -> MazeSolverP.solveMaze(null));
 	}
 
 	@Test

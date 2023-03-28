@@ -1,30 +1,20 @@
 package net.haspamelodica.charon.exceptions;
 
-import java.io.PrintStream;
-import java.io.PrintWriter;
+import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
+// TODO let this class have a SSI of the student-side exception
 public class StudentSideException extends StudentSideCausedException
 {
-	private final String studentSideTrace;
+	private final ThrowableSSI studentSideCause;
 
-	public StudentSideException(String studentSideMessage, String studentSideTrace)
+	public StudentSideException(ThrowableSSI studentSideCause, String studentSideCauseClassname)
 	{
-		super(studentSideMessage);
-		this.studentSideTrace = studentSideTrace;
+		super(studentSideCauseClassname + ": " + studentSideCause.getMessage());
+		this.studentSideCause = studentSideCause;
 	}
 
-	@Override
-	public void printStackTrace(PrintStream s)
+	public ThrowableSSI getStudentSideCause()
 	{
-		super.printStackTrace(s);
-		s.println("Student-side trace:");
-		s.println(studentSideTrace);
-	}
-	@Override
-	public void printStackTrace(PrintWriter s)
-	{
-		super.printStackTrace(s);
-		s.println("Student-side trace:");
-		s.println(studentSideTrace);
+		return studentSideCause;
 	}
 }

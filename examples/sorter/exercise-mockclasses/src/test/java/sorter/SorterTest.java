@@ -22,6 +22,12 @@ public class SorterTest
 	private static final String[] STRINGS = {"Hello", "ABC", "DEF", "DE", "XYZ", "Xyz", "xyz", "xYZ"};
 
 	@Test
+	public void testThrows()
+	{
+		Sorter.sort(null);
+	}
+
+	@Test
 	public void testSort()
 	{
 		StringArrayList list = new StringArrayList(STRINGS.length);

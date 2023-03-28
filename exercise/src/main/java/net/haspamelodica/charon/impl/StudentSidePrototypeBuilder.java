@@ -39,7 +39,7 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 
 	private final Map<Method, MethodHandler> methodHandlers;
 
-	private final SP prototype;
+	public final SP prototype;
 
 	public StudentSidePrototypeBuilder(MarshalingCommunicator<?> globalMarshalingCommunicator, Class<SP> prototypeClass)
 	{
@@ -56,15 +56,6 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		this.methodHandlers = createMethodHandlers();
 
 		this.prototype = createPrototype();
-	}
-
-	/**
-	 * The guarantees in {@link StudentSideInstanceBuilder#createInstance(Object)} apply to all objects returned by student-side construcors
-	 * of the returned prototype.
-	 */
-	public SP getPrototype()
-	{
-		return prototype;
 	}
 
 	private Class<SI> checkPrototypeClassAndGetInstanceClass()
@@ -122,13 +113,14 @@ public final class StudentSidePrototypeBuilder<SI extends StudentSideInstance, S
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
 		MarshalingCommunicator<?> methodWideMarshalingCommunicator = prototypeWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 
-		return handlerFor(method, StudentSidePrototypeMethodKind.class, (kind, name, nameOverridden) -> switch(kind.value())
-		{
-			case CONSTRUCTOR -> constructorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
-			case STATIC_METHOD -> staticMethodHandler(method, methodWideMarshalingCommunicator, name);
-			case STATIC_FIELD_GETTER -> staticFieldGetterHandler(method, methodWideMarshalingCommunicator, name);
-			case STATIC_FIELD_SETTER -> staticFieldSetterHandler(method, methodWideMarshalingCommunicator, name);
-		});
+		return handlerFor(method, StudentSidePrototypeMethodKind.class,
+				(kind, name, nameOverridden) -> switch(kind.value())
+				{
+					case CONSTRUCTOR -> constructorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+					case STATIC_METHOD -> staticMethodHandler(method, methodWideMarshalingCommunicator, name);
+					case STATIC_FIELD_GETTER -> staticFieldGetterHandler(method, methodWideMarshalingCommunicator, name);
+					case STATIC_FIELD_SETTER -> staticFieldSetterHandler(method, methodWideMarshalingCommunicator, name);
+				});
 	}
 
 	private MethodHandler constructorHandler(Method method, MarshalingCommunicator<?> marshalingCommunicator, boolean nameOverridden)

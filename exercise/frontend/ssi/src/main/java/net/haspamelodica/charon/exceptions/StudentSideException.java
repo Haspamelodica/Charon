@@ -9,8 +9,14 @@ public class StudentSideException extends StudentSideCausedException
 
 	public StudentSideException(ThrowableSSI studentSideCause, String studentSideCauseClassname)
 	{
-		super(studentSideCauseClassname + ": " + studentSideCause.getMessage());
+		super(buildMessage(studentSideCause, studentSideCauseClassname));
 		this.studentSideCause = studentSideCause;
+	}
+
+	private static String buildMessage(ThrowableSSI studentSideCause, String studentSideCauseClassname)
+	{
+		String studentSideMessage = studentSideCause.getMessage();
+		return studentSideCauseClassname + (studentSideMessage != null ? ": " + studentSideMessage : "");
 	}
 
 	public ThrowableSSI getStudentSideCause()

@@ -3,10 +3,10 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.haspamelodica.charon</groupId>
-	<artifactId>examples.testing.exercise</artifactId>
+	<artifactId>exercise.junitextension</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>charon.examples.testing.exercise</name>
-	<description>Exercise side of the testing example</description>
+	<name>charon.exercise.junitextension</name>
+	<description>A JUnit5 extension for making Charon easier to use with the SSI frontend</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -16,6 +16,11 @@
 			<groupId>net.haspamelodica.charon</groupId>
 			<artifactId>exercise.frontend.ssi</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter-api</artifactId>
+			<version>5.8.2</version>
 		</dependency>
 	</dependencies>
 	<build>
@@ -27,11 +32,6 @@
 				<configuration>
 					<release>17</release>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0</version>
 			</plugin>
 		</plugins>
 	</build>

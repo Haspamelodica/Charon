@@ -12,7 +12,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>net.haspamelodica.charon</groupId>
-			<artifactId>junitextension</artifactId>
+			<artifactId>exercise.junitextension</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>

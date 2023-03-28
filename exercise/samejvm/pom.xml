@@ -3,10 +3,10 @@
 	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>net.haspamelodica.charon</groupId>
-	<artifactId>examples.testing.exercise</artifactId>
+	<artifactId>exercise.samejvm</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>charon.examples.testing.exercise</name>
-	<description>Exercise side of the testing example</description>
+	<name>charon.exercise.samejvm</name>
+	<description>Code only needed when executing both the student and exercise side in one JVM</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -14,7 +14,12 @@
 	<dependencies>
 		<dependency>
 			<groupId>net.haspamelodica.charon</groupId>
-			<artifactId>exercise.frontend.ssi</artifactId>
+			<artifactId>student</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>net.haspamelodica.charon</groupId>
+			<artifactId>exercise.base</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 	</dependencies>
@@ -27,11 +32,6 @@
 				<configuration>
 					<release>17</release>
 				</configuration>
-			</plugin>
-			<plugin>
-				<groupId>org.apache.maven.plugins</groupId>
-				<artifactId>maven-surefire-plugin</artifactId>
-				<version>3.0.0</version>
 			</plugin>
 		</plugins>
 	</build>

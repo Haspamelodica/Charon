@@ -12,12 +12,7 @@
 	<dependencies>
 		<dependency>
 			<groupId>net.haspamelodica.charon</groupId>
-			<artifactId>mockclasses</artifactId>
-			<version>0.0.1-SNAPSHOT</version>
-		</dependency>
-		<dependency>
-			<groupId>net.haspamelodica.charon</groupId>
-			<artifactId>exercise</artifactId>
+			<artifactId>exercise.frontend.mockclasses</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<dependency>

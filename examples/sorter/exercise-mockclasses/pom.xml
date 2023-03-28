@@ -17,7 +17,7 @@
 		</dependency>
 		<dependency>
 			<groupId>net.haspamelodica.charon</groupId>
-			<artifactId>mockclasses</artifactId>
+			<artifactId>exercise.frontend.mockclasses</artifactId>
 			<version>0.0.1-SNAPSHOT</version>
 			<scope>test</scope>
 		</dependency>

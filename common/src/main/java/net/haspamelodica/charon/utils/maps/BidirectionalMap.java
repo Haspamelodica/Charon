@@ -7,6 +7,8 @@ import net.haspamelodica.charon.utils.maps.suppliers.BidirectionalMapSupplier;
 
 public interface BidirectionalMap<K, V>
 {
+	public boolean containsKey(K key);
+	public boolean containsValue(V value);
 	public V getValue(K key);
 	public K getKey(V value);
 	public V computeValueIfAbsent(K key, Function<K, V> createValue);

@@ -25,6 +25,14 @@ public class WeakValuesUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		pollRefqueue();
+
+		return map.containsKey(key);
+	}
+
+	@Override
 	public V get(K key)
 	{
 		pollRefqueue();

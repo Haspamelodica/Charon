@@ -16,6 +16,24 @@ public class ConcurrentBidirectionalMap<K, V> extends AbstractBidirectionalMap<K
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		synchronized(map)
+		{
+			return map.containsKey(key);
+		}
+	}
+
+	@Override
+	public boolean containsValue(V value)
+	{
+		synchronized(map)
+		{
+			return map.containsValue(value);
+		}
+	}
+
+	@Override
 	public V getValue(K key)
 	{
 		synchronized(map)

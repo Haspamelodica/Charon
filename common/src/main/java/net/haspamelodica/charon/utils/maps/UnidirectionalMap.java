@@ -12,6 +12,7 @@ import net.haspamelodica.charon.utils.maps.suppliers.UnidirectionalMapSupplier;
 
 public interface UnidirectionalMap<K, V>
 {
+	public boolean containsKey(K key);
 	public V get(K key);
 	public V put(K key, V value);
 	public V remove(K key);

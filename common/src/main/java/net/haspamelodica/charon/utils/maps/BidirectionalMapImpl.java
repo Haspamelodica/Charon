@@ -17,6 +17,18 @@ public class BidirectionalMapImpl<K, V> extends AbstractBidirectionalMap<K, V>
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		return keysToValues.containsKey(key);
+	}
+
+	@Override
+	public boolean containsValue(V value)
+	{
+		return valuesToKeys.containsKey(value);
+	}
+
+	@Override
 	public V getValue(K key)
 	{
 		return keysToValues.get(key);

@@ -24,6 +24,14 @@ public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalM
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		Objects.requireNonNull(key);
+
+		return removeEmptyKeysAndWrapRefClearedException(() -> map.containsKey(new WeakIdentityReference<>(key)));
+	}
+
+	@Override
 	public V get(K key)
 	{
 		Objects.requireNonNull(key);

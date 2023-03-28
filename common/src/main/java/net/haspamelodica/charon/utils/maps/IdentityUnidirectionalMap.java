@@ -16,6 +16,12 @@ public class IdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalMap<K
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		return map.containsKey(new IdentityReference<>(key));
+	}
+
+	@Override
 	public V get(K key)
 	{
 		return map.get(new IdentityReference<>(key));

@@ -17,6 +17,12 @@ public class UnidirectionalMapImpl<K, V> extends AbstractUnidirectionalMap<K, V>
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		return map.containsKey(key);
+	}
+
+	@Override
 	public V get(K key)
 	{
 		return map.get(key);

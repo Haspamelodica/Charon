@@ -17,6 +17,15 @@ public class ConcurrentUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 	}
 
 	@Override
+	public boolean containsKey(K key)
+	{
+		synchronized(map)
+		{
+			return map.containsKey(key);
+		}
+	}
+	
+	@Override
 	public V get(K key)
 	{
 		synchronized(map)

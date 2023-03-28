@@ -104,22 +104,15 @@ public class StudentSideImpl<REF> implements StudentSide
 		this.prototypeBuildersByInstanceClass = UnidirectionalMap.builder().concurrent().build();
 		this.prototypeBuildersByPrototypeClass = UnidirectionalMap.builder().concurrent().build();
 
-		StudentSidePrototype.DEFAULT_PROTOTYPES.forEach(this::createPrototypeCaptureCI1);
+		StudentSidePrototype.DEFAULT_PROTOTYPES.forEach(this::createPrototypeCast);
 	}
 
-	// Neccessary to capture the type argument to StudentSidePrototype.
-	// Under the Eclipse compiler, this method can be inlined, but under javac not.
-	private void createPrototypeCaptureCI1(Class<? extends StudentSidePrototype<?>> clazz)
-			throws InconsistentHierarchyException, MissingSerDesException
+	// We're only circumventing javac's type inference algorithm not catching this case.
+	@SuppressWarnings("unchecked")
+	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+			void createPrototypeCast(Class<? extends StudentSidePrototype<?>> prototypeClass)
 	{
-		createPrototypeCaptureCI2(clazz);
-	}
-
-	// Neccessary to capture the type argument to StudentSidePrototype.
-	private <SI extends StudentSideInstance> void createPrototypeCaptureCI2(Class<? extends StudentSidePrototype<SI>> clazz)
-			throws InconsistentHierarchyException, MissingSerDesException
-	{
-		createPrototype(clazz);
+		createPrototype((Class<SP>) prototypeClass);
 	}
 
 	@Override

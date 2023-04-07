@@ -1,8 +1,8 @@
 package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
-import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.doChecked;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.primitiveNameToClassOrThrow;
 
 import java.lang.reflect.Method;
 import java.util.Arrays;
@@ -17,9 +17,12 @@ import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.SafeForCallByStudent;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedTyperef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
@@ -30,6 +33,7 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
+import net.haspamelodica.charon.marshaling.StudentSideType;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
@@ -47,24 +51,35 @@ import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 // ..Problem: what about non-immutable datastructures?
 // .Idea: specify default prototypes. Problem: need to duplicate standard library interface.
 // ..Benefit: Handles non-immutable datastructures fine.
-public class StudentSideImpl<REF> implements StudentSide
+public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 {
-	private final MarshalingCommunicator<?, StudentSideException> globalMarshalingCommunicator;
+	private final MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator;
 
-	private final UnidirectionalMap<StudentSidePrototype<?>, StudentSidePrototypeBuilder<?, ?>>	prototypeBuildersByPrototype;
-	private final UnidirectionalMap<String, StudentSidePrototypeBuilder<?, ?>>					prototypeBuildersByStudentSideClassname;
-	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<?, ?>>				prototypeBuildersByInstanceClass;
-	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<?, ?>>				prototypeBuildersByPrototypeClass;
+	private final UnidirectionalMap<StudentSidePrototype<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>	prototypeBuildersByPrototype;
+	private final UnidirectionalMap<String, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByStudentSideClassname;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByInstanceClass;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByPrototypeClass;
 
-	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
+	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
 		this.globalMarshalingCommunicator = new MarshalingCommunicator<>(communicator,
-				new MarshalingCommunicatorCallbacks<REF, Method, ThrowableSSI, StudentSideException>()
+				new MarshalingCommunicatorCallbacks<REF, TYPEREF, Method, ThrowableSSI, StudentSideException>()
 				{
 					@Override
-					public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
+					public Class<?> lookupLocalType(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
 					{
-						return StudentSideImpl.this.createRepresentationObject(untranslatedRef);
+						return switch(untranslatedTyperef.describe().kind())
+						{
+							case CLASS, INTERFACE -> lookupPrototypeBuilder(untranslatedTyperef).instanceStudentSideType.localType();
+							case ARRAY -> throw new UnsupportedOperationException("Arrays aren't supported by the SSI frontend yet");
+							case PRIMITIVE -> primitiveNameToClassOrThrow(untranslatedTyperef.describe().name());
+						};
+					}
+
+					@Override
+					public Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntranslatedRef<REF, TYPEREF> untranslatedRef)
+					{
+						return StudentSideImpl.this.createRepresentationObject(type, untranslatedRef);
 					}
 
 					@Override
@@ -74,13 +89,14 @@ public class StudentSideImpl<REF> implements StudentSide
 					}
 
 					@Override
-					public CallbackMethod<Method> lookupCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiver)
+					public CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType,
+							Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
 					{
-						return StudentSideImpl.this.lookupCallbackInstanceMethod(cn, name, returnClassname, params, receiver);
+						return StudentSideImpl.this.lookupCallbackInstanceMethod(receiverStaticType, receiverDynamicType, name, returnType, params);
 					}
 
 					@Override
-					public Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+					public Object callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)
 							throws ExceptionInTargetException
 					{
 						return StudentSideImpl.this.callCallbackInstanceMethodChecked(callbackMethod, receiver, args);
@@ -93,9 +109,9 @@ public class StudentSideImpl<REF> implements StudentSide
 					}
 
 					@Override
-					public StudentSideException newStudentCausedException(ThrowableSSI studentSideThrowable, String studentSideThrowableClassname)
+					public StudentSideException newStudentCausedException(ThrowableSSI studentSideThrowable)
 					{
-						return new StudentSideException(studentSideThrowable, studentSideThrowableClassname);
+						return new StudentSideException(studentSideThrowable, globalMarshalingCommunicator.getTypeOf(studentSideThrowable).studentSideCN());
 					}
 				}, PrimitiveSerDes.PRIMITIVE_SERDESES);
 
@@ -133,23 +149,25 @@ public class StudentSideImpl<REF> implements StudentSide
 			if(prototypeIfExists != null)
 				return prototypeIfExists;
 
-			StudentSidePrototypeBuilder<SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
-			String studentSideCN = prototypeBuilder.instanceBuilder.instanceStudentSideType.studentSideCN();
+			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
+			Class<SI> instanceClass = prototypeBuilder.instanceStudentSideType.localType();
+			String studentSideCN = prototypeBuilder.instanceStudentSideType.studentSideCN();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
-				StudentSidePrototypeBuilder<?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
-				if(otherPrototypeBuilder.instanceClass.equals(prototypeBuilder.instanceClass))
-					throw new InconsistentHierarchyException("Two prototype classes for " + prototypeBuilder.instanceClass + ": " +
+				StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				Class<?> otherInstanceClass = otherPrototypeBuilder.instanceStudentSideType.localType();
+				if(otherInstanceClass.equals(instanceClass))
+					throw new InconsistentHierarchyException("Two prototype classes for " + instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
 				else
 					throw new InconsistentHierarchyException("Two student-side instance classes for " + studentSideCN + ": " +
-							prototypeBuilder.instanceClass + " and " + otherPrototypeBuilder.instanceClass);
+							instanceClass + " and " + otherPrototypeBuilder.instanceStudentSideType.localType());
 			}
 
 			prototypeBuildersByPrototype.put(prototypeBuilder.prototype, prototypeBuilder);
 			prototypeBuildersByStudentSideClassname.put(studentSideCN, prototypeBuilder);
-			prototypeBuildersByInstanceClass.put(prototypeBuilder.instanceClass, prototypeBuilder);
+			prototypeBuildersByInstanceClass.put(instanceClass, prototypeBuilder);
 			prototypeBuildersByPrototypeClass.put(prototypeClass, prototypeBuilder);
 
 			return prototypeBuilder.prototype;
@@ -159,7 +177,7 @@ public class StudentSideImpl<REF> implements StudentSide
 	@Override
 	public String getStudentSideClassname(StudentSideInstance ssi)
 	{
-		return globalMarshalingCommunicator.getClassname(ssi);
+		return globalMarshalingCommunicator.getTypeOf(ssi).studentSideCN();
 	}
 	@Override
 	public String getStudentSideClassname(StudentSidePrototype<?> prototype)
@@ -169,7 +187,7 @@ public class StudentSideImpl<REF> implements StudentSide
 	@Override
 	public boolean isInstance(StudentSidePrototype<?> prototype, StudentSideInstance ssi)
 	{
-		return prototypeBuildersByPrototype.get(prototype).instanceClass.isInstance(ssi);
+		return prototypeBuildersByPrototype.get(prototype).instanceStudentSideType.localType().isInstance(ssi);
 	}
 	@Override
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SI cast(SP prototype, StudentSideInstance ssi)
@@ -182,57 +200,58 @@ public class StudentSideImpl<REF> implements StudentSide
 					+ ", which is not an instance of student-side type " + prototypeStudentSideCn);
 
 		@SuppressWarnings("unchecked")
-		StudentSidePrototypeBuilder<SI, SP> studentSidePrototypeBuilder =
-				(StudentSidePrototypeBuilder<SI, SP>) prototypeBuildersByPrototype.get(prototype);
+		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> studentSidePrototypeBuilder =
+				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototype.get(prototype);
 
-		return studentSidePrototypeBuilder.instanceClass.cast(ssi);
+		return studentSidePrototypeBuilder.instanceStudentSideType.localType().cast(ssi);
 	}
 
 	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP tryGetPrototype(Class<SP> prototypeClass)
 	{
 		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
-		StudentSidePrototypeBuilder<SI, SP> prototypeBuilderGeneric =
-				(StudentSidePrototypeBuilder<SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric =
+				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
 
 		return prototypeBuilderGeneric == null ? null : prototypeBuilderGeneric.prototype;
 	}
 
-	private Object createRepresentationObject(UntypedUntranslatedRef untranslatedRef)
+	private Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntypedUntranslatedRef untranslatedRef)
 	{
-		List<StudentSidePrototypeBuilder<?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedRef.getClassname()).toList();
-		if(prototypeBuilders.size() != 1)
-			if(prototypeBuilders.size() == 0)
-				throw new ExerciseCausedException("No prototype for " + untranslatedRef.getClassname());
-			else
-				//TODO try to support multiple prototypes
-				throw new FrameworkCausedException("Multiple prototypes for " + untranslatedRef.getClassname());
-		return prototypeBuilders.get(0).instanceBuilder.createInstance();
+		return prototypeBuildersByInstanceClass.get(type.localType()).instanceBuilder.createInstance();
 	}
 
-	private Stream<StudentSidePrototypeBuilder<?, ?>> streamPrototypeBuilders(String studentSideCN)
+	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
 	{
-		StudentSidePrototypeBuilder<?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
+		if(prototypeBuilders.size() != 1)
+			if(prototypeBuilders.size() == 0)
+				throw new ExerciseCausedException("No prototype for " + untranslatedTyperef.describe().name());
+			else
+				//TODO try to support multiple prototypes
+				throw new FrameworkCausedException("Multiple prototypes for " + untranslatedTyperef.describe().name());
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuilders.get(0);
+		return prototypeBuilder;
+	}
+
+	private Stream<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> streamPrototypeBuilders(UntypedUntranslatedTyperef untranslatedTyperef)
+	{
+		StudentSideTypeDescription<? extends UntypedUntranslatedTyperef> description = untranslatedTyperef.describe();
+
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(description.name());
 		if(prototypeBuilder != null)
 			return Stream.of(prototypeBuilder);
-		//TODO there's not only no superclass for Object.class, but also if studentSideCN refers to an interface.
-		if(studentSideCN.equals(Object.class.getName()))
-			//TODO maybe introduce a global prototype for Object
-			return Stream.of();
 
 		return Stream.concat(
-				streamPrototypeBuilders(globalMarshalingCommunicator.getSuperclass(studentSideCN)),
-				globalMarshalingCommunicator
-						.getInterfaces(studentSideCN)
-						.stream()
-						.flatMap(this::streamPrototypeBuilders));
+				description.superclass().map(this::streamPrototypeBuilders).orElse(Stream.empty()),
+				description.superinterfaces().stream().flatMap(this::streamPrototypeBuilders));
 	}
 
 	private String getCallbackInterfaceCn(Object exerciseSideObject)
 	{
 		Class<?> clazz = exerciseSideObject.getClass();
-		List<StudentSidePrototypeBuilder<?, ?>> prototypeBuilders = Arrays
+		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = Arrays
 				.stream(clazz.getInterfaces())
-				.flatMap(interfaceClazz -> Stream.<StudentSidePrototypeBuilder<?, ?>> of(prototypeBuildersByInstanceClass.get(interfaceClazz)))
+				.flatMap(interfaceClazz -> Stream.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> of(prototypeBuildersByInstanceClass.get(interfaceClazz)))
 				.filter(Objects::nonNull)
 				.toList();
 		if(prototypeBuilders.size() != 1)
@@ -245,39 +264,39 @@ public class StudentSideImpl<REF> implements StudentSide
 		return prototypeBuilders.get(0).instanceStudentSideType.studentSideCN();
 	}
 
-	private CallbackMethod<Method> lookupCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiver)
+	private CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType,
+			Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
 	{
-		Class<?> clazz = receiver.getClass();
-
-		for(Method method : clazz.getMethods())
+		for(Method method : receiverDynamicType.getMethods())
 		{
 			if(!method.getName().equals(name))
 				continue;
 			if(method.getParameterCount() != params.size())
 				continue;
 			for(int i = 0; i < method.getParameterCount(); i ++)
-				if(!classToName(method.getParameterTypes()[i]).equals(params.get(i)))
+				if(!method.getParameterTypes()[i].equals(params.get(i).localType()))
 					continue;
-			if(!classToName(method.getReturnType()).equals(returnClassname))
+			if(!method.getReturnType().equals(returnType.localType()))
 				continue;
 
 			if(!method.isAnnotationPresent(SafeForCallByStudent.class))
 				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback: "
-						+ callbackMethodToString(clazz, name, params));
-			return new CallbackMethod<>(clazz, method.getReturnType(), List.of(method.getParameterTypes()), getSerDeses(method), method);
+						+ callbackMethodToString(receiverDynamicType, name, params));
+			return new CallbackMethod<>(getSerDeses(method), method);
 		}
 
-		throw new IllegalArgumentException("Method not found: " + callbackMethodToString(clazz, name, params));
+		throw new IllegalArgumentException("Method not found: " + callbackMethodToString(receiverDynamicType, name, params));
 	}
 
-	private String callbackMethodToString(Class<?> clazz, String name, List<String> params)
+	private String callbackMethodToString(Class<?> receiverDynamicType, String name, List<StudentSideType<TYPEREF, ?>> params)
 	{
-		return clazz.getName() + "." + name + "(" + params.stream().collect(Collectors.joining(", ")) + ")";
+		return receiverDynamicType.getName() + "." + name + "("
+				+ params.stream().map(StudentSideType::localType).map(Class::getName).collect(Collectors.joining(", ")) + ")";
 	}
 
-	private Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+	private Object callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)
 			throws ExceptionInTargetException
 	{
-		return doChecked(() -> callbackMethod.methodData().invoke(receiver, args.toArray()));
+		return doChecked(() -> callbackMethod.invoke(receiver, args.toArray()));
 	}
 }

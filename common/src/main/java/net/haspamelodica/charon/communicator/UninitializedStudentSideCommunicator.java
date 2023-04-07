@@ -1,6 +1,6 @@
 package net.haspamelodica.charon.communicator;
 
-public interface UninitializedStudentSideCommunicator<REF, TC extends Transceiver, CM extends CallbackManager>
+public interface UninitializedStudentSideCommunicator<REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
 {
-	public StudentSideCommunicator<REF, ? extends TC, ? extends CM> initialize(StudentSideCommunicatorCallbacks<REF> callbacks);
+	public StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM> initialize(StudentSideCommunicatorCallbacks<REF, TYPEREF> callbacks);
 }

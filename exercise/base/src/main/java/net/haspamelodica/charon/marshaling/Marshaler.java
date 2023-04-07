@@ -24,11 +24,11 @@ import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class Marshaler<REF, SSX extends StudentSideCausedException>
+public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedException>
 {
-	private final MarshalerCallbacks<?, SSX> callbacks;
+	private final MarshalerCallbacks<REF, TYPEREF, ?, SSX> callbacks;
 
-	private final StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
+	private final StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
 
 	private final RefTranslator<Object, REF>		translator;
 	private final List<Class<? extends SerDes<?>>>	serdesClasses;
@@ -37,9 +37,8 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 
 	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
 
-	public Marshaler(MarshalerCallbacks<?, SSX> callbacks,
-			RepresentationObjectMarshaler<REF> representationObjectMarshaler,
-			StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
+	public Marshaler(MarshalerCallbacks<REF, TYPEREF, ?, SSX> callbacks,
+			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
 			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.callbacks = callbacks;
@@ -49,13 +48,13 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 			@Override
 			public Object createForwardRef(REF untranslatedRef)
 			{
-				return representationObjectMarshaler.createRepresentationObject(new UntranslatedRef<>(communicator, untranslatedRef));
+				return callbacks.createForwardRef(new UntranslatedRef<>(communicator, untranslatedRef));
 			}
 
 			@Override
 			public REF createBackwardRef(Object translatedRef)
 			{
-				return communicator.getCallbackManager().createCallbackInstance(representationObjectMarshaler.getCallbackInterfaceCn(translatedRef));
+				return communicator.getCallbackManager().createCallbackInstance(callbacks.getCallbackInterfaceCn(translatedRef));
 			}
 		});
 		this.serdesClasses = List.copyOf(serdesClasses);
@@ -63,7 +62,7 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
-	private Marshaler(Marshaler<REF, SSX> base, List<Class<? extends SerDes<?>>> serdesClasses)
+	private Marshaler(Marshaler<REF, TYPEREF, SSX> base, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.callbacks = base.callbacks;
 		this.communicator = base.communicator;
@@ -76,7 +75,7 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
 	}
 
-	public Marshaler<REF, SSX> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
+	public Marshaler<REF, TYPEREF, SSX> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		List<Class<? extends SerDes<?>>> mergedSerDesClasses = new ArrayList<>(serdesClasses);
 		if(mergedSerDesClasses.isEmpty())
@@ -164,16 +163,17 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 
 		throwIfError_(callbacks, objRef);
 	}
-	private <SST> void throwIfError_(MarshalerCallbacks<SST, SSX> callbacks, RefOrError<REF> objRef) throws SSX
+	private <SST> void throwIfError_(MarshalerCallbacks<REF, TYPEREF, SST, SSX> callbacks, RefOrError<REF> objRef) throws SSX
 	{
 		if(objRef.resultOrErrorRef() == null)
 			throw new FrameworkCausedException("Error ref refers to null");
+
 		SST studentSideThrowable = callbacks.checkRepresentsStudentSideThrowableAndCastOrNull(translateTo(objRef.resultOrErrorRef()));
 		if(studentSideThrowable == null)
 			throw new FrameworkCausedException("Error ref doesn't refer to a Throwable, but to an instance of "
-					+ communicator.getClassname(objRef.resultOrErrorRef()));
+					+ communicator.describeType(communicator.getTypeOf(objRef.resultOrErrorRef())).name());
 
-		throw callbacks.newStudentCausedException(studentSideThrowable, communicator.getClassname(objRef.resultOrErrorRef()));
+		throw callbacks.newStudentCausedException(studentSideThrowable);
 	}
 
 	public void setRepresentationObjectRefPair(REF ref, Object representationObject)
@@ -213,7 +213,8 @@ public class Marshaler<REF, SSX extends StudentSideCausedException>
 			}
 			LazyValue<REF> serdesRef = new LazyValue<>(() ->
 			{
-				RefOrError<REF> result = communicator.callConstructor(classToName(serdesClass), List.of(), List.of());
+				RefOrError<REF> result = communicator.callConstructor(
+						communicator.getTypeByName(classToName(serdesClass)), List.of(), List.of());
 				if(result.isError())
 					//TODO maybe we want to make resultOrErrorRef accessible somehow
 					throw new StudentSideCausedException("Error while creating student-side SerDes for class " + serdesClass);

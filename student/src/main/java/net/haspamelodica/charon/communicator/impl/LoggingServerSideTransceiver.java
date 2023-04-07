@@ -9,10 +9,10 @@ import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
 
 public class LoggingServerSideTransceiver<REF> implements ServerSideTransceiver<REF>
 {
-	private final CommunicationLogger			logger;
+	private final CommunicationLogger<?>		logger;
 	private final ServerSideTransceiver<REF>	transceiver;
 
-	public LoggingServerSideTransceiver(CommunicationLogger logger, ServerSideTransceiver<REF> transceiver)
+	public LoggingServerSideTransceiver(CommunicationLogger<?> logger, ServerSideTransceiver<REF> transceiver)
 	{
 		this.logger = logger;
 		this.transceiver = transceiver;

@@ -6,20 +6,20 @@ import java.util.stream.Stream;
 
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
-import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
+import net.haspamelodica.charon.marshaling.StudentSideType;
 import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class MockclassesInvocationHandler<REF>
+public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
 		implements DynamicInvocationHandler<TypeDefinition, MethodDescription, MethodDescription, MethodDescription, REF>
 {
-	private final MarshalingCommunicator<REF, StudentSideException>	marshalingCommunicator;
-	private final MockclassesMarshalingTransformer<REF>				transformer;
+	private final MarshalingCommunicator<REF, TYPEREF, StudentSideException>	marshalingCommunicator;
+	private final MockclassesMarshalingTransformer<REF, TYPEREF>				transformer;
 
-	public MockclassesInvocationHandler(
-			MarshalingCommunicator<REF, StudentSideException> marshalingCommunicator, MockclassesMarshalingTransformer<REF> transformer)
+	public MockclassesInvocationHandler(MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+			MockclassesMarshalingTransformer<REF, TYPEREF> transformer)
 	{
 		this.marshalingCommunicator = marshalingCommunicator;
 		this.transformer = transformer;
@@ -85,14 +85,14 @@ public class MockclassesInvocationHandler<REF>
 				receiverContext, Arrays.asList(args));
 	}
 
-	private List<StudentSideType<?>> toStudentSideTypes(List<? extends TypeDefinition> typeDefinitions)
+	private List<StudentSideType<TYPEREF, ?>> toStudentSideTypes(List<? extends TypeDefinition> typeDefinitions)
 	{
-		Stream<StudentSideType<?>> stream = typeDefinitions.stream().map(this::toStudentSideType);
+		Stream<StudentSideType<TYPEREF, ?>> stream = typeDefinitions.stream().map(this::toStudentSideType);
 		return stream.toList();
 	}
-	private StudentSideType<?> toStudentSideType(TypeDefinition typeDefinition)
+	private StudentSideType<TYPEREF, ?> toStudentSideType(TypeDefinition typeDefinition)
 	{
-		return new StudentSideType<>(toClass(typeDefinition), typeDefinition.getActualName());
+		return marshalingCommunicator.lookupStudentSideType(toClass(typeDefinition), typeDefinition.getActualName());
 	}
 	private Class<?> toClass(TypeDefinition typeDefinition)
 	{

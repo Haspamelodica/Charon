@@ -29,7 +29,7 @@ import net.haspamelodica.charon.marshaling.Serializer;
 //TODO better exception handling. Use StudentSideException
 public class DirectSameJVMClientSideTransceiver extends DirectSameJVMServerSideTransceiver implements ClientSideTransceiver<Object>
 {
-	public DirectSameJVMClientSideTransceiver(StudentSideCommunicatorCallbacks<Object> callbacks)
+	public DirectSameJVMClientSideTransceiver(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
 	{
 		super(callbacks);
 	}

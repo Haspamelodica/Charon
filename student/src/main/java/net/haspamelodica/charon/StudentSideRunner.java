@@ -9,7 +9,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
@@ -36,7 +36,7 @@ public class StudentSideRunner
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
 		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
-				maybeWrapLoggingExtServer(logging, new CommunicationLogger(),
+				maybeWrapLoggingExtServer(logging, CommunicationLoggerParams.DEFAULT,
 						wrapReftransExtServer(
 								createDirectCommServer())));
 		server.run();

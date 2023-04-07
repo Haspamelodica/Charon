@@ -1,5 +1,6 @@
 package net.haspamelodica.charon.reflection;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -28,6 +29,17 @@ public class ReflectionUtils
 	private static final Set<Class<?>>			PRIMITIVE_CLASSES			= PRIMITIVE_CLASS_WRAPPERS.keySet();
 	private static final Map<String, Class<?>>	PRIMITIVE_CLASSES_BY_NAME	= PRIMITIVE_CLASSES.stream()
 			.collect(Collectors.toUnmodifiableMap(Class::getName, c -> c));
+
+	@SuppressWarnings("unchecked")
+	public static <T> T[] newArray(Class<T> componentClass, int length)
+	{
+		return (T[]) Array.newInstance(componentClass, length);
+	}
+
+	public static Object newMultiArray(Class<?> componentClass, List<Integer> dimensions)
+	{
+		return Array.newInstance(componentClass, dimensions.stream().mapToInt(i -> i).toArray());
+	}
 
 	public static <T> T callConstructor(Class<T> clazz, List<Class<?>> paramTypes, List<Object> args) throws ExceptionInTargetException
 	{
@@ -131,6 +143,11 @@ public class ReflectionUtils
 		return wrapperCasted.cast(obj);
 	}
 
+	public static boolean isPrimitiveName(String classname)
+	{
+		return PRIMITIVE_CLASSES_BY_NAME.containsKey(classname);
+	}
+
 	public static List<Class<?>> nameToClass(List<String> classnames)
 	{
 		return classnames.stream().<Class<?>> map(ReflectionUtils::nameToClass).toList();
@@ -143,10 +160,22 @@ public class ReflectionUtils
 	{
 		return doCheckedNoInvocationTargetException(n ->
 		{
-			Class<?> primitiveClass = PRIMITIVE_CLASSES_BY_NAME.get(n);
-			return primitiveClass != null ? primitiveClass : Class.forName(classname, true,
+			Class<?> primitiveClass = primitiveNameToClassOrNull(n);
+			return primitiveClass != null ? primitiveClass : Class.forName(n, true,
 					classloader != null ? classloader : ReflectionUtils.class.getClassLoader());
 		}, classname);
+	}
+	public static Class<?> primitiveNameToClassOrThrow(String classname)
+	{
+		Class<?> result = primitiveNameToClassOrNull(classname);
+		if(result == null)
+			//TODO better exception type
+			throw new IllegalArgumentException("Not a primitive class: " + classname);
+		return result;
+	}
+	public static Class<?> primitiveNameToClassOrNull(String classname)
+	{
+		return PRIMITIVE_CLASSES_BY_NAME.get(classname);
 	}
 
 	public static List<String> classToName(Class<?>[] classes)

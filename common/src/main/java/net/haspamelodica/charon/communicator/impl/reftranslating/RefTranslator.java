@@ -38,7 +38,7 @@ public class RefTranslator<REF_TO, REF_FROM>
 	{
 		return refsTo.stream().map(this::translateFrom).toList();
 	}
-	public List<REF_TO> translateTo(List<REF_FROM> refsFrom)
+	public List<REF_TO> translateTo(List<? extends REF_FROM> refsFrom)
 	{
 		return refsFrom.stream().map(this::translateTo).toList();
 	}

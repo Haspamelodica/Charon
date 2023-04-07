@@ -7,10 +7,10 @@ import net.haspamelodica.charon.marshaling.Serializer;
 
 public class LoggingClientSideTransceiver<REF> implements ClientSideTransceiver<REF>
 {
-	private final CommunicationLogger			logger;
+	private final CommunicationLogger<?>		logger;
 	private final ClientSideTransceiver<REF>	transceiver;
 
-	public LoggingClientSideTransceiver(CommunicationLogger logger, ClientSideTransceiver<REF> transceiver)
+	public LoggingClientSideTransceiver(CommunicationLogger<?> logger, ClientSideTransceiver<REF> transceiver)
 	{
 		this.logger = logger;
 		this.transceiver = transceiver;

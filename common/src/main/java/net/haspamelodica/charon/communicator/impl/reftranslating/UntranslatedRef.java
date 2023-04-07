@@ -2,29 +2,24 @@ package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 
-public class UntranslatedRef<REF> implements UntypedUntranslatedRef
+public class UntranslatedRef<REF, TYPEREF extends REF> implements UntypedUntranslatedRef
 {
-	private final StudentSideCommunicator<REF, ?, ?>	communicator;
-	private final REF									ref;
+	private final StudentSideCommunicator<REF, TYPEREF, ?, ?>	communicator;
+	private final REF											ref;
 
-	public UntranslatedRef(StudentSideCommunicator<REF, ?, ?> communicator, REF ref)
+	public UntranslatedRef(StudentSideCommunicator<REF, TYPEREF, ?, ?> communicator, REF ref)
 	{
 		this.communicator = communicator;
 		this.ref = ref;
 	}
 
-	@Override
-	public String getClassname()
+	public UntranslatedTyperef<REF, TYPEREF> getType()
 	{
-		return communicator.getClassname(ref);
+		return new UntranslatedTyperef<>(communicator, communicator.getTypeOf(ref));
 	}
 
 	public REF ref()
 	{
 		return ref;
-	}
-	public StudentSideCommunicator<REF, ?, ?> communicator()
-	{
-		return communicator;
 	}
 }

@@ -1,23 +1,22 @@
 package net.haspamelodica.charon.communicator.impl.logging;
 
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 
-public class CommunicationLogger
+public class CommunicationLogger<TYPEREF>
 {
 	public static final String DEFAULT_PREFIX = "";
 
-	private final String prefix;
+	private final CommunicationLoggerParams	params;
+	private final Function<TYPEREF, String>	typerefToTypeName;
 
 	private final ThreadLocal<Integer>	threadId;
 	private final ThreadLocal<Integer>	nestingDepth;
 
-	public CommunicationLogger()
+	public CommunicationLogger(CommunicationLoggerParams params, Function<TYPEREF, String> typerefToTypeName)
 	{
-		this(DEFAULT_PREFIX);
-	}
-	public CommunicationLogger(String prefix)
-	{
-		this.prefix = prefix;
+		this.params = params;
+		this.typerefToTypeName = typerefToTypeName;
 		this.threadId = ThreadLocal.withInitial(new AtomicInteger()::incrementAndGet);
 		this.nestingDepth = ThreadLocal.withInitial(() -> 0);
 	}
@@ -52,11 +51,21 @@ public class CommunicationLogger
 		if(!exit)
 			nestingDepth ++;
 
-		System.err.println(prefix + "T" + threadId.get() + "\t".repeat(nestingDepth) + (callback ? exit ? "=>" : "<-" : exit ? "<=" : "->") +
+		System.err.println(params.prefix() + "T" + threadId.get() + "\t".repeat(nestingDepth) + (callback ? exit ? "=>" : "<-" : exit ? "<=" : "->") +
 				(!exit || message != null ? " " + message : ""));
 
 		if(exit)
 			nestingDepth --;
 		this.nestingDepth.set(nestingDepth);
+	}
+
+	public String typerefToString(TYPEREF typeref)
+	{
+		return typeref == null ? "<null type>" : "<T" + typeref + " " + typerefToTypeName(typeref) + ">";
+	}
+
+	private String typerefToTypeName(TYPEREF typeref)
+	{
+		return typerefToTypeName.apply(typeref);
 	}
 }

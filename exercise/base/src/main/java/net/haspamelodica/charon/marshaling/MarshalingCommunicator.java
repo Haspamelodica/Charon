@@ -8,22 +8,36 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
-import net.haspamelodica.charon.impl.StudentSideImplUtils.StudentSideType;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 
-public class MarshalingCommunicator<REF, SSX extends StudentSideCausedException>
+public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends StudentSideCausedException>
 {
-	private final StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>	communicator;
-	private final Marshaler<REF, SSX>																							marshaler;
+	private final MarshalingCommunicatorCallbacks<REF, TYPEREF, ?, ?, SSX> callbacks;
 
-	public <M> MarshalingCommunicator(
-			UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
-			MarshalingCommunicatorCallbacks<REF, M, ?, SSX> callbacks, List<Class<? extends SerDes<?>>> serdesClasses)
+	private final StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
+
+	private final Marshaler<REF, TYPEREF, SSX> marshaler;
+
+	public MarshalingCommunicator(
+			UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
+			MarshalingCommunicatorCallbacks<REF, TYPEREF, ?, ?, SSX> callbacks, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
-		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
+		this.callbacks = callbacks;
+		this.communicator = communicator.initialize(createStudentSideCommunicatorCallbacks(callbacks));
+		this.marshaler = new Marshaler<>(createMarshalerCallbacks(callbacks), this.communicator, serdesClasses);
+	}
+
+	private <M> StudentSideCommunicatorCallbacks<REF, TYPEREF>
+			createStudentSideCommunicatorCallbacks(MarshalingCommunicatorCallbacks<REF, TYPEREF, M, ?, SSX> callbacks)
+	{
+		return new StudentSideCommunicatorCallbacks<>()
 		{
 			@Override
 			public String getCallbackInterfaceCn(REF ref)
@@ -32,66 +46,115 @@ public class MarshalingCommunicator<REF, SSX extends StudentSideCausedException>
 			}
 
 			@Override
-			public RefOrError<REF> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			public RefOrError<REF> callCallbackInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
 					REF receiverRef, List<REF> argRefs)
 			{
 				Object receiverObj = marshaler.translateTo(receiverRef);
 
-				CallbackMethod<M> callbackMethod = callbacks.lookupCallbackInstanceMethod(cn, name, returnClassname, params, receiverObj);
-				Marshaler<REF, SSX> marshalerWithAdditionalSerdeses = marshaler.withAdditionalSerDeses(callbackMethod.additionalSerdeses());
+				StudentSideType<TYPEREF, ?> studentSideReceiverType = lookupStudentSideType(type);
+				StudentSideType<TYPEREF, ?> studentSideReturnType = lookupStudentSideType(returnType);
+				List<StudentSideType<TYPEREF, ?>> studentSideParams = lookupStudentSideTypes(params);
 
-				List<Object> argObjs = marshalerWithAdditionalSerdeses.receive(callbackMethod.paramTypes(), argRefs);
+				CallbackMethod<M> callbackMethod = callbacks.lookupCallbackInstanceMethod(
+						studentSideReceiverType, receiverObj.getClass(), name, studentSideReturnType, studentSideParams);
+				Marshaler<REF, TYPEREF, SSX> marshalerWithAdditionalSerdeses = marshaler.withAdditionalSerDeses(callbackMethod.additionalSerdeses());
+
+				List<Object> argObjs = marshalerWithAdditionalSerdeses.receive(extractLocalTypes(studentSideParams), argRefs);
 
 				Object resultObj;
 				try
 				{
-					resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod, receiverObj, argObjs);
+					resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod.methodData(), receiverObj, argObjs);
 				} catch(ExceptionInTargetException e)
 				{
 					//TODO transmit exception somehow
 					return RefOrError.error(null);
 				}
 
-				return RefOrError.success(marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(), resultObj));
+				return RefOrError.success(marshalerWithAdditionalSerdeses.send(studentSideReturnType.localType(), resultObj));
 			}
-		});
-		this.marshaler = new Marshaler<>(callbacks, callbacks, this.communicator, serdesClasses);
+		};
 	}
-	public MarshalingCommunicator(
-			StudentSideCommunicator<REF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
-			Marshaler<REF, SSX> marshaler)
+
+	private <SST> MarshalerCallbacks<REF, TYPEREF, SST, SSX>
+			createMarshalerCallbacks(MarshalingCommunicatorCallbacks<REF, TYPEREF, ?, SST, SSX> callbacks)
 	{
+		return new MarshalerCallbacks<>()
+		{
+			@Override
+			public Object createForwardRef(UntranslatedRef<REF, TYPEREF> untranslatedRef)
+			{
+				return callbacks.createRepresentationObject(lookupStudentSideType(untranslatedRef.getType()), untranslatedRef);
+			}
+
+			@Override
+			public String getCallbackInterfaceCn(Object translatedRef)
+			{
+				return callbacks.getCallbackInterfaceCn(translatedRef);
+			}
+
+			@Override
+			public SST checkRepresentsStudentSideThrowableAndCastOrNull(Object representationObject)
+			{
+				return callbacks.checkRepresentsStudentSideThrowableAndCastOrNull(representationObject);
+			}
+
+			@Override
+			public SSX newStudentCausedException(SST studentSideThrowable)
+			{
+				return callbacks.newStudentCausedException(studentSideThrowable);
+			}
+		};
+	}
+
+	private MarshalingCommunicator(
+			MarshalingCommunicatorCallbacks<REF, TYPEREF, ?, ?, SSX> callbacks,
+			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
+			Marshaler<REF, TYPEREF, SSX> marshaler)
+	{
+		this.callbacks = callbacks;
 		this.communicator = communicator;
 		this.marshaler = marshaler;
 	}
 
-	public MarshalingCommunicator<REF, SSX> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serDeses)
+	public MarshalingCommunicator<REF, TYPEREF, SSX> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serDeses)
 	{
-		return new MarshalingCommunicator<>(communicator, marshaler.withAdditionalSerDeses(serDeses));
+		return new MarshalingCommunicator<>(callbacks, communicator, marshaler.withAdditionalSerDeses(serDeses));
 	}
 
-	public String getClassname(Object representationObject)
+	public <T> StudentSideType<TYPEREF, T> lookupStudentSideType(Class<T> clazz, String studentSideCN)
 	{
-		return communicator.getClassname(marshaler.translateFrom(representationObject));
-	}
-	public String getSuperclass(String cn)
-	{
-		return communicator.getSuperclass(cn);
-	}
-	public List<String> getInterfaces(String cn)
-	{
-		return communicator.getInterfaces(cn);
+		return new StudentSideType<>(clazz, studentSideCN, communicator.getTypeByName(studentSideCN));
 	}
 
-	public <T> T callConstructor(StudentSideType<T> type, List<StudentSideType<?>> params, List<Object> args) throws SSX
+	public StudentSideType<TYPEREF, ?> getTypeOf(Object representationObject)
+	{
+		return lookupStudentSideType(communicator.getTypeOf(marshaler.translateFrom(representationObject)));
+	}
+
+	public StudentSideTypeDescription<StudentSideType<TYPEREF, ?>> describeType(StudentSideType<TYPEREF, ?> type)
+	{
+		StudentSideTypeDescription<TYPEREF> result = communicator.describeType(type.studentSideType());
+		if(!result.name().equals(type.studentSideCN()))
+			throw new FrameworkCausedException("Type description name mismatches: expected " + type.studentSideCN() + ", but was " + result.name());
+
+		return new StudentSideTypeDescription<>(
+				result.kind(),
+				result.name(),
+				result.superclass().map(this::lookupStudentSideType),
+				lookupStudentSideTypes(result.superinterfaces()),
+				result.componentTypeIfArray().map(this::lookupStudentSideType));
+	}
+
+	public <T> T callConstructor(StudentSideType<TYPEREF, T> type, List<StudentSideType<TYPEREF, ?>> params, List<Object> args) throws SSX
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 
 		return marshaler.receiveOrThrow(type.localType(), resultRef);
 	}
 	// Neccessary for the Mockclasses frontend
-	public REF callConstructorExistingRepresentationObject(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args,
-			Object representationObject) throws SSX
+	public REF callConstructorExistingRepresentationObject(StudentSideType<TYPEREF, ?> type, List<StudentSideType<TYPEREF, ?>> params,
+			List<Object> args, Object representationObject) throws SSX
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 		marshaler.throwIfError(resultRef);
@@ -99,83 +162,99 @@ public class MarshalingCommunicator<REF, SSX extends StudentSideCausedException>
 		marshaler.setRepresentationObjectRefPair(resultRef.resultOrErrorRef(), representationObject);
 		return resultRef.resultOrErrorRef();
 	}
-	private RefOrError<REF> callConstructorRawRef(StudentSideType<?> type, List<StudentSideType<?>> params, List<Object> args)
+	private RefOrError<REF> callConstructorRawRef(StudentSideType<TYPEREF, ?> type, List<StudentSideType<TYPEREF, ?>> params, List<Object> args)
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
-		RefOrError<REF> resultRef = communicator.callConstructor(type.studentSideCN(), extractStudentSideCNs(params), argRefs);
+		RefOrError<REF> resultRef = communicator.callConstructor(type.studentSideType(), extractStudentSideTypes(params), argRefs);
 
 		return resultRef;
 	}
 
-	public <T> T callStaticMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
+	public <T> T callStaticMethod(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> returnType, List<StudentSideType<TYPEREF, ?>> params,
 			List<Object> args) throws SSX
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
-		RefOrError<REF> resultRef = communicator.callStaticMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params), argRefs);
+		RefOrError<REF> resultRef = communicator.callStaticMethod(type.studentSideType(), name, returnType.studentSideType(), extractStudentSideTypes(params), argRefs);
 
 		return marshaler.receiveOrThrow(returnType.localType(), resultRef);
 	}
 
-	public <T> T getStaticField(StudentSideType<?> type, String name, StudentSideType<T> fieldType)
+	public <T> T getStaticField(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> fieldType)
 	{
-		REF resultRef = communicator.getStaticField(type.studentSideCN(), name, fieldType.studentSideCN());
+		REF resultRef = communicator.getStaticField(type.studentSideType(), name, fieldType.studentSideType());
 
 		return marshaler.receive(fieldType.localType(), resultRef);
 	}
 
-	public <T> void setStaticField(StudentSideType<?> type, String name, StudentSideType<T> fieldType, T value)
+	public <T> void setStaticField(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> fieldType, T value)
 	{
 		REF valRef = marshaler.send(fieldType.localType(), value);
 
-		communicator.setStaticField(type.studentSideCN(), name, fieldType.studentSideCN(), valRef);
+		communicator.setStaticField(type.studentSideType(), name, fieldType.studentSideType(), valRef);
 	}
 
-	public <T> T callInstanceMethod(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			Object receiver, List<Object> args) throws SSX
+	public <T> T callInstanceMethod(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> returnType,
+			List<StudentSideType<TYPEREF, ?>> params, Object receiver, List<Object> args) throws SSX
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
 
 		return callInstanceMethodRawReceiver(type, name, returnType, params, receiverRef, args);
 	}
 	// Neccessary for the Mockclasses frontend
-	public <T> T callInstanceMethodRawReceiver(StudentSideType<?> type, String name, StudentSideType<T> returnType, List<StudentSideType<?>> params,
-			REF receiverRef, List<Object> args) throws SSX
+	public <T> T callInstanceMethodRawReceiver(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> returnType,
+			List<StudentSideType<TYPEREF, ?>> params, REF receiverRef, List<Object> args) throws SSX
 	{
 		List<REF> argRefs = marshaler.send(extractLocalTypes(params), args);
 
-		RefOrError<REF> resultRef = communicator.callInstanceMethod(type.studentSideCN(), name, returnType.studentSideCN(), extractStudentSideCNs(params),
+		RefOrError<REF> resultRef = communicator.callInstanceMethod(type.studentSideType(), name, returnType.studentSideType(), extractStudentSideTypes(params),
 				receiverRef, argRefs);
 
 		return marshaler.receiveOrThrow(returnType.localType(), resultRef);
 	}
 
-	public <T> T getInstanceField(StudentSideType<?> type, String name, StudentSideType<T> fieldType, Object receiver)
+	public <T> T getInstanceField(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> fieldType, Object receiver)
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
 
-		REF resultRef = communicator.getInstanceField(type.studentSideCN(), name, fieldType.studentSideCN(), receiverRef);
+		REF resultRef = communicator.getInstanceField(type.studentSideType(), name, fieldType.studentSideType(), receiverRef);
 
 		return marshaler.receive(fieldType.localType(), resultRef);
 	}
 
-	public <T> void setInstanceField(StudentSideType<?> type, String name, StudentSideType<T> fieldType, Object receiver, T value)
+	public <T> void setInstanceField(StudentSideType<TYPEREF, ?> type, String name, StudentSideType<TYPEREF, T> fieldType, Object receiver, T value)
 	{
 		REF receiverRef = marshaler.send(type.localType(), receiver);
 		REF valRef = marshaler.send(fieldType.localType(), value);
 
-		communicator.setInstanceField(type.studentSideCN(), name, fieldType.studentSideCN(), receiverRef, valRef);
+		communicator.setInstanceField(type.studentSideType(), name, fieldType.studentSideType(), receiverRef, valRef);
 	}
 
-	private List<Class<?>> extractLocalTypes(List<StudentSideType<?>> params)
+	private List<Class<?>> extractLocalTypes(List<StudentSideType<TYPEREF, ?>> types)
 	{
 		// Java type system weirdness requires this to be a variable. Not even a cast works for some reason.
-		Stream<Class<?>> mapped = params.stream().map(StudentSideType::localType);
+		Stream<Class<?>> mapped = types.stream().map(StudentSideType::localType);
 		return mapped.toList();
 	}
-	private List<String> extractStudentSideCNs(List<StudentSideType<?>> params)
+	private List<TYPEREF> extractStudentSideTypes(List<StudentSideType<TYPEREF, ?>> types)
 	{
-		return params.stream().map(StudentSideType::studentSideCN).toList();
+		return types.stream().map(StudentSideType::studentSideType).toList();
+	}
+
+	private List<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(List<TYPEREF> types)
+	{
+		// Java type system weirdness requires this to be a variable. Not even a cast works for some reason.
+		Stream<StudentSideType<TYPEREF, ?>> mapped = types.stream().map(this::lookupStudentSideType);
+		return mapped.toList();
+	}
+	private StudentSideType<TYPEREF, ?> lookupStudentSideType(TYPEREF type)
+	{
+		return lookupStudentSideType(new UntranslatedTyperef<>(communicator, type));
+	}
+	private StudentSideType<TYPEREF, ?> lookupStudentSideType(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
+	{
+		Class<?> localType = callbacks.lookupLocalType(untranslatedTyperef);
+		return new StudentSideType<>(localType, untranslatedTyperef.describe().name(), untranslatedTyperef.typeref());
 	}
 }

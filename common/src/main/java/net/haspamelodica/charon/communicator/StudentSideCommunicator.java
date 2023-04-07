@@ -2,23 +2,28 @@ package net.haspamelodica.charon.communicator;
 
 import java.util.List;
 
-public interface StudentSideCommunicator<REF, TC extends Transceiver, CM extends CallbackManager>
+public interface StudentSideCommunicator<REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
 {
 	public boolean storeRefsIdentityBased();
 
-	public String getClassname(REF ref);
-	public String getSuperclass(String cn);
-	public List<String> getInterfaces(String cn);
+	public TYPEREF getTypeByName(String typeName);
+	public TYPEREF getArrayType(TYPEREF componentType);
+	public TYPEREF getTypeOf(REF ref);
+	public StudentSideTypeDescription<TYPEREF> describeType(TYPEREF type);
 
-	public RefOrError<REF> callConstructor(String cn, List<String> params, List<REF> argRefs);
+	public REF newArray(TYPEREF componentType, int length);
+	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions);
+	//TODO get / set elements
 
-	public RefOrError<REF> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF> argRefs);
-	public REF getStaticField(String cn, String name, String fieldClassname);
-	public void setStaticField(String cn, String name, String fieldClassname, REF valueRef);
+	public RefOrError<REF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs);
 
-	public RefOrError<REF> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF receiverRef, List<REF> argRefs);
-	public REF getInstanceField(String cn, String name, String fieldClassname, REF receiverRef);
-	public void setInstanceField(String cn, String name, String fieldClassname, REF receiverRef, REF valueRef);
+	public RefOrError<REF> callStaticMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, List<REF> argRefs);
+	public REF getStaticField(TYPEREF type, String name, TYPEREF fieldType);
+	public void setStaticField(TYPEREF type, String name, TYPEREF fieldType, REF valueRef);
+
+	public RefOrError<REF> callInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, REF receiverRef, List<REF> argRefs);
+	public REF getInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef);
+	public void setInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef, REF valueRef);
 
 	public TC getTransceiver();
 	public CM getCallbackManager();

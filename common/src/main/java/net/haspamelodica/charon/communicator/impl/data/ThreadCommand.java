@@ -6,14 +6,18 @@ public enum ThreadCommand
 	EXERCISE_ERROR,
 
 	//no callback possible
+	//TODO theoretically classloading could trigger a callback.
+	GET_TYPE_BY_NAME,
+	GET_ARRAY_TYPE,
+	GET_TYPE_OF,
+	DESCRIBE_TYPE,
+	NEW_ARRAY,
+	NEW_MULTI_ARRAY,
 	GET_STATIC_FIELD,
 	SET_STATIC_FIELD,
 	GET_INSTANCE_FIELD,
 	SET_INSTANCE_FIELD,
 	CREATE_CALLBACK_INSTANCE,
-	GET_CLASSNAME,
-	GET_SUPERCLASS,
-	GET_INTERFACES,
 
 	//callback possible
 	SEND,

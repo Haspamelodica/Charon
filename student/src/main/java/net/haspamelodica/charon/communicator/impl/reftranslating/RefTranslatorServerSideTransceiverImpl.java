@@ -12,11 +12,12 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 public class RefTranslatorServerSideTransceiverImpl<
 		REF_TO,
 		REF_FROM,
+		TYPEREF_FROM extends REF_FROM,
 		TC_FROM extends ServerSideTransceiver<REF_FROM>>
 		extends RefTranslatorTransceiverImpl<REF_TO, REF_FROM, TC_FROM>
 		implements ServerSideTransceiver<REF_TO>
 {
-	public RefTranslatorServerSideTransceiverImpl(StudentSideCommunicator<REF_FROM, ? extends TC_FROM,
+	public RefTranslatorServerSideTransceiverImpl(StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
 			? extends InternalCallbackManager<REF_FROM>> communicator, RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		super(communicator, translator);
@@ -33,17 +34,19 @@ public class RefTranslatorServerSideTransceiverImpl<
 		communicator.getTransceiver().receive(translator.translateFrom(serdesRef), translator.translateFrom(objRef), objOut);
 	}
 
-	public static <REF_TO, REF_FROM>
-			BiFunction<StudentSideCommunicator<REF_FROM, ? extends ServerSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>>,
+	public static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
+			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+					? extends ServerSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>>,
 					RefTranslator<REF_TO, REF_FROM>, ServerSideTransceiver<REF_TO>>
 			supplier()
 	{
 		return RefTranslatorServerSideTransceiverImpl::create;
 	}
 
-	public static <REF_TO, REF_FROM>
+	public static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
 			ServerSideTransceiver<REF_TO>
-			create(StudentSideCommunicator<REF_FROM, ? extends ServerSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>> communicator,
+			create(StudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+					? extends ServerSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>> communicator,
 					RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		return new RefTranslatorServerSideTransceiverImpl<>(communicator, translator);

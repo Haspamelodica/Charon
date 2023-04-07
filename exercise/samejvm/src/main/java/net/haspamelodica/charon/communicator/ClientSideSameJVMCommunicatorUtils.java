@@ -15,8 +15,8 @@ public class ClientSideSameJVMCommunicatorUtils
 	 * <p>
 	 * For more details, see {@link DirectSameJVMClientSideTransceiver}.
 	 */
-	public static StudentSideCommunicator<Object, ? extends ClientSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
-			createDirectCommClient(StudentSideCommunicatorCallbacks<Object> callbacks)
+	public static StudentSideCommunicator<Object, Class<?>, ? extends ClientSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
+			createDirectCommClient(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
 	{
 		return new DirectSameJVMCommunicator<>(callbacks, directTcClient());
 	}
@@ -28,13 +28,13 @@ public class ClientSideSameJVMCommunicatorUtils
 	 * <p>
 	 * For more details, see {@link DirectSameJVMClientSideTransceiver}.
 	 */
-	public static UninitializedStudentSideCommunicator<Object, ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
+	public static UninitializedStudentSideCommunicator<Object, Class<?>, ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
 			createDirectCommClient()
 	{
 		return DirectSameJVMCommunicator.createUninitializedCommunicator(directTcClient());
 	}
 
-	private static Function<StudentSideCommunicatorCallbacks<Object>, ClientSideTransceiver<Object>> directTcClient()
+	private static Function<StudentSideCommunicatorCallbacks<Object, Class<?>>, ClientSideTransceiver<Object>> directTcClient()
 	{
 		return DirectSameJVMClientSideTransceiver::new;
 	}

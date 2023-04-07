@@ -4,13 +4,15 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_INSTANCE_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CALL_STATIC_METHOD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CREATE_CALLBACK_INSTANCE;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.DESCRIBE_TYPE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_ERROR;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_FINISHED;
-import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_CLASSNAME;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_ARRAY_TYPE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
-import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INTERFACES;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_STATIC_FIELD;
-import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_SUPERCLASS;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_BY_NAME;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_OF;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_ARRAY;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.RECEIVE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SEND;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_INSTANCE_FIELD;
@@ -32,6 +34,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.List;
+import java.util.Optional;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
@@ -42,6 +45,7 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
@@ -67,11 +71,11 @@ import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
 
 // TODO server, client or both crash on shutdown sometimes
 public class DataCommunicatorClient
-		implements StudentSideCommunicator<LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>,
+		implements StudentSideCommunicator<LongRef, LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>,
 		ClientSideTransceiver<LongRef>,
 		InternalCallbackManager<LongRef>
 {
-	private final StudentSideCommunicatorCallbacks<LongRef> callbacks;
+	private final StudentSideCommunicatorCallbacks<LongRef, LongRef> callbacks;
 
 	private final DataStreamMultiplexer	multiplexer;
 	private final AtomicInteger			nextInStreamID;
@@ -86,7 +90,7 @@ public class DataCommunicatorClient
 
 	private final LongRefManager<LongRef> refManager;
 
-	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorCallbacks<LongRef> callbacks)
+	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorCallbacks<LongRef, LongRef> callbacks)
 	{
 		this.callbacks = callbacks;
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
@@ -122,26 +126,155 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public String getClassname(LongRef ref)
+	public LongRef getTypeByName(String typeName)
 	{
-		return executeCommand(GET_CLASSNAME, DISALLOW_CALLBACKS, out -> writeRef(out, ref), DataInput::readUTF);
+		return executeRefCommand(GET_TYPE_BY_NAME, DISALLOW_CALLBACKS, out -> out.writeUTF(typeName));
 	}
+
 	@Override
-	public String getSuperclass(String cn)
+	public LongRef getArrayType(LongRef componentType)
 	{
-		return executeCommand(GET_SUPERCLASS, DISALLOW_CALLBACKS, out -> out.writeUTF(cn), DataInput::readUTF);
+		return executeRefCommand(GET_ARRAY_TYPE, DISALLOW_CALLBACKS, out -> writeRef(out, componentType));
 	}
+
 	@Override
-	public List<String> getInterfaces(String cn)
+	public LongRef getTypeOf(LongRef ref)
 	{
-		return executeCommand(GET_INTERFACES, DISALLOW_CALLBACKS, out -> out.writeUTF(cn), in ->
+		return executeRefCommand(GET_TYPE_OF, DISALLOW_CALLBACKS, out -> writeRef(out, ref));
+	}
+
+	@Override
+	public StudentSideTypeDescription<LongRef> describeType(LongRef type)
+	{
+		return executeCommand(DESCRIBE_TYPE, DISALLOW_CALLBACKS, out -> writeRef(out, type), in ->
 		{
-			int n = in.readInt();
-			String[] result = new String[n];
-			for(int i = 0; i < n; i ++)
-				result[i] = in.readUTF();
-			return List.of(result);
+			// We can't neccessarily trust the kind given from the student side, but StudentSideType checks it.
+			StudentSideTypeDescription.Kind kind = StudentSideTypeDescription.Kind.decode(in.readByte());
+
+			String name = in.readUTF();
+
+			Optional<LongRef> superclass = Optional.ofNullable(readRef(in));
+
+			int superinterfacesCount = in.readInt();
+			LongRef[] superinterfaces = new LongRef[superinterfacesCount];
+			for(int i = 0; i < superinterfacesCount; i ++)
+				superinterfaces[i] = readRef(in);
+
+			Optional<LongRef> componentTypeIfArray = Optional.ofNullable(readRef(in));
+
+			return new StudentSideTypeDescription<>(kind, name, superclass, List.of(superinterfaces), componentTypeIfArray);
 		});
+	}
+
+	@Override
+	public LongRef newArray(LongRef componentType, int length)
+	{
+		return executeRefCommand(NEW_ARRAY, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, componentType);
+			out.writeInt(length);
+		});
+	}
+
+	@Override
+	public LongRef newMultiArray(LongRef componentType, List<Integer> dimensions)
+	{
+		return executeRefCommand(NEW_ARRAY, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, componentType);
+
+			int dimensionsSize = dimensions.size();
+			out.writeInt(dimensionsSize);
+			// index-based iteration to defend against botched List implementations
+			for(int i = 0; i < dimensionsSize; i ++)
+				out.writeInt(dimensions.get(i));
+		});
+	}
+
+	@Override
+	public RefOrError<LongRef> callConstructor(LongRef type, List<LongRef> params, List<LongRef> argRefs)
+	{
+		return executeRefOrErrorCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			writeArgs(out, params, argRefs);
+		});
+	}
+
+	@Override
+	public RefOrError<LongRef> callStaticMethod(LongRef type, String name, LongRef returnType, List<LongRef> params, List<LongRef> argRefs)
+	{
+		return executeRefOrErrorCommand(CALL_STATIC_METHOD, ALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, returnType);
+			writeArgs(out, params, argRefs);
+		});
+	}
+	@Override
+	public LongRef getStaticField(LongRef type, String name, LongRef fieldType)
+	{
+		return executeRefCommand(GET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, fieldType);
+		});
+	}
+	@Override
+	public void setStaticField(LongRef type, String name, LongRef fieldType, LongRef valueRef)
+	{
+		executeVoidCommand(SET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, fieldType);
+			writeRef(out, valueRef);
+		});
+	}
+
+	@Override
+	public RefOrError<LongRef> callInstanceMethod(LongRef type, String name, LongRef returnType, List<LongRef> params,
+			LongRef receiverRef, List<LongRef> argRefs)
+	{
+		return executeRefOrErrorCommand(CALL_INSTANCE_METHOD, ALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, returnType);
+			writeArgs(out, params, argRefs);
+			writeRef(out, receiverRef);
+		});
+	}
+	@Override
+	public LongRef getInstanceField(LongRef type, String name, LongRef fieldType, LongRef receiverRef)
+	{
+		return executeRefCommand(GET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, fieldType);
+			writeRef(out, receiverRef);
+		});
+	}
+	@Override
+	public void setInstanceField(LongRef type, String name, LongRef fieldType, LongRef receiverRef, LongRef valueRef)
+	{
+		executeVoidCommand(SET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, type);
+			out.writeUTF(name);
+			writeRef(out, fieldType);
+			writeRef(out, receiverRef);
+			writeRef(out, valueRef);
+		});
+	}
+
+	@Override
+	public ClientSideTransceiver<LongRef> getTransceiver()
+	{
+		return this;
 	}
 
 	@Override
@@ -162,6 +295,7 @@ public class DataCommunicatorClient
 			freeStreamsForSending.add(serdesOut);
 		});
 	}
+
 	@Override
 	public <T> T receive(LongRef serdesRef, Deserializer<T> deserializer, LongRef objRef)
 	{
@@ -187,88 +321,9 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public ClientSideTransceiver<LongRef> getTransceiver()
+	public InternalCallbackManager<LongRef> getCallbackManager()
 	{
 		return this;
-	}
-
-	@Override
-	public RefOrError<LongRef> callConstructor(String cn, List<String> params, List<LongRef> argRefs)
-	{
-		return executeRefOrErrorCommand(CALL_CONSTRUCTOR, ALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			writeArgs(out, params, argRefs);
-		});
-	}
-
-	@Override
-	public RefOrError<LongRef> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<LongRef> argRefs)
-	{
-		return executeRefOrErrorCommand(CALL_STATIC_METHOD, ALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(returnClassname);
-			writeArgs(out, params, argRefs);
-		});
-	}
-	@Override
-	public LongRef getStaticField(String cn, String name, String fieldClassname)
-	{
-		return executeRefCommand(GET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(fieldClassname);
-		});
-	}
-	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, LongRef valueRef)
-	{
-		executeVoidCommand(SET_STATIC_FIELD, DISALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(fieldClassname);
-			writeRef(out, valueRef);
-		});
-	}
-
-	@Override
-	public RefOrError<LongRef> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, LongRef receiverRef, List<LongRef> argRefs)
-	{
-		return executeRefOrErrorCommand(CALL_INSTANCE_METHOD, ALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(returnClassname);
-			writeArgs(out, params, argRefs);
-			writeRef(out, receiverRef);
-		});
-	}
-	@Override
-	public LongRef getInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef)
-	{
-		return executeRefCommand(GET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(fieldClassname);
-			writeRef(out, receiverRef);
-		});
-	}
-	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, LongRef receiverRef, LongRef valueRef)
-	{
-		executeVoidCommand(SET_INSTANCE_FIELD, DISALLOW_CALLBACKS, out ->
-		{
-			out.writeUTF(cn);
-			out.writeUTF(name);
-			out.writeUTF(fieldClassname);
-			writeRef(out, receiverRef);
-			writeRef(out, valueRef);
-		});
 	}
 
 	@Override
@@ -282,12 +337,6 @@ public class DataCommunicatorClient
 		});
 
 		return callbackRef;
-	}
-
-	@Override
-	public InternalCallbackManager<LongRef> getCallbackManager()
-	{
-		return this;
 	}
 
 	private void refDeleted(int id, int receivedCount)
@@ -375,14 +424,14 @@ public class DataCommunicatorClient
 				}
 				case CALL_CALLBACK_INSTANCE_METHOD ->
 				{
-					String cn = in.readUTF();
+					LongRef type = readRef(in);
 					String name = in.readUTF();
-					String returnClassname = in.readUTF();
+					LongRef returnType = readRef(in);
 					Args args = readArgs(in);
 					LongRef receiverRef = readRef(in);
 
 					//TODO maybe we want to abort callback if a CharonException is thrown?
-					RefOrError<LongRef> result = callbacks.callCallbackInstanceMethod(cn, name, returnClassname, args.params(),
+					RefOrError<LongRef> result = callbacks.callCallbackInstanceMethod(type, name, returnType, args.params(),
 							receiverRef, args.argRefs());
 
 					writeThreadCommand(out, result.isError() ? EXERCISE_ERROR : EXERCISE_FINISHED);
@@ -473,7 +522,7 @@ public class DataCommunicatorClient
 	{
 		return DataCommunicatorUtils.readArgs(in, this::readRef);
 	}
-	private void writeArgs(DataOutput out, List<String> params, List<LongRef> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<LongRef> params, List<LongRef> argRefs) throws IOException
 	{
 		DataCommunicatorUtils.writeArgs(out, params, argRefs, FrameworkCausedException::new, this::writeRef);
 	}

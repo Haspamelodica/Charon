@@ -14,7 +14,9 @@ import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.SerDes;
+import net.haspamelodica.charon.marshaling.StudentSideType;
 
 public class StudentSideImplUtils
 {
@@ -62,25 +64,26 @@ public class StudentSideImplUtils
 				.map((Function<UseSerDes, Class<? extends SerDes<?>>>) UseSerDes::value).toList();
 	}
 
-	public static List<StudentSideType<?>> mapToStudentSide(Class<?>[] classes)
+	public static <REF, TYPEREF extends REF> List<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
+			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Class<?>[] classes)
 	{
-		return mapToStudentSide(Arrays.stream(classes)).toList();
+		return lookupStudentSideTypes(communicator, Arrays.stream(classes)).toList();
 	}
-	public static List<StudentSideType<?>> mapToStudentSide(List<Class<?>> classes)
+	public static <REF, TYPEREF extends REF> List<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
+			MarshalingCommunicator<REF, TYPEREF, ?> communicator, List<Class<?>> classes)
 	{
-		return mapToStudentSide(classes.stream()).toList();
+		return lookupStudentSideTypes(communicator, classes.stream()).toList();
 	}
-	public static Stream<StudentSideType<?>> mapToStudentSide(Stream<Class<?>> classes)
+	public static <REF, TYPEREF extends REF> Stream<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
+			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Stream<Class<?>> classes)
 	{
-		return classes.map(StudentSideImplUtils::mapToStudentSide);
+		return classes.map(clazz -> lookupStudentSideType(communicator, clazz));
 	}
-	public static <T> StudentSideType<T> mapToStudentSide(Class<T> clazz)
+	public static <REF, TYPEREF extends REF, T> StudentSideType<TYPEREF, T> lookupStudentSideType(
+			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Class<T> clazz)
 	{
-		return new StudentSideType<>(clazz, getStudentSideName(clazz));
+		return communicator.lookupStudentSideType(clazz, getStudentSideName(clazz));
 	}
-
-	public static record StudentSideType<T>(Class<T> localType, String studentSideCN)
-	{}
 
 	public static String getStudentSideName(Class<?> clazz)
 	{
@@ -123,7 +126,7 @@ public class StudentSideImplUtils
 
 		if(overrideStudentSideNameByClass != null)
 			//TODO is getCanonicalName correct?
-			return new StudentSideName(overrideStudentSideNameByClass.value().getCanonicalName(), true);
+			return new StudentSideName(overrideStudentSideNameByClass.value().getName(), true);
 
 		return new StudentSideName(getName.apply(element), false);
 	}

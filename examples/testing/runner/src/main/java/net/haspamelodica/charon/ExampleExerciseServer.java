@@ -12,7 +12,7 @@ import java.net.ServerSocket;
 import java.net.Socket;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -39,7 +39,7 @@ public class ExampleExerciseServer
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
 			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
-					maybeWrapLoggingExtServer(LOGGING, new CommunicationLogger(),
+					maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT,
 							wrapReftransExtServer(
 									createDirectCommServer())));
 			server.run();

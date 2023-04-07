@@ -6,11 +6,11 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.Transceiver;
 
-public class RefTranslatorInternalCallbackManagerImpl<REF_TO, REF_FROM>
-		extends RefTranslatorCallbackManagerImpl<REF_TO, REF_FROM>
+public class RefTranslatorInternalCallbackManagerImpl<REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
+		extends RefTranslatorCallbackManagerImpl<REF_TO, REF_FROM, TYPEREF_FROM>
 		implements InternalCallbackManager<REF_TO>
 {
-	public RefTranslatorInternalCallbackManagerImpl(StudentSideCommunicator<REF_FROM, ?,
+	public RefTranslatorInternalCallbackManagerImpl(StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ?,
 			? extends InternalCallbackManager<REF_FROM>> communicator, RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		super(communicator, translator);
@@ -22,8 +22,8 @@ public class RefTranslatorInternalCallbackManagerImpl<REF_TO, REF_FROM>
 		return translator.translateTo(communicator.getCallbackManager().createCallbackInstance(interfaceCn));
 	}
 
-	public static <REF_TO, REF_FROM, TC_FROM extends Transceiver>
-			BiFunction<StudentSideCommunicator<REF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
+	public static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM, TC_FROM extends Transceiver>
+			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
 					RefTranslator<REF_TO, REF_FROM>, InternalCallbackManager<REF_TO>>
 			supplier()
 	{
@@ -32,7 +32,7 @@ public class RefTranslatorInternalCallbackManagerImpl<REF_TO, REF_FROM>
 
 	public static <REF_TO, REF_FROM>
 			InternalCallbackManager<REF_TO>
-			create(StudentSideCommunicator<REF_FROM, ?, ? extends InternalCallbackManager<REF_FROM>> communicator,
+			create(StudentSideCommunicator<REF_FROM, ?, ?, ? extends InternalCallbackManager<REF_FROM>> communicator,
 					RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		return new RefTranslatorInternalCallbackManagerImpl<>(communicator, translator);

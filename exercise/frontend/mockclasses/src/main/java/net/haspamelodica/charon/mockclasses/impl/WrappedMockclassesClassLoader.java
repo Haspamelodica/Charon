@@ -55,11 +55,11 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		communicator.close();
 	}
 
-	public static <REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			UninitializedStudentSideCommunicator<REF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
+	public static <REF, TYPEREF extends REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
+			UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
 			Class<?>... forceDelegationClasses)
 	{
-		MockclassesMarshalingTransformer<REF> transformer = new MockclassesMarshalingTransformer<>();
+		MockclassesMarshalingTransformer<REF, TYPEREF> transformer = new MockclassesMarshalingTransformer<>();
 		//TODO feels very hardcoded. Would be fixed if we didn't prevent delegating to the parent altogether.
 		Class<?>[] forceDelegationClassesWithClassesNeededByCharon = pseudoAddAll(forceDelegationClasses,
 				// Delegate classes referenced by / stored in dynamically-generated classes to parent; don't define them ourself.
@@ -78,7 +78,7 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 				new LazyDynamicInvocationHandler<>(() ->
 				{
 					// TODO make Serdeses configurable
-					MarshalingCommunicator<REF, StudentSideException> marshalingCommunicator = new MarshalingCommunicator<>(communicator, transformer,
+					MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator = new MarshalingCommunicator<>(communicator, transformer,
 							PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
 					return new MockclassesInvocationHandler<>(marshalingCommunicator, transformer);
 				}));

@@ -4,10 +4,10 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 
 public class LoggingInternalCallbackManager<REF> implements InternalCallbackManager<REF>
 {
-	private final CommunicationLogger			logger;
+	private final CommunicationLogger<?>		logger;
 	private final InternalCallbackManager<REF>	callbackManager;
 
-	public LoggingInternalCallbackManager(CommunicationLogger logger, InternalCallbackManager<REF> callbackManager)
+	public LoggingInternalCallbackManager(CommunicationLogger<?> logger, InternalCallbackManager<REF> callbackManager)
 	{
 		this.logger = logger;
 		this.callbackManager = callbackManager;

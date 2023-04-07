@@ -2,7 +2,6 @@ package net.haspamelodica.charon.exceptions;
 
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
-// TODO let this class have a SSI of the student-side exception
 public class StudentSideException extends StudentSideCausedException
 {
 	private final ThrowableSSI studentSideCause;

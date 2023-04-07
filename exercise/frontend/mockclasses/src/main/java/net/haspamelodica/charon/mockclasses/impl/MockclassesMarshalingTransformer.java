@@ -15,13 +15,16 @@ import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
+import net.haspamelodica.charon.marshaling.StudentSideType;
 import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
+import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 
-public class MockclassesMarshalingTransformer<REF>
-		implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<REF, Method, Throwable, StudentSideException>
+public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
+		implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<REF, TYPEREF, Method, Throwable, StudentSideException>
 {
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
@@ -67,30 +70,35 @@ public class MockclassesMarshalingTransformer<REF>
 	}
 
 	@Override
+	public Class<?> lookupLocalType(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
+	{
+		return representationObjectConstructorsByClassname.get(untranslatedTyperef.describe().name()).getDeclaringClass();
+	}
+
+	@Override
 	public String getCallbackInterfaceCn(Object exerciseSideObject)
 	{
 		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
 	}
 
 	@Override
-	public CallbackMethod<Method> lookupCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params, Object receiver)
+	public CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType, Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
 	{
 		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
 	}
 
 	@Override
-	public Object callCallbackInstanceMethodChecked(CallbackMethod<Method> callbackMethod, Object receiver, List<Object> args)
+	public Object callCallbackInstanceMethodChecked(Method methodData, Object receiver, List<Object> args) throws ExceptionInTargetException
 	{
 		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
 	}
 
 	@Override
-	public Object createRepresentationObject(UntranslatedRef<REF> untranslatedRef)
+	public Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntranslatedRef<REF, TYPEREF> untranslatedRef)
 	{
 		try
 		{
-			String cn = untranslatedRef.getClassname();
-			return representationObjectConstructorsByClassname.get(cn).newInstance(new Object[] {untranslatedRef.ref()});
+			return representationObjectConstructorsByClassname.get(type.studentSideCN()).newInstance(new Object[] {untranslatedRef.ref()});
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)
 		{
 			throw new RuntimeException("Error invoking generated constructor", e);
@@ -104,7 +112,7 @@ public class MockclassesMarshalingTransformer<REF>
 	}
 
 	@Override
-	public StudentSideException newStudentCausedException(Throwable studentSideThrowable, String studentSideThrowableClassname)
+	public StudentSideException newStudentCausedException(Throwable studentSideThrowable)
 	{
 		return new StudentSideException(studentSideThrowable);
 	}

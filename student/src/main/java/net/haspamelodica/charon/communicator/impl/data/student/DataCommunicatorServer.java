@@ -21,6 +21,8 @@ import net.haspamelodica.charon.communicator.ExternalCallbackManager;
 import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.ServerSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
+import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
@@ -43,7 +45,7 @@ public class DataCommunicatorServer
 {
 	protected final DataStreamMultiplexer multiplexer;
 
-	private final StudentSideCommunicator<LongRef, ? extends ServerSideTransceiver<LongRef>,
+	private final StudentSideCommunicator<LongRef, LongRef, ? extends ServerSideTransceiver<LongRef>,
 			? extends ExternalCallbackManager<LongRef>> communicator;
 
 	private final LongRefManager<LongRef> refManager;
@@ -57,41 +59,44 @@ public class DataCommunicatorServer
 	{
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 		this.refManager = new SimpleLongRefManager(false);
-		this.communicator = communicatorSupplier.createCommunicator(false, new RefTranslatorCommunicatorCallbacks<>()
-		{
-			@Override
-			public <REF_FROM> LongRef createForwardRef(UntranslatedRef<REF_FROM> untranslatedRef)
-			{
-				return refManager.createManagedRef();
-			}
+		this.communicator = communicatorSupplier.createCommunicator(false,
+				new StudentSideCommunicatorCallbacks<>()
+				{
+					@Override
+					public String getCallbackInterfaceCn(LongRef callbackRef)
+					{
+						try
+						{
+							return DataCommunicatorServer.this.getCallbackInterfaceCn(callbackRef);
+						} catch(IOException e)
+						{
+							// If there's an IOException while communicating with the exercise side, nothing matters anymore.
+							throw new UncheckedIOException(e);
+						}
+					}
 
-			@Override
-			public String getCallbackInterfaceCn(LongRef callbackRef)
-			{
-				try
+					@Override
+					public RefOrError<LongRef> callCallbackInstanceMethod(LongRef type, String name, LongRef returnType, List<LongRef> params,
+							LongRef receiverRef, List<LongRef> argRefs)
+					{
+						try
+						{
+							return DataCommunicatorServer.this.callCallbackInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
+						} catch(IOException e)
+						{
+							// If there's an IOException while communicating with the exercise side, nothing matters anymore.
+							throw new UncheckedIOException(e);
+						}
+					}
+				},
+				new RefTranslatorCommunicatorCallbacks<>()
 				{
-					return DataCommunicatorServer.this.getCallbackInterfaceCn(callbackRef);
-				} catch(IOException e)
-				{
-					// If there's an IOException while communicating with the exercise side, nothing matters anymore.
-					throw new UncheckedIOException(e);
-				}
-			}
-
-			@Override
-			public RefOrError<LongRef> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
-					LongRef receiverRef, List<LongRef> argRefs)
-			{
-				try
-				{
-					return DataCommunicatorServer.this.callCallbackInstanceMethod(cn, name, returnClassname, params, receiverRef, argRefs);
-				} catch(IOException e)
-				{
-					// If there's an IOException while communicating with the exercise side, nothing matters anymore.
-					throw new UncheckedIOException(e);
-				}
-			}
-		});
+					@Override
+					public <REF_FROM, TYPEREF_FROM extends REF_FROM> LongRef createForwardRef(UntranslatedRef<REF_FROM, TYPEREF_FROM> untranslatedRef)
+					{
+						return refManager.createManagedRef();
+					}
+				});
 		this.threads = new ThreadLocal<>();
 		this.running = new AtomicBoolean();
 	}
@@ -145,11 +150,12 @@ public class DataCommunicatorServer
 					{
 						return true;
 					}
-					case GET_CLASSNAME -> respondGetClassname(in, out);
-					case GET_SUPERCLASS -> respondGetSuperclass(in, out);
-					case GET_INTERFACES -> respondGetInterfaces(in, out);
-					case SEND -> respondSend(in, out);
-					case RECEIVE -> respondReceive(in, out);
+					case GET_TYPE_BY_NAME -> respondGetTypeByName(in, out);
+					case GET_ARRAY_TYPE -> respondGetArrayType(in, out);
+					case GET_TYPE_OF -> respondGetTypeOf(in, out);
+					case DESCRIBE_TYPE -> respondDescribeType(in, out);
+					case NEW_ARRAY -> respondNewArray(in, out);
+					case NEW_MULTI_ARRAY -> respondNewMultiArray(in, out);
 					case CALL_CONSTRUCTOR -> respondCallConstructor(in, out);
 					case CALL_STATIC_METHOD -> respondCallStaticMethod(in, out);
 					case GET_STATIC_FIELD -> respondGetStaticField(in, out);
@@ -157,6 +163,8 @@ public class DataCommunicatorServer
 					case CALL_INSTANCE_METHOD -> respondCallInstanceMethod(in, out);
 					case GET_INSTANCE_FIELD -> respondGetInstanceField(in, out);
 					case SET_INSTANCE_FIELD -> respondSetInstanceField(in, out);
+					case SEND -> respondSend(in, out);
+					case RECEIVE -> respondReceive(in, out);
 					case CREATE_CALLBACK_INSTANCE -> respondCreateCallbackInstance(in, out);
 				}
 				out.flush();
@@ -182,121 +190,162 @@ public class DataCommunicatorServer
 		}
 	}
 
-	private void respondGetClassname(DataInput in, DataOutput out) throws IOException
+	private void respondGetTypeByName(DataInput in, DataOutput out) throws IOException
+	{
+		String typeName = in.readUTF();
+
+		LongRef result = communicator.getTypeByName(typeName);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
+	}
+
+	private void respondGetArrayType(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef componentType = readRef(in);
+
+		LongRef result = communicator.getArrayType(componentType);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
+	}
+
+	private void respondGetTypeOf(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef ref = readRef(in);
 
+		LongRef result = communicator.getTypeOf(ref);
+
 		writeThreadResponse(out, STUDENT_FINISHED);
-		out.writeUTF(communicator.getClassname(ref));
+		writeRef(out, result);
 	}
 
-	private void respondGetSuperclass(DataInput in, DataOutput out) throws IOException
+	private void respondDescribeType(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
+
+		StudentSideTypeDescription<LongRef> result = communicator.describeType(type);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		out.writeUTF(communicator.getSuperclass(cn));
+
+		out.writeByte(result.kind().encode());
+
+		out.writeUTF(result.name());
+
+		writeRef(out, result.superclass().orElse(null));
+
+		int superinterfacesCount = result.superinterfaces().size();
+		out.writeInt(superinterfacesCount);
+		// index-based iteration to defend against botched List implementations
+		for(int i = 0; i < superinterfacesCount; i ++)
+			writeRef(out, result.superinterfaces().get(i));
+
+		writeRef(out, result.componentTypeIfArray().orElse(null));
 	}
 
-	private void respondGetInterfaces(DataInput in, DataOutput out) throws IOException
+	private void respondNewArray(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef componentType = readRef(in);
+		int length = in.readInt();
 
-		List<String> interfaces = communicator.getInterfaces(cn);
+		LongRef result = communicator.newArray(componentType, length);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		out.writeInt(interfaces.size());
-		for(String interfaceCn : interfaces)
-			out.writeUTF(interfaceCn);
+		writeRef(out, result);
+	}
+
+	private void respondNewMultiArray(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef componentType = readRef(in);
+
+		int dimensionsSize = in.readInt();
+		Integer[] dimensions = new Integer[dimensionsSize];
+		for(int i = 0; i < dimensionsSize; i ++)
+			dimensions[i] = in.readInt();
+
+		LongRef result = communicator.newMultiArray(componentType, List.of(dimensions));
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
 	}
 
 	private void respondCallConstructor(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		Args args = readArgs(in);
 
-		RefOrError<LongRef> result = communicator.callConstructor(cn, args.params(), args.argRefs());
+		RefOrError<LongRef> result = communicator.callConstructor(type, args.params(), args.argRefs());
 
 		writeResponseAndRef(out, result);
 	}
 
 	private void respondCallStaticMethod(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String returnClassname = in.readUTF();
+		LongRef returnType = readRef(in);
 		Args args = readArgs(in);
 
-		RefOrError<LongRef> result = communicator.callStaticMethod(cn, name, returnClassname, args.params(), args.argRefs());
+		RefOrError<LongRef> result = communicator.callStaticMethod(type, name, returnType, args.params(), args.argRefs());
 
 		writeResponseAndRef(out, result);
 	}
 	private void respondGetStaticField(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String fieldClassname = in.readUTF();
+		LongRef fieldType = readRef(in);
 
-		LongRef result = communicator.getStaticField(cn, name, fieldClassname);
+		LongRef result = communicator.getStaticField(type, name, fieldType);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
 	}
 	private void respondSetStaticField(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String fieldClassname = in.readUTF();
+		LongRef fieldType = readRef(in);
 		LongRef valueRef = readRef(in);
 
-		communicator.setStaticField(cn, name, fieldClassname, valueRef);
+		communicator.setStaticField(type, name, fieldType, valueRef);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 	}
 
 	private void respondCallInstanceMethod(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String returnClassname = in.readUTF();
+		LongRef returnType = readRef(in);
 		Args args = readArgs(in);
 		LongRef receiverRef = readRef(in);
 
-		RefOrError<LongRef> result = communicator.callInstanceMethod(cn, name, returnClassname, args.params(), receiverRef, args.argRefs());
+		RefOrError<LongRef> result = communicator.callInstanceMethod(type, name, returnType, args.params(), receiverRef, args.argRefs());
 
 		writeResponseAndRef(out, result);
 	}
 	private void respondGetInstanceField(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String fieldClassname = in.readUTF();
+		LongRef fieldType = readRef(in);
 		LongRef receiverRef = readRef(in);
 
-		LongRef result = communicator.getInstanceField(cn, name, fieldClassname, receiverRef);
+		LongRef result = communicator.getInstanceField(type, name, fieldType, receiverRef);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
 	}
 	private void respondSetInstanceField(DataInput in, DataOutput out) throws IOException
 	{
-		String cn = in.readUTF();
+		LongRef type = readRef(in);
 		String name = in.readUTF();
-		String fieldClassname = in.readUTF();
+		LongRef fieldType = readRef(in);
 		LongRef receiverRef = readRef(in);
 		LongRef valueRef = readRef(in);
 
-		communicator.setInstanceField(cn, name, fieldClassname, receiverRef, valueRef);
-
-		writeThreadResponse(out, STUDENT_FINISHED);
-	}
-
-	private void respondCreateCallbackInstance(DataInput in, DataOutput out) throws IOException
-	{
-		LongRef callbackRef = readRef(in);
-		String interfaceCn = in.readUTF();
-
-		communicator.getCallbackManager().createCallbackInstance(callbackRef, interfaceCn);
+		communicator.setInstanceField(type, name, fieldType, receiverRef, valueRef);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 	}
@@ -322,6 +371,16 @@ public class DataCommunicatorServer
 		out.flush();
 		communicator.getTransceiver().receive(serdesRef, objRef, serdesOut);
 		serdesOut.flush();
+	}
+
+	private void respondCreateCallbackInstance(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef callbackRef = readRef(in);
+		String interfaceCn = in.readUTF();
+
+		communicator.getCallbackManager().createCallbackInstance(callbackRef, interfaceCn);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
 	}
 
 	private void respondNewThread(MultiplexedDataInputStream commandIn) throws ClosedException, IOException
@@ -358,7 +417,7 @@ public class DataCommunicatorServer
 			throw new IllegalStateException("Exercise side didn't respond with " + EXERCISE_FINISHED);
 		return in.readUTF();
 	}
-	private RefOrError<LongRef> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+	private RefOrError<LongRef> callCallbackInstanceMethod(LongRef type, String name, LongRef returnType, List<LongRef> params,
 			LongRef receiverRef, List<LongRef> argRefs) throws IOException
 	{
 		ExerciseSideThread exerciseSideThread = getExerciseSideThread();
@@ -366,9 +425,9 @@ public class DataCommunicatorServer
 		DataOutputStream out = exerciseSideThread.out();
 
 		writeThreadResponse(out, CALL_CALLBACK_INSTANCE_METHOD);
-		out.writeUTF(cn);
+		writeRef(out, type);
 		out.writeUTF(name);
-		out.writeUTF(returnClassname);
+		writeRef(out, returnType);
 		writeArgs(out, params, argRefs);
 		writeRef(out, receiverRef);
 
@@ -392,7 +451,7 @@ public class DataCommunicatorServer
 	{
 		return DataCommunicatorUtils.readArgs(in, this::readRef);
 	}
-	private void writeArgs(DataOutput out, List<String> params, List<LongRef> argRefs) throws IOException
+	private void writeArgs(DataOutput out, List<LongRef> params, List<LongRef> argRefs) throws IOException
 	{
 		DataCommunicatorUtils.writeArgs(out, params, argRefs, IllegalArgumentException::new, this::writeRef);
 	}

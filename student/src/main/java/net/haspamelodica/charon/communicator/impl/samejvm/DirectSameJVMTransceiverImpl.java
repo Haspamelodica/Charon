@@ -5,9 +5,9 @@ import net.haspamelodica.charon.communicator.Transceiver;
 
 public abstract class DirectSameJVMTransceiverImpl implements Transceiver
 {
-	protected final StudentSideCommunicatorCallbacks<Object> callbacks;
+	protected final StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks;
 
-	protected DirectSameJVMTransceiverImpl(StudentSideCommunicatorCallbacks<Object> callbacks)
+	protected DirectSameJVMTransceiverImpl(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
 	{
 		this.callbacks = callbacks;
 	}

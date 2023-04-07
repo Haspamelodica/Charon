@@ -8,6 +8,7 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 
@@ -16,32 +17,37 @@ public class RefTranslatorCommunicator<
 		TC_TO extends Transceiver,
 		CM_TO extends CallbackManager,
 		REF_FROM,
+		TYPEREF_FROM extends REF_FROM,
 		TC_FROM extends Transceiver>
-		implements StudentSideCommunicator<REF_TO, TC_TO, CM_TO>
+		implements StudentSideCommunicator<REF_TO, REF_TO, TC_TO, CM_TO>
 {
-	private final StudentSideCommunicator<REF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
-	private final RefTranslator<REF_TO, REF_FROM>																	translator;
+	private final StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
+	private final RefTranslator<REF_TO, REF_FROM>																					translator;
 
 	private final boolean storeRefsIdentityBased;
 
 	private final TC_TO	transceiver;
 	private final CM_TO	callbackManager;
 
-	public RefTranslatorCommunicator(UninitializedStudentSideCommunicator<REF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
+	public RefTranslatorCommunicator(
+			UninitializedStudentSideCommunicator<REF_FROM, TYPEREF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
 			boolean storeRefsIdentityBased,
-			RefTranslatorCommunicatorCallbacks<REF_TO> callbacks,
-			BiFunction<StudentSideCommunicator<REF_FROM, ? extends TC_FROM,
+			StudentSideCommunicatorCallbacks<REF_TO, REF_TO> callbacks,
+			RefTranslatorCommunicatorCallbacks<REF_TO> refTranslatorCommunicatorCallbacks,
+			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
 					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver,
-			BiFunction<StudentSideCommunicator<REF_FROM, ? extends TC_FROM,
+			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
 					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
 	{
 		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
 		{
 			@Override
-			public RefOrError<REF_FROM> callCallbackInstanceMethod(String cn, String name, String returnClassname, List<String> params,
+			public RefOrError<REF_FROM> callCallbackInstanceMethod(TYPEREF_FROM type, String name, TYPEREF_FROM returnType, List<TYPEREF_FROM> params,
 					REF_FROM receiverRef, List<REF_FROM> argRefs)
 			{
-				return translator.translateFrom(callbacks.callCallbackInstanceMethod(cn, name, returnClassname, params,
+				return translator.translateFrom(callbacks.callCallbackInstanceMethod(translator.translateTo(type), name,
+						translator.translateTo(returnType),
+						translator.translateTo(params),
 						translator.translateTo(receiverRef), translator.translateTo(argRefs)));
 			}
 
@@ -58,7 +64,8 @@ public class RefTranslatorCommunicator<
 			@Override
 			public REF_TO createForwardRef(REF_FROM untranslatedRef)
 			{
-				return callbacks.createForwardRef(new UntranslatedRef<>(RefTranslatorCommunicator.this.communicator, untranslatedRef));
+				return refTranslatorCommunicatorCallbacks.createForwardRef(
+						new UntranslatedRef<>(RefTranslatorCommunicator.this.communicator, untranslatedRef));
 			}
 
 			@Override
@@ -78,56 +85,83 @@ public class RefTranslatorCommunicator<
 		return storeRefsIdentityBased;
 	}
 
+
 	@Override
-	public String getClassname(REF_TO ref)
+	public REF_TO getTypeByName(String typeName)
 	{
-		return communicator.getClassname(translator.translateFrom(ref));
+		return translator.translateTo(communicator.getTypeByName(typeName));
 	}
 	@Override
-	public String getSuperclass(String cn)
+	public REF_TO getArrayType(REF_TO componentType)
 	{
-		return communicator.getSuperclass(cn);
+		return translator.translateTo(communicator.getArrayType(translateTypeFrom(componentType)));
 	}
 	@Override
-	public List<String> getInterfaces(String cn)
+	public REF_TO getTypeOf(REF_TO ref)
 	{
-		return communicator.getInterfaces(cn);
+		return translator.translateTo(communicator.getTypeOf(translator.translateFrom(ref)));
 	}
 	@Override
-	public RefOrError<REF_TO> callConstructor(String cn, List<String> params, List<REF_TO> argRefs)
+	public StudentSideTypeDescription<REF_TO> describeType(REF_TO type)
 	{
-		return translator.translateTo(communicator.callConstructor(cn, params, translator.translateFrom(argRefs)));
+		StudentSideTypeDescription<TYPEREF_FROM> untranslatedResult = communicator.describeType(translateTypeFrom(type));
+		return new StudentSideTypeDescription<>(
+				untranslatedResult.kind(),
+				untranslatedResult.name(),
+				untranslatedResult.superclass().map(translator::translateTo),
+				untranslatedResult.superinterfaces().stream().map(translator::translateTo).toList(),
+				untranslatedResult.componentTypeIfArray().map(translator::translateTo));
 	}
 	@Override
-	public RefOrError<REF_TO> callStaticMethod(String cn, String name, String returnClassname, List<String> params, List<REF_TO> argRefs)
+	public REF_TO newArray(REF_TO componentType, int length)
 	{
-		return translator.translateTo(communicator.callStaticMethod(cn, name, returnClassname, params, translator.translateFrom(argRefs)));
+		return translator.translateTo(communicator.newArray(translateTypeFrom(componentType), length));
 	}
 	@Override
-	public REF_TO getStaticField(String cn, String name, String fieldClassname)
+	public REF_TO newMultiArray(REF_TO componentType, List<Integer> dimensions)
 	{
-		return translator.translateTo(communicator.getStaticField(cn, name, fieldClassname));
+		return translator.translateTo(communicator.newMultiArray(translateTypeFrom(componentType), dimensions));
 	}
 	@Override
-	public void setStaticField(String cn, String name, String fieldClassname, REF_TO valueRef)
+	public RefOrError<REF_TO> callConstructor(REF_TO type, List<REF_TO> params, List<REF_TO> argRefs)
 	{
-		communicator.setStaticField(cn, name, fieldClassname, translator.translateFrom(valueRef));
+		return translator.translateTo(communicator.callConstructor(translateTypeFrom(type), translateTypeFrom(params),
+				translator.translateFrom(argRefs)));
 	}
 	@Override
-	public RefOrError<REF_TO> callInstanceMethod(String cn, String name, String returnClassname, List<String> params, REF_TO receiverRef, List<REF_TO> argRefs)
+	public RefOrError<REF_TO> callStaticMethod(REF_TO type, String name, REF_TO returnType, List<REF_TO> params, List<REF_TO> argRefs)
 	{
-		return translator.translateTo(communicator.callInstanceMethod(cn, name, returnClassname, params,
-				translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));
+		return translator.translateTo(communicator.callStaticMethod(translateTypeFrom(type), name, translateTypeFrom(returnType),
+				translateTypeFrom(params), translator.translateFrom(argRefs)));
 	}
 	@Override
-	public REF_TO getInstanceField(String cn, String name, String fieldClassname, REF_TO receiverRef)
+	public REF_TO getStaticField(REF_TO type, String name, REF_TO fieldType)
 	{
-		return translator.translateTo(communicator.getInstanceField(cn, name, fieldClassname, translator.translateFrom(receiverRef)));
+		return translator.translateTo(communicator.getStaticField(translateTypeFrom(type), name, translateTypeFrom(fieldType)));
 	}
 	@Override
-	public void setInstanceField(String cn, String name, String fieldClassname, REF_TO receiverRef, REF_TO valueRef)
+	public void setStaticField(REF_TO type, String name, REF_TO fieldType, REF_TO valueRef)
 	{
-		communicator.setInstanceField(cn, name, fieldClassname, translator.translateFrom(receiverRef), translator.translateFrom(valueRef));
+		communicator.setStaticField(translateTypeFrom(type), name, translateTypeFrom(fieldType), translator.translateFrom(valueRef));
+	}
+	@Override
+	public RefOrError<REF_TO> callInstanceMethod(REF_TO type, String name, REF_TO returnType,
+			List<REF_TO> params, REF_TO receiverRef, List<REF_TO> argRefs)
+	{
+		return translator.translateTo(communicator.callInstanceMethod(translateTypeFrom(type), name, translateTypeFrom(returnType),
+				translateTypeFrom(params), translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));
+	}
+	@Override
+	public REF_TO getInstanceField(REF_TO type, String name, REF_TO fieldType, REF_TO receiverRef)
+	{
+		return translator.translateTo(communicator.getInstanceField(translateTypeFrom(type), name, translateTypeFrom(fieldType),
+				translator.translateFrom(receiverRef)));
+	}
+	@Override
+	public void setInstanceField(REF_TO type, String name, REF_TO fieldType, REF_TO receiverRef, REF_TO valueRef)
+	{
+		communicator.setInstanceField(translateTypeFrom(type), name, translateTypeFrom(fieldType),
+				translator.translateFrom(receiverRef), translator.translateFrom(valueRef));
 	}
 
 	@Override
@@ -140,5 +174,16 @@ public class RefTranslatorCommunicator<
 	public CM_TO getCallbackManager()
 	{
 		return callbackManager;
+	}
+
+	private List<TYPEREF_FROM> translateTypeFrom(List<REF_TO> types)
+	{
+		return types.stream().map(this::translateTypeFrom).toList();
+	}
+
+	@SuppressWarnings("unchecked") // ensured by caller
+	private TYPEREF_FROM translateTypeFrom(REF_TO type)
+	{
+		return (TYPEREF_FROM) translator.translateFrom(type);
 	}
 }

@@ -17,7 +17,7 @@ import java.util.concurrent.Semaphore;
 
 import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
-import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
+import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 
 public class ExampleExerciseClient
@@ -51,7 +51,7 @@ public class ExampleExerciseClient
 	private static void runDirect()
 	{
 		run(new StudentSideImpl<>(
-				maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger(),
+				maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
 						createDirectCommClient())));
 	}
 
@@ -66,7 +66,7 @@ public class ExampleExerciseClient
 				{
 					serverConnected.release();
 					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
-							maybeWrapLoggingExtServer(LOGGING, new CommunicationLogger("SERVER: "),
+							maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: "),
 									wrapReftransExtServer(
 											createDirectCommServer())));
 					server.run();
@@ -82,7 +82,7 @@ public class ExampleExerciseClient
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
-			run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger("CLIENT: "), client)));
+			run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: "), client)));
 			client.shutdown();
 		}
 	}
@@ -95,7 +95,7 @@ public class ExampleExerciseClient
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLogger(), client)));
+				run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT, client)));
 			} finally
 			{
 				client.shutdown();

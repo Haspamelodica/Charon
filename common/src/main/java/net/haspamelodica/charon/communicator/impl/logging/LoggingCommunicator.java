@@ -81,7 +81,7 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	@Override
 	public REF newArray(TYPEREF componentType, int length)
 	{
-		logger.logEnter("newarray " + t(componentType) + " " + length);
+		logger.logEnter("newarray " + t(componentType) + "[" + length + "]");
 		REF result = communicator.newArray(componentType, length);
 		logger.logExit(result);
 		return result;
@@ -90,10 +90,36 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	@Override
 	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions)
 	{
-		logger.logEnter("newarray " + t(componentType) + " " + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining(", ")));
+		logger.logEnter("newarray " + t(componentType) + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining("][", "[", "]")));
 		REF result = communicator.newMultiArray(componentType, dimensions);
 		logger.logExit(result);
 		return result;
+	}
+
+	@Override
+	public int getArrayLength(REF arrayRef)
+	{
+		logger.logEnter("array length " + arrayRef);
+		int result = communicator.getArrayLength(arrayRef);
+		logger.logExit(result);
+		return result;
+	}
+
+	@Override
+	public REF getArrayElement(REF arrayRef, int index)
+	{
+		logger.logEnter("get array " + arrayRef + "[" + index + "]");
+		REF result = communicator.getArrayElement(arrayRef, index);
+		logger.logExit(result);
+		return result;
+	}
+
+	@Override
+	public void setArrayElement(REF arrayRef, int index, REF valueRef)
+	{
+		logger.logEnter("set array " + arrayRef + "[" + index + "] = " + valueRef);
+		communicator.setArrayElement(arrayRef, index, valueRef);
+		logger.logExit();
 	}
 
 	@Override

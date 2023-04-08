@@ -30,15 +30,31 @@ public class ReflectionUtils
 	private static final Map<String, Class<?>>	PRIMITIVE_CLASSES_BY_NAME	= PRIMITIVE_CLASSES.stream()
 			.collect(Collectors.toUnmodifiableMap(Class::getName, c -> c));
 
-	@SuppressWarnings("unchecked")
-	public static <T> T[] newArray(Class<T> componentClass, int length)
+	public static Object newArray(Class<?> componentClass, int length)
 	{
-		return (T[]) Array.newInstance(componentClass, length);
+		// Don't try to cast to T[] (where T is the type argument to componentClass):
+		// If componentClass is primitive, the resulting primitive array won't be an instance of Object[].
+		return Array.newInstance(componentClass, length);
 	}
 
 	public static Object newMultiArray(Class<?> componentClass, List<Integer> dimensions)
 	{
 		return Array.newInstance(componentClass, dimensions.stream().mapToInt(i -> i).toArray());
+	}
+
+	public static int getArrayLength(Object array)
+	{
+		return Array.getLength(array);
+	}
+
+	public static Object getArrayElement(Object array, int index)
+	{
+		return Array.get(array, index);
+	}
+
+	public static void setArrayElement(Object array, int index, Object value)
+	{
+		Array.set(array, index, value);
 	}
 
 	public static <T> T callConstructor(Class<T> clazz, List<Class<?>> paramTypes, List<Object> args) throws ExceptionInTargetException

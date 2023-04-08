@@ -7,14 +7,18 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.CREA
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.DESCRIBE_TYPE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_ERROR;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.EXERCISE_FINISHED;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_ARRAY_ELEMENT;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_ARRAY_LENGTH;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_ARRAY_TYPE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_STATIC_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_BY_NAME;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_OF;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_ARRAY;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_MULTI_ARRAY;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.RECEIVE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SEND;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_ARRAY_ELEMENT;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_INSTANCE_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SET_STATIC_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand.NEW_THREAD;
@@ -179,7 +183,7 @@ public class DataCommunicatorClient
 	@Override
 	public LongRef newMultiArray(LongRef componentType, List<Integer> dimensions)
 	{
-		return executeRefCommand(NEW_ARRAY, DISALLOW_CALLBACKS, out ->
+		return executeRefCommand(NEW_MULTI_ARRAY, DISALLOW_CALLBACKS, out ->
 		{
 			writeRef(out, componentType);
 
@@ -188,6 +192,33 @@ public class DataCommunicatorClient
 			// index-based iteration to defend against botched List implementations
 			for(int i = 0; i < dimensionsSize; i ++)
 				out.writeInt(dimensions.get(i));
+		});
+	}
+
+	@Override
+	public int getArrayLength(LongRef arrayRef)
+	{
+		return executeCommand(GET_ARRAY_LENGTH, DISALLOW_CALLBACKS, out -> writeRef(out, arrayRef), DataInput::readInt);
+	}
+
+	@Override
+	public LongRef getArrayElement(LongRef arrayRef, int index)
+	{
+		return executeRefCommand(GET_ARRAY_ELEMENT, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, arrayRef);
+			out.writeInt(index);
+		});
+	}
+
+	@Override
+	public void setArrayElement(LongRef arrayRef, int index, LongRef valueRef)
+	{
+		executeVoidCommand(SET_ARRAY_ELEMENT, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, arrayRef);
+			out.writeInt(index);
+			writeRef(out, valueRef);
 		});
 	}
 

@@ -70,6 +70,21 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		return communicator.newMultiArray(componentType, dimensions);
 	}
 	@Override
+	public int getArrayLength(REF arrayRef)
+	{
+		return communicator.getArrayLength(arrayRef);
+	}
+	@Override
+	public REF getArrayElement(REF arrayRef, int index)
+	{
+		return communicator.getArrayElement(arrayRef, index);
+	}
+	@Override
+	public void setArrayElement(REF arrayRef, int index, REF valueRef)
+	{
+		communicator.setArrayElement(arrayRef, index, valueRef);
+	}
+	@Override
 	public RefOrError<REF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs)
 	{
 		return communicator.callConstructor(type, params, argRefs);

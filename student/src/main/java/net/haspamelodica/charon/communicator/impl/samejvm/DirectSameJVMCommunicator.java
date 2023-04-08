@@ -82,6 +82,24 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
+	public int getArrayLength(Object arrayRef)
+	{
+		return ReflectionUtils.getArrayLength(arrayRef);
+	}
+
+	@Override
+	public Object getArrayElement(Object arrayRef, int index)
+	{
+		return ReflectionUtils.getArrayElement(arrayRef, index);
+	}
+
+	@Override
+	public void setArrayElement(Object arrayRef, int index, Object valueRef)
+	{
+		ReflectionUtils.setArrayElement(arrayRef, index, valueRef);
+	}
+
+	@Override
 	public RefOrError<Object> callConstructor(Class<?> type, List<Class<?>> params, List<Object> argRefs)
 	{
 		return handleTargetExceptions(() -> ReflectionUtils.callConstructor(type, params, argRefs));

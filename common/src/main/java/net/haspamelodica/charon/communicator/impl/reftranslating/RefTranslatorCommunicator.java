@@ -123,6 +123,21 @@ public class RefTranslatorCommunicator<
 		return translator.translateTo(communicator.newMultiArray(translateTypeFrom(componentType), dimensions));
 	}
 	@Override
+	public int getArrayLength(REF_TO arrayRef)
+	{
+		return communicator.getArrayLength(translator.translateFrom(arrayRef));
+	}
+	@Override
+	public REF_TO getArrayElement(REF_TO arrayRef, int index)
+	{
+		return translator.translateTo(communicator.getArrayElement(translator.translateFrom(arrayRef), index));
+	}
+	@Override
+	public void setArrayElement(REF_TO arrayRef, int index, REF_TO valueRef)
+	{
+		communicator.setArrayElement(translator.translateFrom(arrayRef), index, translator.translateFrom(valueRef));
+	}
+	@Override
 	public RefOrError<REF_TO> callConstructor(REF_TO type, List<REF_TO> params, List<REF_TO> argRefs)
 	{
 		return translator.translateTo(communicator.callConstructor(translateTypeFrom(type), translateTypeFrom(params),

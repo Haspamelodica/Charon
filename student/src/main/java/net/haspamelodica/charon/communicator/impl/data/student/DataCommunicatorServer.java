@@ -156,6 +156,9 @@ public class DataCommunicatorServer
 					case DESCRIBE_TYPE -> respondDescribeType(in, out);
 					case NEW_ARRAY -> respondNewArray(in, out);
 					case NEW_MULTI_ARRAY -> respondNewMultiArray(in, out);
+					case GET_ARRAY_LENGTH -> respondGetArrayLength(in, out);
+					case GET_ARRAY_ELEMENT -> respondGetArrayElement(in, out);
+					case SET_ARRAY_ELEMENT -> respondSetArrayElement(in, out);
 					case CALL_CONSTRUCTOR -> respondCallConstructor(in, out);
 					case CALL_STATIC_METHOD -> respondCallStaticMethod(in, out);
 					case GET_STATIC_FIELD -> respondGetStaticField(in, out);
@@ -267,6 +270,38 @@ public class DataCommunicatorServer
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
+	}
+
+	private void respondGetArrayLength(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef arrayRef = readRef(in);
+
+		int result = communicator.getArrayLength(arrayRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		out.writeInt(result);
+	}
+
+	private void respondGetArrayElement(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef arrayRef = readRef(in);
+		int index = in.readInt();
+
+		LongRef result = communicator.getArrayElement(arrayRef, index);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
+	}
+
+	private void respondSetArrayElement(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef arrayRef = readRef(in);
+		int index = in.readInt();
+		LongRef valueRef = readRef(in);
+
+		communicator.setArrayElement(arrayRef, index, valueRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
 	}
 
 	private void respondCallConstructor(DataInput in, DataOutput out) throws IOException

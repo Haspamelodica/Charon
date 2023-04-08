@@ -13,7 +13,9 @@ public interface StudentSideCommunicator<REF, TYPEREF extends REF, TC extends Tr
 
 	public REF newArray(TYPEREF componentType, int length);
 	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions);
-	//TODO get / set elements
+	public int getArrayLength(REF arrayRef);
+	public REF getArrayElement(REF arrayRef, int index);
+	public void setArrayElement(REF arrayRef, int index, REF valueRef);
 
 	public RefOrError<REF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs);
 

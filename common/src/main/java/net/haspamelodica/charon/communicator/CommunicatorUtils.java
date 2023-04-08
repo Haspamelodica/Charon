@@ -14,9 +14,36 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCo
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorExternalCallbackManagerImpl;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorInternalCallbackManagerImpl;
+import net.haspamelodica.charon.communicator.impl.typecaching.TypeCachingCommunicator;
 
 public class CommunicatorUtils
 {
+	public static <
+			REF_TO,
+			TC_TO extends Transceiver,
+			REF_FROM,
+			TYPEREF_FROM extends REF_FROM,
+			TC_FROM extends Transceiver,
+			CM_TO extends CallbackManager>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
+			wrapTypeCaching(RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO> supplier)
+	{
+		return (storeRefsIdentityBased, callbacks, refTranslatorCommunicatorCallbacks) -> new TypeCachingCommunicator<>(
+				supplier.createCommunicator(storeRefsIdentityBased, callbacks, refTranslatorCommunicatorCallbacks));
+	}
+	public static <REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF, TYPEREF, TC, CM>
+			wrapTypeCaching(UninitializedStudentSideCommunicator<REF, TYPEREF, TC, CM> communicator)
+	{
+		return callbacks -> new TypeCachingCommunicator<>(communicator.initialize(callbacks));
+	}
+	public static <REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
+			StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM>
+			wrapTypeCaching(StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM> communicator)
+	{
+		return new TypeCachingCommunicator<>(communicator);
+	}
+
 	public static <
 			REF_TO,
 			TC_TO extends Transceiver,

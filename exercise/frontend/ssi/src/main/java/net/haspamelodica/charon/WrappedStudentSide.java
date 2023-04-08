@@ -1,6 +1,7 @@
 package net.haspamelodica.charon;
 
 import static net.haspamelodica.charon.communicator.ClientSideCommunicatorUtils.maybeWrapLoggingIntClient;
+import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCaching;
 
 import java.io.IOException;
 
@@ -25,7 +26,9 @@ public class WrappedStudentSide implements AutoCloseable
 		WrappedCommunicator communicator = new WrappedCommunicator(communication);
 		this.communicator = communicator;
 		this.studentSide = new StudentSideImpl<>(
-				maybeWrapLoggingIntClient(communication.getLogging(), CommunicationLoggerParams.DEFAULT, communicator.getClient()));
+				wrapTypeCaching(
+						maybeWrapLoggingIntClient(communication.getLogging(), CommunicationLoggerParams.DEFAULT,
+								communicator.getClient())));
 	}
 
 	public StudentSide getStudentSide()

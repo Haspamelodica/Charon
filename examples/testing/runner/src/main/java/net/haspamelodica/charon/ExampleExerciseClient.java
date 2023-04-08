@@ -3,6 +3,7 @@ package net.haspamelodica.charon;
 import static net.haspamelodica.charon.ExampleExercise.run;
 import static net.haspamelodica.charon.communicator.ClientSideCommunicatorUtils.maybeWrapLoggingIntClient;
 import static net.haspamelodica.charon.communicator.ClientSideSameJVMCommunicatorUtils.createDirectCommClient;
+import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCaching;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.maybeWrapLoggingExtServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
@@ -51,8 +52,9 @@ public class ExampleExerciseClient
 	private static void runDirect()
 	{
 		run(new StudentSideImpl<>(
-				maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
-						createDirectCommClient())));
+				wrapTypeCaching(
+						maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
+								createDirectCommClient()))));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -66,9 +68,10 @@ public class ExampleExerciseClient
 				{
 					serverConnected.release();
 					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
-							maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: "),
-									wrapReftransExtServer(
-											createDirectCommServer())));
+							wrapTypeCaching(
+									maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: "),
+											wrapReftransExtServer(
+													createDirectCommServer()))));
 					server.run();
 				} catch(IOException e)
 				{
@@ -82,7 +85,10 @@ public class ExampleExerciseClient
 			// wait for the server to create PipedOutputStreams
 			serverConnected.acquire();
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
-			run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: "), client)));
+			run(new StudentSideImpl<>(
+					wrapTypeCaching(
+							maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: "),
+									client))));
 			client.shutdown();
 		}
 	}
@@ -95,7 +101,10 @@ public class ExampleExerciseClient
 					sock.getInputStream(), sock.getOutputStream());
 			try
 			{
-				run(new StudentSideImpl<>(maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT, client)));
+				run(new StudentSideImpl<>(
+						wrapTypeCaching(
+								maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
+										client))));
 			} finally
 			{
 				client.shutdown();

@@ -1,5 +1,6 @@
 package net.haspamelodica.charon;
 
+import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCaching;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.maybeWrapLoggingExtServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
@@ -39,9 +40,10 @@ public class ExampleExerciseServer
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
 			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
-					maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT,
-							wrapReftransExtServer(
-									createDirectCommServer())));
+					wrapTypeCaching(
+							maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT,
+									wrapReftransExtServer(
+											createDirectCommServer()))));
 			server.run();
 		}
 

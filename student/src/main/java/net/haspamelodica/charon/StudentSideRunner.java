@@ -1,5 +1,6 @@
 package net.haspamelodica.charon;
 
+import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCaching;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.maybeWrapLoggingExtServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
@@ -36,9 +37,10 @@ public class StudentSideRunner
 	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
 	{
 		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
-				maybeWrapLoggingExtServer(logging, CommunicationLoggerParams.DEFAULT,
-						wrapReftransExtServer(
-								createDirectCommServer())));
+				wrapTypeCaching(
+						maybeWrapLoggingExtServer(logging, CommunicationLoggerParams.DEFAULT,
+								wrapReftransExtServer(
+										createDirectCommServer()))));
 		server.run();
 	}
 }

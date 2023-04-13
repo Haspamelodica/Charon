@@ -1,5 +1,6 @@
 package net.haspamelodica.charon.utils.maps;
 
+import java.util.Iterator;
 import java.util.Map;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
@@ -7,7 +8,7 @@ import java.util.stream.Stream;
 
 import net.haspamelodica.charon.utils.maps.suppliers.MapSupplier;
 
-public class UnidirectionalMapImpl<K, V> extends AbstractUnidirectionalMap<K, V>
+public class UnidirectionalMapImpl<K, V> extends AbstractUnidirectionalMap<K, V> implements UnidirectionalMapWithRemovalIterator<K, V>
 {
 	private final Map<K, V> map;
 
@@ -51,5 +52,33 @@ public class UnidirectionalMapImpl<K, V> extends AbstractUnidirectionalMap<K, V>
 	public Stream<Entry<K, V>> stream()
 	{
 		return map.entrySet().stream().map(e -> new Entry<>(e.getKey(), e.getValue()));
+	}
+
+	@Override
+	public Iterator<Entry<K, V>> iterator()
+	{
+		return new Iterator<>()
+		{
+			private final Iterator<java.util.Map.Entry<K, V>> iterator = map.entrySet().iterator();
+
+			@Override
+			public boolean hasNext()
+			{
+				return iterator.hasNext();
+			}
+
+			@Override
+			public Entry<K, V> next()
+			{
+				java.util.Map.Entry<K, V> entry = iterator.next();
+				return new Entry<>(entry.getKey(), entry.getValue());
+			}
+
+			@Override
+			public void remove()
+			{
+				iterator.remove();
+			}
+		};
 	}
 }

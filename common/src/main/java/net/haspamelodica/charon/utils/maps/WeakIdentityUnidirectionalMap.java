@@ -1,176 +1,221 @@
 package net.haspamelodica.charon.utils.maps;
 
+import java.lang.ref.ReferenceQueue;
 import java.lang.ref.WeakReference;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import java.util.function.BiPredicate;
 import java.util.function.Function;
-import java.util.function.Supplier;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-import net.haspamelodica.charon.utils.maps.suppliers.UnidirectionalMapSupplier;
+import net.haspamelodica.charon.utils.maps.suppliers.UnidirectionalMapWithRemovalIteratorSupplier;
 
-// Problem: If a WeakIdentityReference gets cleared, we can't even call hashCode and equals on it reliably.
-// For hashCode, we just cache the result, but for equals, that doesn't work.
-// Solution: Let equals throw an exception if one of the refs got cleared,
-// and then retry all operations as long as this exception is thrown.
-// TODO test this entire class!
 public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalMap<K, V>
 {
-	private final UnidirectionalMap<WeakIdentityReference<K>, V> map;
+	private final UnidirectionalMapWithRemovalIterator<Integer, List<WeakIdentityEntry<K, V>>> map;
 
-	public WeakIdentityUnidirectionalMap(UnidirectionalMapSupplier mapSupplier)
+	private final ReferenceQueue<K> refqueue;
+
+	public WeakIdentityUnidirectionalMap(UnidirectionalMapWithRemovalIteratorSupplier mapSupplier)
 	{
 		this.map = mapSupplier.createMap();
+		this.refqueue = new ReferenceQueue<>();
 	}
 
 	@Override
 	public boolean containsKey(K key)
 	{
-		Objects.requireNonNull(key);
-
-		return removeEmptyKeysAndWrapRefClearedException(() -> map.containsKey(new WeakIdentityReference<>(key)));
+		return checkAndDoMaintenanceAndLookupEntry(key, false).entryIfFound() != null;
 	}
 
 	@Override
 	public V get(K key)
 	{
-		Objects.requireNonNull(key);
-
-		return removeEmptyKeysAndWrapRefClearedException(() -> map.get(new WeakIdentityReference<>(key)));
+		FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound = checkAndDoMaintenanceAndLookupEntry(key, false).entryIfFound();
+		return entryIfFound != null ? entryIfFound.element().value() : null;
 	}
 
 	@Override
 	public V put(K key, V value)
 	{
-		Objects.requireNonNull(key);
+		LookupResult<K, V> lookupResult = checkAndDoMaintenanceAndLookupEntry(key, true);
 
-		return removeEmptyKeysAndWrapRefClearedException(() -> map.put(new WeakIdentityReference<>(key), value));
+		FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound = lookupResult.entryIfFound();
+		if(entryIfFound != null)
+			return lookupResult.entryIfFound().element().setValueAndGetOldValue(value);
+
+		lookupResult.entries().add(new WeakIdentityEntry<>(key, value, refqueue));
+		return null;
 	}
 
 	@Override
 	public V remove(K key)
 	{
-		Objects.requireNonNull(key);
+		FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound = checkAndDoMaintenanceAndLookupEntry(key, false).entryIfFound();
+		if(entryIfFound == null)
+			return null;
 
-		return removeEmptyKeysAndWrapRefClearedException(() -> map.remove(new WeakIdentityReference<>(key)));
+		entryIfFound.iterator().remove();
+		return entryIfFound.element().value();
 	}
 
 	@Override
 	public V computeIfAbsent(K key, Function<? super K, ? extends V> mappingFunction)
 	{
-		Objects.requireNonNull(key);
+		LookupResult<K, V> lookupResult = checkAndDoMaintenanceAndLookupEntry(key, true);
 
-		return removeEmptyKeysAndWrapRefClearedException(() -> map
-				.computeIfAbsent(new WeakIdentityReference<>(key), r -> mappingFunction.apply(key)));
+		FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound = lookupResult.entryIfFound();
+		if(entryIfFound != null)
+			return lookupResult.entryIfFound().element().value();
+
+		V value = mappingFunction.apply(key);
+		lookupResult.entries().add(new WeakIdentityEntry<>(key, value, refqueue));
+		return value;
 	}
+
+	private LookupResult<K, V> checkAndDoMaintenanceAndLookupEntry(K key, boolean createEntriesListIfAbsent)
+	{
+		Objects.requireNonNull(key);
+		removeClearedKeys();
+
+		int hashCode = System.identityHashCode(key);
+
+		List<WeakIdentityEntry<K, V>> entries = createEntriesListIfAbsent
+				? map.computeIfAbsent(hashCode, h -> new ArrayList<>())
+				: map.get(hashCode);
+
+		if(entries == null)
+			return new LookupResult<>(null, null);
+
+		FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound = findFirstMatching(entries, e -> e.refersToKey(key));
+		return new LookupResult<>(entryIfFound, entries);
+	}
+	private static record LookupResult<K, V>(FirstMatchingResult<WeakIdentityEntry<K, V>> entryIfFound, List<WeakIdentityEntry<K, V>> entries)
+	{}
 
 	@Override
 	public void removeIf(BiPredicate<K, V> removalPredicate)
 	{
-		removeEmptyKeysAndWrapRefClearedException(() -> map
-				.removeIf((kRef, v) ->
-				{
-					K k = kRef.getOrNull();
-					if(k == null)
-						return true;
-					return removalPredicate.test(k, v);
-				}));
+		Objects.requireNonNull(removalPredicate);
+		removeClearedKeys();
+
+		for(Iterator<Entry<Integer, List<WeakIdentityEntry<K, V>>>> iteratorPerHashCode = map.iterator(); iteratorPerHashCode.hasNext();)
+		{
+			List<WeakIdentityEntry<K, V>> entries = iteratorPerHashCode.next().value();
+			for(Iterator<WeakIdentityEntry<K, V>> iteratorPerEntry = entries.iterator(); iteratorPerEntry.hasNext();)
+			{
+				WeakIdentityEntry<K, V> entry = iteratorPerEntry.next();
+				K key = entry.getKeyOrNull();
+				if(key == null)
+					iteratorPerEntry.remove();
+				else if(removalPredicate.test(key, entry.value()))
+					iteratorPerEntry.remove();
+			}
+			if(entries.isEmpty())
+				iteratorPerHashCode.remove();
+		}
 	}
 
 	@Override
 	public Stream<Entry<K, V>> stream()
 	{
-		// We need to avoid RefClearedExceptions being thrown by stream methods after this method returns,
-		// so we just make a copy of the entries to be sure the returned stream can't refer to the WeakIdentityReferences anymore.
-		return computeWithStream(Stream::toList).stream();
-	}
+		removeClearedKeys();
 
-	@Override
-	public <R> R computeWithStream(Function<Stream<Entry<K, V>>, R> function)
-	{
-		return removeEmptyKeysAndWrapRefClearedException(() -> function.apply(map
+		return map
 				.stream()
-				.map(e -> new Entry<>(e.key().getOrNull(), e.value()))
-				.filter(e -> e.key() != null)));
-	}
-
-	private void removeEmptyKeysAndWrapRefClearedException(Runnable action)
-	{
-		removeEmptyKeysAndWrapRefClearedException(() ->
-		{
-			action.run();
-			return null;
-		});
-	}
-	private <R> R removeEmptyKeysAndWrapRefClearedException(Supplier<R> action)
-	{
-		for(;;)
-			try
-			{
-				removeClearedKeys();
-				return action.get();
-			} catch(RefClearedException e)
-			{
-				// ignore and try again
-			}
+				.map(Entry::value)
+				.flatMap(List::stream)
+				.map(e -> new Entry<>(e.getKeyOrNull(), e.value()))
+				.filter(e -> e.key() != null);
 	}
 
 	private void removeClearedKeys()
 	{
-		// Can't use a refqueue because removing cleared WeakIdentityReferences from the map would probably cause
-		// calls to hashCode and/or equals on the cleared ref.
-		map.removeIf((k, v) -> k.isCleared());
+		for(;;)
+		{
+			@SuppressWarnings("unchecked") // we only create such refs with the given refqueue
+			WeakReferenceWithIdentityHashCode<K> clearedRef = (WeakReferenceWithIdentityHashCode<K>) refqueue.poll();
+			if(clearedRef == null)
+				break;
+
+			int hashCode = clearedRef.getReferentIdentityHashCode();
+			List<WeakIdentityEntry<K, V>> entries = map.get(hashCode);
+			FirstMatchingResult<WeakIdentityEntry<K, V>> clearedEntry = findFirstMatching(entries, e -> e.ref() == clearedRef);
+			if(clearedEntry != null)
+			{
+				clearedEntry.iterator().remove();
+				if(entries.isEmpty())
+					map.remove(hashCode);
+			}
+		}
 	}
 
-	private static class WeakIdentityReference<T>
+	private static <E> FirstMatchingResult<E> findFirstMatching(List<E> list, Predicate<E> predicate)
 	{
-		private final WeakReference<T>	ref;
-		private final int				hashCode;
-
-		public WeakIdentityReference(T t)
+		for(Iterator<E> iterator = list.iterator(); iterator.hasNext();)
 		{
-			this.ref = new WeakReference<>(t);
-			// We need cache this to avoid changing the reported hashCode if we get cleared
-			this.hashCode = System.identityHashCode(t);
+			E element = iterator.next();
+			if(predicate.test(element))
+				return new FirstMatchingResult<E>(element, iterator);
+		}
+		return null;
+	}
+	private static record FirstMatchingResult<E>(E element, Iterator<E> iterator)
+	{}
+
+	private static class WeakIdentityEntry<K, V>
+	{
+		private final WeakReferenceWithIdentityHashCode<K> ref;
+
+		private V value;
+
+		public WeakIdentityEntry(K key, V value, ReferenceQueue<? super K> refqueue)
+		{
+			this.ref = new WeakReferenceWithIdentityHashCode<>(key, refqueue);
+			this.value = value;
 		}
 
-		public boolean isCleared()
-		{
-			return ref.get() == null;
-		}
-
-		public T getOrNull()
+		public K getKeyOrNull()
 		{
 			return ref.get();
 		}
-		public T getOrThrow()
+		public V value()
 		{
-			T t = ref.get();
-			if(t == null)
-				throw new RefClearedException();
-			return t;
+			return value;
+		}
+		public WeakReferenceWithIdentityHashCode<K> ref()
+		{
+			return ref;
+		}
+		public boolean refersToKey(K key)
+		{
+			return ref.refersTo(key);
 		}
 
-		@Override
-		public int hashCode()
+		public V setValueAndGetOldValue(V value)
 		{
-			return hashCode;
-		}
-
-		@Override
-		public boolean equals(Object obj)
-		{
-			if(this == obj)
-				return true;
-			if(obj == null)
-				return false;
-			if(!(obj instanceof WeakIdentityReference<?> other))
-				return false;
-			// We need to throw if our ref is cleard to avoid changing the reported equality between objects
-			return this.getOrThrow() == other.getOrThrow();
+			V oldValue = this.value;
+			this.value = value;
+			return oldValue;
 		}
 	}
 
-	private static class RefClearedException extends RuntimeException
-	{}
+	private static class WeakReferenceWithIdentityHashCode<T> extends WeakReference<T>
+	{
+		private final int hashCode;
+
+		public WeakReferenceWithIdentityHashCode(T referent, ReferenceQueue<? super T> refqueue)
+		{
+			super(referent, refqueue);
+			this.hashCode = System.identityHashCode(referent);
+		}
+
+		public int getReferentIdentityHashCode()
+		{
+			return hashCode;
+		}
+	}
 }

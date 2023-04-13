@@ -136,7 +136,7 @@ public interface UnidirectionalMap<K, V>
 							? new UnidirectionalMapImpl<>(IdentityHashMap::new)
 							: buildDefault();
 		}
-		private <K, V> UnidirectionalMap<K, V> buildDefault()
+		private <K, V> UnidirectionalMapWithRemovalIterator<K, V> buildDefault()
 		{
 			return new UnidirectionalMapImpl<>(HashMap::new);
 		}

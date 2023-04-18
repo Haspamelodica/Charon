@@ -9,7 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Supplier;
 
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
@@ -23,6 +22,7 @@ import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
+import net.haspamelodica.charon.util.LazyValue;
 
 public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedException>
 {
@@ -120,6 +120,7 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		if(serdes != null)
 			return communicator.getTransceiver().send(serdes.studentSideSerDesRef().get(), serdes.serdes(), object);
 
+		// If the object isn't serializable, it must be a representation object.
 		return translateFrom(object);
 	}
 	public REF translateFrom(Object object)
@@ -226,31 +227,4 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 
 	private static record InitializedSerDes<REF, T>(SerDes<T> serdes, LazyValue<REF> studentSideSerDesRef)
 	{}
-
-	private static class LazyValue<V>
-	{
-		private final Supplier<V> createValue;
-
-		private volatile V value;
-
-		public LazyValue(Supplier<V> createValue)
-		{
-			this.createValue = createValue;
-		}
-
-		public V get()
-		{
-			if(value != null)
-				return value;
-
-			synchronized(this)
-			{
-				if(value != null)
-					return value;
-
-				value = createValue.get();
-				return value;
-			}
-		}
-	}
 }

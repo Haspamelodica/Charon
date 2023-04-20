@@ -6,9 +6,10 @@ import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
 /**
- * Each subinterface of {@link StudentSidePrototype} represents all static operations on one class to be written by the student.
- * This includes calling static methods, reading static fields, writing static fields, and calling constructors.
- * The operations are specified by annotating each method of a subinterface with {@link StudentSidePrototypeMethodKind}.
+ * Each subinterface of {@link StudentSidePrototype} represents all operations on one student-side type.
+ * For example, for classes this includes calling static methods, reading static fields, writing static fields, and calling constructors.
+ * Which kind of student-side operation corresponds to each method on the {@link StudentSidePrototype} is specified
+ * by annotating the methods with {@link StudentSidePrototypeMethodKind}.
  */
 public interface StudentSidePrototype<SI extends StudentSideInstance>
 {

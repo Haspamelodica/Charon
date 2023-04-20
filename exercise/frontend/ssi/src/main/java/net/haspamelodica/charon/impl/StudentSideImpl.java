@@ -1,10 +1,11 @@
 package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.getStudentSideName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.doChecked;
-import static net.haspamelodica.charon.reflection.ReflectionUtils.primitiveNameToClassOrThrow;
 
 import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
@@ -14,13 +15,13 @@ import java.util.stream.Stream;
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.StudentSideType;
 import net.haspamelodica.charon.annotations.SafeForCallByStudent;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedTyperef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
@@ -33,7 +34,7 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
-import net.haspamelodica.charon.marshaling.StudentSideType;
+import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
@@ -66,20 +67,15 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				new MarshalingCommunicatorCallbacks<REF, TYPEREF, Method, ThrowableSSI, StudentSideException>()
 				{
 					@Override
-					public Class<?> lookupLocalType(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
+					public TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 					{
-						return switch(untranslatedTyperef.describe().kind())
-						{
-							case CLASS, INTERFACE -> lookupPrototypeBuilder(untranslatedTyperef).instanceStudentSideType.localType();
-							case ARRAY -> throw new UnsupportedOperationException("Arrays aren't supported by the SSI frontend yet");
-							case PRIMITIVE -> primitiveNameToClassOrThrow(untranslatedTyperef.describe().name());
-						};
+						return StudentSideImpl.this.lookupCorrespondingStudentSideTypeForRepresentationClass(representationClass, throwIfNotFound);
 					}
 
 					@Override
-					public Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntranslatedRef<REF, TYPEREF> untranslatedRef)
+					public Object createRepresentationObject(UntranslatedRef<REF, TYPEREF> untranslatedRef)
 					{
-						return StudentSideImpl.this.createRepresentationObject(type, untranslatedRef);
+						return StudentSideImpl.this.createRepresentationObject(untranslatedRef);
 					}
 
 					@Override
@@ -89,10 +85,10 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 					}
 
 					@Override
-					public CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType,
-							Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
+					public CallbackMethod<Method> lookupCallbackInstanceMethod(TYPEREF receiverStaticType, String name, TYPEREF returnType, List<TYPEREF> params,
+							Class<?> receiverDynamicType)
 					{
-						return StudentSideImpl.this.lookupCallbackInstanceMethod(receiverStaticType, receiverDynamicType, name, returnType, params);
+						return StudentSideImpl.this.lookupCallbackInstanceMethod(receiverStaticType, name, returnType, params, receiverDynamicType);
 					}
 
 					@Override
@@ -109,9 +105,9 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 					}
 
 					@Override
-					public StudentSideException newStudentCausedException(ThrowableSSI studentSideThrowable)
+					public StudentSideException createStudentCausedException(ThrowableSSI studentSideThrowable)
 					{
-						return new StudentSideException(studentSideThrowable, globalMarshalingCommunicator.getTypeOf(studentSideThrowable).studentSideCN());
+						return new StudentSideException(studentSideThrowable, getStudentSideType(studentSideThrowable));
 					}
 				}, PrimitiveSerDes.PRIMITIVE_SERDESES);
 
@@ -150,19 +146,18 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				return prototypeIfExists;
 
 			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
-			Class<SI> instanceClass = prototypeBuilder.instanceStudentSideType.localType();
-			String studentSideCN = prototypeBuilder.instanceStudentSideType.studentSideCN();
+			Class<SI> instanceClass = prototypeBuilder.instanceClass;
+			String studentSideCN = prototypeBuilder.studentSideType.name();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
 				StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
-				Class<?> otherInstanceClass = otherPrototypeBuilder.instanceStudentSideType.localType();
-				if(otherInstanceClass.equals(instanceClass))
+				if(otherPrototypeBuilder.instanceClass.equals(instanceClass))
 					throw new InconsistentHierarchyException("Two prototype classes for " + instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
 				else
 					throw new InconsistentHierarchyException("Two student-side instance classes for " + studentSideCN + ": " +
-							instanceClass + " and " + otherPrototypeBuilder.instanceStudentSideType.localType());
+							instanceClass + " and " + otherPrototypeBuilder.instanceClass);
 			}
 
 			prototypeBuildersByPrototype.put(prototypeBuilder.prototype, prototypeBuilder);
@@ -175,35 +170,35 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	}
 
 	@Override
-	public String getStudentSideClassname(StudentSideInstance ssi)
+	public StudentSideType getStudentSideType(StudentSidePrototype<?> prototype)
 	{
-		return globalMarshalingCommunicator.getTypeOf(ssi).studentSideCN();
+		return prototypeBuildersByPrototype.get(prototype).studentSideType;
 	}
+
 	@Override
-	public String getStudentSideClassname(StudentSidePrototype<?> prototype)
+	public StudentSideType getStudentSideType(StudentSideInstance ssi)
 	{
-		return prototypeBuildersByPrototype.get(prototype).instanceStudentSideType.studentSideCN();
+		String studentSideClassname = globalMarshalingCommunicator.describeType(globalMarshalingCommunicator.getTypeOf(ssi)).name();
+		return prototypeBuildersByStudentSideClassname.get(studentSideClassname).studentSideType;
 	}
+
 	@Override
 	public boolean isInstance(StudentSidePrototype<?> prototype, StudentSideInstance ssi)
 	{
-		return prototypeBuildersByPrototype.get(prototype).instanceStudentSideType.localType().isInstance(ssi);
+		return prototypeBuildersByPrototype.get(prototype).instanceClass.isInstance(ssi);
 	}
+
 	@Override
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SI cast(SP prototype, StudentSideInstance ssi)
 	{
-		String prototypeStudentSideCn = getStudentSideClassname(prototype);
-
 		if(!isInstance(prototype, ssi))
 			throw new ExerciseCausedException("" +
-					"The given StudentSideInstance has student-side type " + getStudentSideClassname(ssi)
-					+ ", which is not an instance of student-side type " + prototypeStudentSideCn);
+					"The given StudentSideInstance has student-side type " + getStudentSideType(ssi).name()
+					+ ", which is not an instance of student-side type " + getStudentSideType(prototype).name());
 
-		@SuppressWarnings("unchecked")
-		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> studentSidePrototypeBuilder =
-				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototype.get(prototype);
-
-		return studentSidePrototypeBuilder.instanceStudentSideType.localType().cast(ssi);
+		@SuppressWarnings("unchecked") // we checked this by calling isInstance
+		SI ssiCasted = (SI) ssi;
+		return ssiCasted;
 	}
 
 	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP tryGetPrototype(Class<SP> prototypeClass)
@@ -215,9 +210,25 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return prototypeBuilderGeneric == null ? null : prototypeBuilderGeneric.prototype;
 	}
 
-	private Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntypedUntranslatedRef untranslatedRef)
+	private TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 	{
-		return prototypeBuildersByInstanceClass.get(type.localType()).instanceBuilder.createInstance();
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
+		if(prototypeBuilder != null)
+			return prototypeBuilder.studentSideType.getTyperef();
+
+		if(!throwIfNotFound)
+			return null;
+
+		if(StudentSideInstance.class.isAssignableFrom(representationClass))
+			//TODO this shouldn't be a requirement to exercise code.
+			throw new ExerciseCausedException("No prototype created for " + representationClass);
+
+		throw new ExerciseCausedException("Tried using class which is neither a " + StudentSideInstance.class + " nor serializable: " + representationClass);
+	}
+
+	private StudentSideInstance createRepresentationObject(UntypedUntranslatedRef untranslatedRef)
+	{
+		return lookupPrototypeBuilder(untranslatedRef.getType()).instanceBuilder.createInstance();
 	}
 
 	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
@@ -261,37 +272,71 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				//TODO try to support multiple callback interfaces
 				throw new FrameworkCausedException("Multiple student side classes for " + clazz);
 
-		return prototypeBuilders.get(0).instanceStudentSideType.studentSideCN();
+		return prototypeBuilders.get(0).studentSideType.name();
 	}
 
-	private CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType,
-			Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
+	private CallbackMethod<Method> lookupCallbackInstanceMethod(TYPEREF receiverStaticType, String name, TYPEREF returnType, List<TYPEREF> params,
+			Class<?> receiverDynamicType)
 	{
+		List<CallbackMethod<Method>> candidates = new ArrayList<>();
+		List<Method> unsafeCandidates = new ArrayList<>();
+
 		for(Method method : receiverDynamicType.getMethods())
 		{
-			if(!method.getName().equals(name))
+			List<Class<? extends SerDes<?>>> serdeses = getSerDeses(method);
+
+			MarshalingCommunicator<REF, TYPEREF, StudentSideException> methodWideMarshalingCommunicator =
+					globalMarshalingCommunicator.withAdditionalSerDeses(serdeses);
+			if(!getStudentSideName(method).equals(name))
 				continue;
-			if(method.getParameterCount() != params.size())
+			Class<?>[] actualParams = method.getParameterTypes();
+			Class<?> actualReturnType = method.getReturnType();
+			if(actualParams.length != params.size())
 				continue;
-			for(int i = 0; i < method.getParameterCount(); i ++)
-				if(!method.getParameterTypes()[i].equals(params.get(i).localType()))
+			// We have to compare TYPEREFs with == since they are REFs.
+			// There's no need for a separate null check on the result of lookup since the param types / return type given to us will always be non-null;
+			// so if a type can't be found, the corresponding check will fail, so the method won't be considered eligible.
+			for(int i = 0; i < actualParams.length; i ++)
+				if(methodWideMarshalingCommunicator.lookupCorrespondingStudentSideTypeOrNull(actualParams[i]) != params.get(i))
 					continue;
-			if(!method.getReturnType().equals(returnType.localType()))
+			if(methodWideMarshalingCommunicator.lookupCorrespondingStudentSideTypeOrNull(actualReturnType) != returnType)
+				//TODO do we want to skip this method, throw an error, or warn?
 				continue;
 
-			if(!method.isAnnotationPresent(SafeForCallByStudent.class))
-				throw new StudentSideCausedException("Student side attempted to call a callback method which is not allowed to be called as a callback: "
-						+ callbackMethodToString(receiverDynamicType, name, params));
-			return new CallbackMethod<>(getSerDeses(method), method);
+			if(method.isAnnotationPresent(SafeForCallByStudent.class))
+				candidates.add(new CallbackMethod<>(serdeses, List.of(actualParams), actualReturnType, method));
+			else
+				unsafeCandidates.add(method);
 		}
 
-		throw new IllegalArgumentException("Method not found: " + callbackMethodToString(receiverDynamicType, name, params));
+		int candidateCount = candidates.size();
+		if(candidateCount == 1)
+			return candidates.get(0);
+
+		if(candidateCount > 1)
+			throw new ExerciseCausedException("Multiple candidates found"
+					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+
+		// There is no candidate which is marked as safe. At this point, it's just about giving the best error message.
+
+		int unsafeCandidatesCount = unsafeCandidates.size();
+		if(unsafeCandidatesCount == 1)
+			// Is this an exercise caused exception or a student side caused exception?
+			throw new StudentSideCausedException("Student side attempted to call a callback method which is not marked as safe for call by student:"
+					+ callbackMethodToString(receiverDynamicType, name, params));
+
+		if(unsafeCandidatesCount > 1)
+			throw new ExerciseCausedException("Multiple candidates found, but none marked as safe for call by student,"
+					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+
+		throw new ExerciseCausedException("No candidate found"
+				+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
 	}
 
-	private String callbackMethodToString(Class<?> receiverDynamicType, String name, List<StudentSideType<TYPEREF, ?>> params)
+	private String callbackMethodToString(Class<?> receiverDynamicType, String name, List<TYPEREF> params)
 	{
 		return receiverDynamicType.getName() + "." + name + "("
-				+ params.stream().map(StudentSideType::localType).map(Class::getName).collect(Collectors.joining(", ")) + ")";
+				+ params.stream().map(globalMarshalingCommunicator::describeType).map(StudentSideTypeDescription::name).collect(Collectors.joining(", ")) + ")";
 	}
 
 	private Object callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)

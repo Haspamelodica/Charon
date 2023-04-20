@@ -6,6 +6,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import net.bytebuddy.description.field.FieldDescription;
 import net.bytebuddy.description.modifier.Visibility;
@@ -15,19 +16,23 @@ import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
+import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
-import net.haspamelodica.charon.marshaling.StudentSideType;
 import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
+import net.haspamelodica.charon.reflection.ReflectionUtils;
+import net.haspamelodica.charon.util.LazyValue;
 
 public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 		implements DynamicClassTransformer, MarshalingCommunicatorCallbacks<REF, TYPEREF, Method, Throwable, StudentSideException>
 {
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
+	// can't be final since this references the classloader, which references us
+	private LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> communicator;
 
 	private final Map<String, Constructor<?>> representationObjectConstructorsByClassname;
 
@@ -36,9 +41,10 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 		this.representationObjectConstructorsByClassname = new HashMap<>();
 	}
 
-	public void setClassloader(ClassLoader classloader)
+	public void setClassloaderAndCommunicator(ClassLoader classloader, LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> communicator)
 	{
 		this.classloader = classloader;
+		this.communicator = communicator;
 	}
 	public ClassLoader getClassloader()
 	{
@@ -49,7 +55,7 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	{
 		try
 		{
-			representationObjectConstructorsByClassname.put(clazz.getName(), clazz.getConstructor(Object.class));
+			representationObjectConstructorsByClassname.put(ReflectionUtils.classToName(clazz), clazz.getConstructor(Object.class));
 		} catch(NoSuchMethodException e)
 		{
 			throw new RuntimeException("Generated constructor can't be found", e);
@@ -70,9 +76,9 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public Class<?> lookupLocalType(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
+	public TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 	{
-		return representationObjectConstructorsByClassname.get(untranslatedTyperef.describe().name()).getDeclaringClass();
+		return Objects.requireNonNull(communicator.get().getTypeByName(ReflectionUtils.classToName(representationClass)));
 	}
 
 	@Override
@@ -82,7 +88,8 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public CallbackMethod<Method> lookupCallbackInstanceMethod(StudentSideType<TYPEREF, ?> receiverStaticType, Class<?> receiverDynamicType, String name, StudentSideType<TYPEREF, ?> returnType, List<StudentSideType<TYPEREF, ?>> params)
+	public CallbackMethod<Method> lookupCallbackInstanceMethod(TYPEREF receiverStaticTyperef, String name, TYPEREF returnTyperef, List<TYPEREF> paramTyperefs,
+			Class<?> receiverDynamicRepresentationType)
 	{
 		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
 	}
@@ -94,11 +101,18 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public Object createRepresentationObject(StudentSideType<TYPEREF, ?> type, UntranslatedRef<REF, TYPEREF> untranslatedRef)
+	public Object createRepresentationObject(UntranslatedRef<REF, TYPEREF> untranslatedRef)
 	{
 		try
 		{
-			return representationObjectConstructorsByClassname.get(type.studentSideCN()).newInstance(new Object[] {untranslatedRef.ref()});
+			Constructor<?> constructor = representationObjectConstructorsByClassname.get(untranslatedRef.getType().describe().name());
+			if(constructor == null)
+				// We should not try to blindly load the class with that name since that could be dangerous.
+				//TODO introduce mechanism to let the Mockclasses classloader try to load a class by name, but only if the name refers to a mockclass.
+				throw new FrameworkCausedException("Student tried creating a class which hasn't been seen before; this isn't yet supported."
+						+ " As a workaround, load all mockclasses beforehand (for example by callling Mockclass.class.getModule();"
+						+ " getModule because that method is very cheap).");
+			return constructor.newInstance(new Object[] {untranslatedRef.ref()});
 		} catch(InstantiationException | IllegalAccessException | InvocationTargetException e)
 		{
 			throw new RuntimeException("Error invoking generated constructor", e);
@@ -112,7 +126,7 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public StudentSideException newStudentCausedException(Throwable studentSideThrowable)
+	public StudentSideException createStudentCausedException(Throwable studentSideThrowable)
 	{
 		return new StudentSideException(studentSideThrowable);
 	}

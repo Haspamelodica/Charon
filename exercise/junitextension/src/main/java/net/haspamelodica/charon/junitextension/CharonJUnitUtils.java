@@ -112,7 +112,7 @@ public class CharonJUnitUtils
 				return studentSide.cast(expectedType, e);
 
 			// This call to assertEquals() should always fail. assertEquals() is used instead of fail() to have proper error message formatting.
-			assertEquals(studentSide.getStudentSideClassname(expectedType), studentSide.getStudentSideClassname(e), messageSupplier);
+			assertEquals(studentSide.getStudentSideType(expectedType).name(), studentSide.getStudentSideType(e).name(), messageSupplier);
 			return fail("Internal error: assertEquals succeeded unexpectedly");
 		}
 		return fail("Expected a student-side exception of type " + expectedType + ", but nothing thrown");

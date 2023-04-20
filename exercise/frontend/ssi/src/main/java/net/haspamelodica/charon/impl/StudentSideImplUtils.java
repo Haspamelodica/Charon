@@ -8,15 +8,12 @@ import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
-import java.util.stream.Stream;
 
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
-import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.marshaling.StudentSideType;
 
 public class StudentSideImplUtils
 {
@@ -62,27 +59,6 @@ public class StudentSideImplUtils
 		// This also catches uses of UseSerDeses
 		return Arrays.stream(element.getAnnotationsByType(UseSerDes.class))
 				.map((Function<UseSerDes, Class<? extends SerDes<?>>>) UseSerDes::value).toList();
-	}
-
-	public static <REF, TYPEREF extends REF> List<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
-			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Class<?>[] classes)
-	{
-		return lookupStudentSideTypes(communicator, Arrays.stream(classes)).toList();
-	}
-	public static <REF, TYPEREF extends REF> List<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
-			MarshalingCommunicator<REF, TYPEREF, ?> communicator, List<Class<?>> classes)
-	{
-		return lookupStudentSideTypes(communicator, classes.stream()).toList();
-	}
-	public static <REF, TYPEREF extends REF> Stream<StudentSideType<TYPEREF, ?>> lookupStudentSideTypes(
-			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Stream<Class<?>> classes)
-	{
-		return classes.map(clazz -> lookupStudentSideType(communicator, clazz));
-	}
-	public static <REF, TYPEREF extends REF, T> StudentSideType<TYPEREF, T> lookupStudentSideType(
-			MarshalingCommunicator<REF, TYPEREF, ?> communicator, Class<T> clazz)
-	{
-		return communicator.lookupStudentSideType(clazz, getStudentSideName(clazz));
 	}
 
 	public static String getStudentSideName(Class<?> clazz)

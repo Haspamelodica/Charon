@@ -12,7 +12,8 @@ public @interface StudentSideInstanceKind
 	public enum Kind
 	{
 		CLASS,
-		INTERFACE;
+		INTERFACE,
+		ARRAY;
 	}
 
 	Kind value();

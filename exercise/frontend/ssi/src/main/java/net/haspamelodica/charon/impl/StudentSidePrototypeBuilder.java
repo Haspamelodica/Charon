@@ -2,9 +2,8 @@ package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.getStudentSideName;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.lookupStudentSideType;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.lookupStudentSideTypes;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
@@ -23,19 +22,19 @@ import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
-import net.haspamelodica.charon.marshaling.StudentSideType;
 
 public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final Class<SP>	prototypeClass;
-	private final Class<SI>	instanceClass;
+	public final Class<SI>	instanceClass;
 
 	public final MarshalingCommunicator<REF, TYPEREF, StudentSideException> prototypeWideMarshalingCommunicator;
 
-	public final StudentSideType<TYPEREF, SI> instanceStudentSideType;
+	public final StudentSideTypeImpl<REF, TYPEREF> studentSideType;
 
 	public final StudentSideInstanceBuilder<REF, TYPEREF, SI> instanceBuilder;
 
@@ -49,7 +48,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		this.prototypeClass = prototypeClass;
 		this.instanceClass = checkPrototypeClassAndGetInstanceClass();
 		this.prototypeWideMarshalingCommunicator = createPrototypeWideMarshalingCommunicator(globalMarshalingCommunicator);
-		this.instanceStudentSideType = lookupStudentSideType(prototypeWideMarshalingCommunicator, instanceClass);
+		this.studentSideType = lookupAndVerifyStudentSideType();
 		this.instanceBuilder = new StudentSideInstanceBuilder<>(this);
 		this.methodHandlers = createMethodHandlers();
 		this.prototype = createPrototype();
@@ -91,6 +90,18 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		return globalMarshalingCommunicator
 				.withAdditionalSerDeses(getSerDeses(prototypeClass))
 				.withAdditionalSerDeses(getSerDeses(instanceClass));
+	}
+
+	private StudentSideTypeImpl<REF, TYPEREF> lookupAndVerifyStudentSideType()
+	{
+		String studentSideName = getStudentSideName(instanceClass);
+		TYPEREF typeref = prototypeWideMarshalingCommunicator.getTypeByName(studentSideName);
+
+		StudentSideTypeImpl<REF, TYPEREF> studentSideType = new StudentSideTypeImpl<>(prototypeWideMarshalingCommunicator, typeref);
+		if(!studentSideType.name().equals(studentSideName))
+			throw new FrameworkCausedException("Name of type created by name mismatched: expected " + studentSideName + ", but was " + studentSideType.name());
+
+		return studentSideType;
 	}
 
 	private Map<Method, MethodHandler> createMethodHandlers()
@@ -135,32 +146,30 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 			throw new InconsistentHierarchyException("Student-side constructor return type wasn't the associated student-side instance class: " +
 					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
 
-		List<StudentSideType<TYPEREF, ?>> params = lookupStudentSideTypes(marshalingCommunicator, Arrays.asList(method.getParameterTypes()));
-		return (proxy, args) -> marshalingCommunicator.callConstructor(instanceStudentSideType, params, argsToList(args));
+		List<Class<?>> params = Arrays.asList(method.getParameterTypes());
+		return (proxy, args) -> marshalingCommunicator.callConstructor(instanceClass, params, argsToList(args));
 	}
 
 	private MethodHandler staticMethodHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			String name)
 	{
-		StudentSideType<TYPEREF, ?> returnType = lookupStudentSideType(marshalingCommunicator, method.getReturnType());
-		List<StudentSideType<TYPEREF, ?>> params = lookupStudentSideTypes(marshalingCommunicator, Arrays.asList(method.getParameterTypes()));
+		Class<?> returnType = method.getReturnType();
+		List<Class<?>> params = Arrays.asList(method.getParameterTypes());
 
-		return (proxy, args) -> marshalingCommunicator.callStaticMethod(instanceStudentSideType, name, returnType, params, argsToList(args));
+		return (proxy, args) -> marshalingCommunicator.callStaticMethod(instanceClass, name, returnType, params, argsToList(args));
 	}
 
 	private MethodHandler staticFieldGetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			String name)
 	{
-		Class<?> localReturnType = method.getReturnType();
-		if(localReturnType.equals(void.class))
+		Class<?> returnType = method.getReturnType();
+		if(returnType.equals(void.class))
 			throw new InconsistentHierarchyException("Student-side static field getter return type was void: " + method);
 
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side static field getter had parameters: " + method);
 
-		StudentSideType<TYPEREF, ?> fieldType = lookupStudentSideType(marshalingCommunicator, localReturnType);
-
-		return (proxy, args) -> marshalingCommunicator.getStaticField(instanceStudentSideType, name, fieldType);
+		return (proxy, args) -> marshalingCommunicator.getStaticField(instanceClass, name, returnType);
 	}
 
 	private MethodHandler staticFieldSetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
@@ -173,18 +182,18 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		if(paramTypes.length != 1)
 			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + method);
 
-		return staticFieldSetterHandlerChecked(marshalingCommunicator, name, lookupStudentSideType(marshalingCommunicator, paramTypes[0]));
+		return staticFieldSetterHandlerChecked(marshalingCommunicator, name, paramTypes[0]);
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
 	private <F> MethodHandler staticFieldSetterHandlerChecked(MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
-			String name, StudentSideType<TYPEREF, F> fieldType)
+			String name, Class<F> fieldType)
 	{
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			marshalingCommunicator.setStaticField(instanceStudentSideType, name, fieldType, argCasted);
+			marshalingCommunicator.setStaticField(instanceClass, name, fieldType, argCasted);
 			return null;
 		};
 	}

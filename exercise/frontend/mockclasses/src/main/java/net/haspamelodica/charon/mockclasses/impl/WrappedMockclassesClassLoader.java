@@ -8,10 +8,10 @@ import java.util.function.Supplier;
 
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
-import net.haspamelodica.charon.WrappedCommunicator;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.communicator.WrappedDataCommunicatorClient;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
@@ -24,21 +24,22 @@ import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader.Stat
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.mockclasses.classloaders.RedefiningClassLoader;
+import net.haspamelodica.charon.util.LazyValue;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedMockclassesClassLoader implements AutoCloseable
 {
-	private final WrappedCommunicator	communicator;
-	private final ClassLoader			classloader;
+	private final WrappedDataCommunicatorClient	communicator;
+	private final ClassLoader					classloader;
 
 	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
 			Class<?>... forceDelegationClasses)
 			throws IOException, InterruptedException, IncorrectUsageException
 	{
-		this(parent, interfaceProvider, new WrappedCommunicator(communicatorArgs), forceDelegationClasses);
+		this(parent, interfaceProvider, new WrappedDataCommunicatorClient(communicatorArgs), forceDelegationClasses);
 	}
 	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			WrappedCommunicator communicator, Class<?>... forceDelegationClasses)
+			WrappedDataCommunicatorClient communicator, Class<?>... forceDelegationClasses)
 	{
 		this.communicator = communicator;
 		this.classloader = createMockclassesClassloader(parent, interfaceProvider, communicator.getClient(), forceDelegationClasses);
@@ -71,20 +72,17 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		//TODO instead of preventing delegating to parent, just prevent all user classes (called code) appearing in any classloader above the DynamicClassLoader,
 		// and load those through an even "lower" classloader.
 		ClassLoader constantClassSetClassloader = new ClassSetClassLoader(null, forceDelegationClassesWithClassesNeededByCharon);
-		// InvocationHandler needs to be lazy because the initialization code of MarshalingCommunicator contains method references,
+		// MarshalingCommunicator needs to be lazy because the initialization code of MarshalingCommunicator contains method references,
 		// which use bootstrap methods, which call some standard library function, which calls getSystemClassLoader, which is not allowed
 		// since we are creating the system class loader here.
+		//TODO make Serdeses configurable
+		LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> marshalingCommunicatorLazy = new LazyValue<>(() -> new MarshalingCommunicator<>(
+				communicator, transformer, PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class)));
 		ClassLoader dynamicClassloader = new DynamicClassLoader<>(constantClassSetClassloader, interfaceProvider, transformer,
-				new LazyDynamicInvocationHandler<>(() ->
-				{
-					// TODO make Serdeses configurable
-					MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator = new MarshalingCommunicator<>(communicator, transformer,
-							PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class));
-					return new MockclassesInvocationHandler<>(marshalingCommunicator, transformer);
-				}));
+				new LazyDynamicInvocationHandler<>(() -> new MockclassesInvocationHandler<>(marshalingCommunicatorLazy.get(), transformer)));
 		ClassLoader userClassLoader = new RedefiningClassLoader(dynamicClassloader, parent);
 
-		transformer.setClassloader(userClassLoader);
+		transformer.setClassloaderAndCommunicator(userClassLoader, marshalingCommunicatorLazy);
 		return userClassLoader;
 	}
 

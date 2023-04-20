@@ -177,6 +177,11 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		throw callbacks.newStudentCausedException(studentSideThrowable);
 	}
 
+	public boolean isSerializedType(Class<?> clazz)
+	{
+		return getSerDesForStaticObjectClass(clazz) != null;
+	}
+
 	public void setRepresentationObjectRefPair(REF ref, Object representationObject)
 	{
 		translator.setForwardRefTranslation(ref, representationObject);
@@ -207,18 +212,18 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 			SerDes<?> serdes;
 			try
 			{
-				serdes = ReflectionUtils.callConstructor(serdesClass, List.of(), List.of());
+				serdes = ReflectionUtils.callConstructor(c, List.of(), List.of());
 			} catch(ExceptionInTargetException e)
 			{
-				throw new ExerciseCausedException("Error while creating SerDes for class " + serdesClass, e);
+				throw new ExerciseCausedException("Error while creating SerDes for class " + c, e);
 			}
 			LazyValue<REF> serdesRef = new LazyValue<>(() ->
 			{
 				RefOrError<REF> result = communicator.callConstructor(
-						communicator.getTypeByName(classToName(serdesClass)), List.of(), List.of());
+						communicator.getTypeByName(classToName(c)), List.of(), List.of());
 				if(result.isError())
 					//TODO maybe we want to make resultOrErrorRef accessible somehow
-					throw new StudentSideCausedException("Error while creating student-side SerDes for class " + serdesClass);
+					throw new StudentSideCausedException("Error while creating student-side SerDes for class " + c);
 				return result.resultOrErrorRef();
 			});
 			return new InitializedSerDes<>(serdes, serdesRef);

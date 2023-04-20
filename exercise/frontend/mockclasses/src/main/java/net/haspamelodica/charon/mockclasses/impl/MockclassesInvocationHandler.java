@@ -7,7 +7,6 @@ import java.util.stream.Stream;
 import net.bytebuddy.description.method.MethodDescription;
 import net.bytebuddy.description.type.TypeDefinition;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
-import net.haspamelodica.charon.marshaling.StudentSideType;
 import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
@@ -58,18 +57,18 @@ public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
 	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callStaticMethod(
-				toStudentSideType(classContext),
+				toClass(classContext),
 				methodContext.getActualName(),
-				toStudentSideType(methodContext.getReturnType().asErasure()),
-				toStudentSideTypes(methodContext.getParameters().asTypeList()),
+				toClass(methodContext.getReturnType().asErasure()),
+				toClasses(methodContext.getParameters().asTypeList()),
 				Arrays.asList(args));
 	}
 	@Override
 	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callConstructorExistingRepresentationObject(
-				toStudentSideType(classContext),
-				toStudentSideTypes(constructorContext.getParameters().asTypeList()),
+				toClass(classContext),
+				toClasses(constructorContext.getParameters().asTypeList()),
 				Arrays.asList(args),
 				receiver);
 	}
@@ -78,21 +77,17 @@ public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
 			Object[] args) throws StudentSideException
 	{
 		return marshalingCommunicator.callInstanceMethodRawReceiver(
-				toStudentSideType(classContext),
+				toClass(classContext),
 				methodContext.getActualName(),
-				toStudentSideType(methodContext.getReturnType()),
-				toStudentSideTypes(methodContext.getParameters().asTypeList()),
+				toClass(methodContext.getReturnType()),
+				toClasses(methodContext.getParameters().asTypeList()),
 				receiverContext, Arrays.asList(args));
 	}
 
-	private List<StudentSideType<TYPEREF, ?>> toStudentSideTypes(List<? extends TypeDefinition> typeDefinitions)
+	private List<Class<?>> toClasses(List<? extends TypeDefinition> typeDefinitions)
 	{
-		Stream<StudentSideType<TYPEREF, ?>> stream = typeDefinitions.stream().map(this::toStudentSideType);
+		Stream<Class<?>> stream = typeDefinitions.stream().map(this::toClass);
 		return stream.toList();
-	}
-	private StudentSideType<TYPEREF, ?> toStudentSideType(TypeDefinition typeDefinition)
-	{
-		return marshalingCommunicator.lookupStudentSideType(toClass(typeDefinition), typeDefinition.getActualName());
 	}
 	private Class<?> toClass(TypeDefinition typeDefinition)
 	{

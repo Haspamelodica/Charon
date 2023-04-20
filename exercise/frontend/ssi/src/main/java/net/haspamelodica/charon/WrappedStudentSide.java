@@ -5,6 +5,7 @@ import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCa
 
 import java.io.IOException;
 
+import net.haspamelodica.charon.communicator.WrappedDataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.utils.communication.Communication;
@@ -13,7 +14,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
 public class WrappedStudentSide implements AutoCloseable
 {
-	private final WrappedCommunicator	communicator;
+	private final WrappedDataCommunicatorClient	communicator;
 	private final StudentSide			studentSide;
 
 	public WrappedStudentSide(String... args) throws IOException, InterruptedException, IncorrectUsageException
@@ -23,7 +24,7 @@ public class WrappedStudentSide implements AutoCloseable
 
 	public WrappedStudentSide(Communication communication)
 	{
-		WrappedCommunicator communicator = new WrappedCommunicator(communication);
+		WrappedDataCommunicatorClient communicator = new WrappedDataCommunicatorClient(communication);
 		this.communicator = communicator;
 		this.studentSide = new StudentSideImpl<>(
 				wrapTypeCaching(

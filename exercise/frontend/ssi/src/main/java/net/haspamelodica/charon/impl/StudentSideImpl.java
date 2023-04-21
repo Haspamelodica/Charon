@@ -178,8 +178,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	@Override
 	public StudentSideType getStudentSideType(StudentSideInstance ssi)
 	{
-		String studentSideClassname = globalMarshalingCommunicator.describeType(globalMarshalingCommunicator.getTypeOf(ssi)).name();
-		return prototypeBuildersByStudentSideClassname.get(studentSideClassname).studentSideType;
+		return new StudentSideTypeImpl<>(globalMarshalingCommunicator, globalMarshalingCommunicator.getTypeOf(ssi));
 	}
 
 	@Override

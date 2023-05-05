@@ -58,7 +58,7 @@ The SSI has to extend
 [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java),
 and the prototype has to extend
 [`StudentSidePrototype`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSidePrototype.java).
-By convention, the prototype interfaces an inner interface of the SSI called `Prototype`, but this is not required by Charon.
+By convention, the prototype interface is an inner interface of the SSI called `Prototype`, but this is not required by Charon.
 
 Each method of these interfaces represents one student-side member (a method, a field, a constructor, ...).
 Which kind of member each of these methods represents is declared by annotating it with 

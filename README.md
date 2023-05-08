@@ -38,8 +38,24 @@ to use [Charon-CI](https://github.com/Haspamelodica/Charon-CI) to invoke a test 
 Charon provides two "frontends", "SSI" and "Mockclasses".
 The Mockclasses frontend is deprecated due to serious drawbacks
 in usability, transparency, and security, and is currently undocumented.
+The following will describe only the SSI frontend.
 
-The following chapter describes how to use Charon with the SSI frontend.
+### Overview
+
+To use the SSI frontend, the exercise creator first has to define
+which classes, methods and fields students are expected to implement,
+which is done by declaring interfaces representing student-side structure.
+
+Once the expected student-side code structure is defined,
+test code has to obtain an instance of
+[`StudentSide`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java),
+which can then be used as an entry point to interacting with student code.
+
+The following subsections describe these steps in detail,
+using an example exercise where it's the students' job to implement a class representing rational numbers,
+along with some basic operations on them.
+The full example, along with an example student submission, can be found in this repository under
+[examples/rationals](examples/rationals).
 
 ### Defining expected structure
 
@@ -71,28 +87,40 @@ respectively.
 
 (In all examples, imports to Charon classes will be omitted.)
 ```java
-@StudentSideInstanceKind(INTERFACE)
-public interface CumulativeCalculator extends StudentSideInstance
+@StudentSideInstanceKind(CLASS)
+public interface RationalNumber extends StudentSideInstance
 {
     @StudentSideInstanceMethodKind(INSTANCE_FIELD_GETTER)
-    public int intermediateResult();
+    public int num();
+
+    @StudentSideInstanceMethodKind(INSTANCE_FIELD_GETTER)
+    public int den();
 
     @StudentSideInstanceMethodKind(INSTANCE_METHOD)
-    public int add(int i);
+    public double approximateAsDouble();
 
     @StudentSideInstanceMethodKind(INSTANCE_METHOD)
-    public int sub(int i);
+    public RationalNumber add(RationalNumber other);
 
     @StudentSideInstanceMethodKind(INSTANCE_METHOD)
-    public int mul(int i);
+    public RationalNumber sub(RationalNumber other);
 
     @StudentSideInstanceMethodKind(INSTANCE_METHOD)
-    public int div(int i);
+    public RationalNumber mul(RationalNumber other);
 
-    public static interface Prototype extends StudentSidePrototype<CumulativeCalculator>
+    @StudentSideInstanceMethodKind(INSTANCE_METHOD)
+    public RationalNumber div(RationalNumber other);
+
+    public static interface Prototype extends StudentSidePrototype<RationalNumber>
     {
+        @StudentSidePrototypeMethodKind(STATIC_FIELD_GETTER)
+        public RationalNumber ZERO();
+
         @StudentSidePrototypeMethodKind(CONSTRUCTOR)
-        public CumulativeCalculator new_(int initialIntermediateResult);
+        public RationalNumber new_(int value);
+
+        @StudentSidePrototypeMethodKind(CONSTRUCTOR)
+        public RationalNumber new_(int num, int den);
     }
 }
 ```
@@ -118,7 +146,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(CharonExtension.class)
-public class TestCumulativeCalculator
+public class TestRationalNumber
 {
     @Test
     public void testBasic(StudentSide studentSide)
@@ -150,13 +178,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(CharonExtension.class)
-public class TestCumulativeCalculator
+public class TestRationalNumber
 {
     @Test
     public void testBasic(StudentSide studentSide)
     {
-        CumulativeCalculator.Prototype CumulativeCalculatorP = studentSide.createPrototype(CumulativeCalculator.Prototype.class);
-        // test code, with the prototype of CumulativeCalculator available
+        RationalNumber.Prototype RationalNumberP = studentSide.createPrototype(RationalNumber.Prototype.class);
+        // test code, with the prototype of RationalNumber available
     }
 }
 ```
@@ -190,40 +218,59 @@ which is stored in each SSI.)
 
 ```java
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 @ExtendWith(CharonExtension.class)
-public class TestCumulativeCalculator
+public class TestRationalNumber
 {
+    
     @Test
     public void testBasic(StudentSide studentSide)
     {
-        CumulativeCalculator.Prototype CumulativeCalculatorP = studentSide.createPrototype(CumulativeCalculator.Prototype.class);
+        RationalNumber.Prototype RationalNumberP = studentSide.createPrototype(RationalNumber.Prototype.class);
 
-        CumulativeCalculator calculator = CumulativeCalculatorP.new_(42);
-        assertEquals(42, calculator.intermediateResult());
+        RationalNumber zero = RationalNumberP.ZERO();
+        assertEquals(zero.approximateAsDouble(), 0);
 
-        calculator.add(100);
-        assertEquals(142, calculator.intermediateResult());
+        RationalNumber rational42 = RationalNumberP.new_(42);
+        assertEquals(rational42.num(), 42);
+        assertEquals(rational42.den(), 1);
+        assertEquals(rational42.approximateAsDouble(), 42);
 
-        calculator.mul(2);
-        assertEquals(284, calculator.intermediateResult());
+        RationalNumber rational50 = rational42.add(RationalNumberP.new_(8));
+        assertEquals(rational50.num(), 50);
+        assertEquals(rational50.den(), 1);
+        assertEquals(rational50.approximateAsDouble(), 50);
+
+        RationalNumber rational25_9 = rational50.div(RationalNumberP.new_(18));
+        assertEquals(rational25_9.num(), 25);
+        assertEquals(rational25_9.den(), 9);
+        assertEquals(rational25_9.approximateAsDouble(), 25 / 9d);
+
+        RationalNumber rational125_6 = rational25_9.mul(RationalNumberP.new_(15, 2));
+        assertEquals(rational125_6.num(), 125);
+        assertEquals(rational125_6.den(), 6);
+        assertEquals(rational125_6.approximateAsDouble(), 125 / 6d);
+
+        RationalNumber rational0 = rational125_6.mul(zero);
+        assertEquals(rational0.approximateAsDouble(), 0);
     }
 }
 ```
 
-The call to `add` and `mul` will result in a primitive value,
+The calls to `num`, `den`, and `approximateAsDouble` will result in a primitive value,
 directly transmitted back to the exercise JVM from the student JVM.
 
-The call to `new_`, which represents the constructor
-of the student-side class `CumulativeCalculator`,
+The calls to `add`, `div`, `mul`, and `new_` (which represents the constructor
+of the student-side class `CumulativeCalculator`)
 will result in Charon creating a new SSI
-for the new student-side `CumulativeCalculator` instance.
+for the new student-side `RationalNumber` instance.
 
-Note that the type `CumulativeCalculator` of the variable `calculator`
+Note that the type `RationalNumber`
 does not refer to the student-side class of that name,
-but to the SSI interface defined by the exercise creator in an earlier example.
+but to the SSI interface defined earlier by the exercise creator.
 
 </details>
 

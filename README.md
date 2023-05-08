@@ -69,7 +69,7 @@ which should be defined by the exercise creator:
    for example calling an instance method or reading an instance field.
 
    The SSI has to extend
-   [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java),
+   [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java).
  - The other is called the "prototype" and represents all static operations,
    for example calling a constructor or writing a static field.
 
@@ -78,11 +78,12 @@ which should be defined by the exercise creator:
    By convention, the prototype interface is an inner interface of the SSI called `Prototype`, but this is not required by Charon.
 
 Each method of these interfaces represents one student-side member (a method, a field, a constructor, ...).
-Which kind of member each of these methods represents is declared by annotating it with 
+Annotating it with 
 [`StudentSideInstanceMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSideInstanceMethodKind.java)
 or
 [`StudentSidePrototypeMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSidePrototypeMethodKind.java),
-respectively.
+respectively, represents which kind of member it represents.
+
 <details>
 <summary>Example</summary>
 

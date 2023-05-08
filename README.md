@@ -404,7 +404,7 @@ and make sure no other instances using these pipes are running.
 #### The exercise side sometimes crashes with `Connection refused: connect` when invoking the tests via the launch group.
 
 This happens if the exercise side tries to connect to the student-side socket
-before the student-side has finished opening it.
+before the student side has finished opening it.
 
 On Linux, switching from sockets to named pipes resolves this issue
 because for pipes it doesn't matter whether the reading or writing end opens a pipe first.

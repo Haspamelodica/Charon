@@ -235,17 +235,24 @@ See [Charon-CI-Images](https://github.com/Haspamelodica/Charon-CI-Images) for Do
 
 ### Without Docker
 
-Charon consists of multiple Maven plugins. Charon depends on [streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer), which unfortunately is not available from the Maven Central Hub, so you will have to build that project from source as well to build Charon. 
+Charon consists of multiple Maven plugins. Charon depends on
+[streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer),
+which unfortunately is not available from the Maven Central Hub,
+so you will have to build that project from source as well to build Charon. 
 
 ## Name
 
 Charon is named after the ferryman over the river Acheron in Greek mythology.
-This name was chosen because it is his duty to only allow souls to cross Acheron from the world of the living into the world of the dead, but not back,
-which is similar to what this framework does: it only allows commands from the exercise side to the student side, but not back.
+This name was chosen because it is his duty to only allow souls to cross Acheron
+from the world of the living into the world of the dead, but not back,
+which is similar to what this framework does:
+it only allows commands from the exercise side to the student side, but not back.
 
 ## TODO document:
 
 - Serialization
+- Student-side exceptions
+- Hint: Create prototypes once in a BeforeAll method
 - CharonJUnitUtils
 - Mockclasses frontend?
 - Setting up Eclipse for debugging

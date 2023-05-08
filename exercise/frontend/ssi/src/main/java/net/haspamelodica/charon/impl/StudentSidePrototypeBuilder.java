@@ -107,6 +107,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 	private Map<Method, MethodHandler> createMethodHandlers()
 	{
 		// We are guaranteed to catch all (relevant) methods this way: abstract interface methods have to be public
+		//TODO add implementations for methods from java.lang.Object.
 		return Arrays.stream(prototypeClass.getMethods())
 				.collect(Collectors.toUnmodifiableMap(m -> m, this::methodHandlerFor));
 	}

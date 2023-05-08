@@ -197,7 +197,7 @@ public class TestRationalNumber
 
 The prototypes can be used to (make Charon to) interact with student code.
 If student code returns an object instead of a primitive value,
-this object is represented towards exercise code as an SSIs.
+this object is represented to the exercise code as an SSI.
 
 If exercise code calls a method on a student-side prototype,
 Charon commands the student-side JVM to
@@ -210,14 +210,12 @@ Charon transmits this value as-is back from the student-side JVM to the exercise
 and uses it as the return value of the prototype method.
 
 If the result is an object, Charon does not transmit the object.
-Instead, Charon creates an SSI instance in the exercise side,
-which from then on represents that student-side object toward exercise code.
+Instead, Charon creates an SSI instance on the exercise side,
+which from then on represents that student-side object to the exercise code.
 (Internally, each student-side object is assigned a unique ID,
 which is stored in each SSI.)
 
-Calling methods on the returned SSIs will
-make Charon command the student side to execute the respective action
-analogously to prototypes.
+Calling methods on SSIs works analogously to prototypes.
 
 <details>
 <summary>Example</summary>
@@ -270,7 +268,7 @@ directly transmitted back to the exercise JVM from the student JVM.
 
 The calls to `add`, `div`, `mul`, and `new_` (which represents the constructor
 of the student-side class `RationalNumber`)
-will result in Charon creating a new SSI
+will make Charon create a new SSI
 for the new student-side `RationalNumber` instance.
 
 Note that the type `RationalNumber`
@@ -280,7 +278,6 @@ but to the SSI interface defined earlier by the exercise creator.
 </details>
 
 ## Building from source
-
 ### Docker
 
 See [Charon-CI-Images](https://github.com/Haspamelodica/Charon-CI-Images) for Dockerfiles.

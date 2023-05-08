@@ -82,7 +82,7 @@ Annotating it with
 [`StudentSideInstanceMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSideInstanceMethodKind.java)
 or
 [`StudentSidePrototypeMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSidePrototypeMethodKind.java),
-respectively, represents which kind of member it represents.
+respectively, specifies which kind of member it represents.
 
 <details>
 <summary>Example</summary>
@@ -135,7 +135,7 @@ To obtain instances of SSI and prototype interfaces,
 exercise code has to obtain an instance of
 [`StudentSide`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java).
 
-This interface represents the entire student JVM to exercise code.
+This interface represents the entire student JVM to the exercise code.
 If the test code is written using JUnit5, this instance can be obtained by using
 [CharonExtension](exercise/junitextension/src/main/java/net/haspamelodica/charon/junitextension/CharonExtension.java).
 This will work out-of-the-box with Charon-CI.
@@ -166,7 +166,7 @@ Once a `StudentSide` is obtained,
 it can be used to obtain useable instances of prototype interfaces.
 
 Specifically, test code should call the method `createPrototype`,
-which create an instance of a prototype interface from the class of the prototype interface.
+which creates an instance of a prototype interface from the `class` of the prototype interface.
 These instances are then called the "prototypes" of the respective student-side class.
 (Internally, Java
 [Proxy classes](https://docs.oracle.com/en/java/javase/19/docs/api/java.base/java/lang/reflect/Proxy.html)
@@ -195,14 +195,14 @@ public class TestRationalNumber
 
 ### Interacting with student code
 
-The prototypes can be used to cause Charon to interact with student code.
+The prototypes can be used to (make Charon to) interact with student code.
 If student code returns an object instead of a primitive value,
 this object is represented towards exercise code as an SSIs.
 
 If exercise code calls a method on a student-side prototype,
 Charon commands the student-side JVM to
-perform the action this method represents,
-which could be, for example, calling a constructor
+perform the action this method represents.
+This could be, for example, calling a constructor
 or reading a student-side static field.
 
 If one these student-side actions results in a primitive value,
@@ -214,6 +214,10 @@ Instead, Charon creates an SSI instance in the exercise side,
 which from then on represents that student-side object toward exercise code.
 (Internally, each student-side object is assigned a unique ID,
 which is stored in each SSI.)
+
+Calling methods on the returned SSIs will
+make Charon command the student side to execute the respective action
+analogously to prototypes.
 
 <details>
 <summary>Example</summary>

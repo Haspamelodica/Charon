@@ -131,11 +131,11 @@ public interface RationalNumber extends StudentSideInstance
 
 To obtain instances of SSI and prototype interfaces,
 exercise code has to obtain an instance of
-[`StudentSide`](exercise/junitextension/src/main/java/net/haspamelodica/charon/junitextension/CharonExtension.java).
+[`StudentSide`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java).
 
 This interface represents the entire student JVM to exercise code.
-If the test code is written using JUnit5, this instance can be obtained
-by using [CharonExtension](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java).
+If the test code is written using JUnit5, this instance can be obtained by using
+[CharonExtension](exercise/junitextension/src/main/java/net/haspamelodica/charon/junitextension/CharonExtension.java).
 This will work out-of-the-box with Charon-CI.
 
 <details>

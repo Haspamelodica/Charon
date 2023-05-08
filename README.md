@@ -263,7 +263,7 @@ The calls to `num`, `den`, and `approximateAsDouble` will result in a primitive 
 directly transmitted back to the exercise JVM from the student JVM.
 
 The calls to `add`, `div`, `mul`, and `new_` (which represents the constructor
-of the student-side class `CumulativeCalculator`)
+of the student-side class `RationalNumber`)
 will result in Charon creating a new SSI
 for the new student-side `RationalNumber` instance.
 

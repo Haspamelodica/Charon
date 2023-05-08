@@ -13,15 +13,15 @@ written by the exercise creator.
 However, student code is not trustworthy in general.
 There are many motivations for students to submit malicious code,
 for example to fake test results, to read other student's submissions,
-or extracting and then selling details about the test cases
+or to extract and then sell details about the test cases
 (in settings where these are not known to students).
 
 Charon solves this problem by executing student code
-in a different, sandboxed JVM than exercise code,
-and providing an easy-to-use interface
+in a different, sandboxed JVM than exercise code.
+It provides an easy-to-use interface
 to invoke methods or read fields from classes submitted by the student
-across the boundary between the two JVMs,
-which has almost the same look and feel as directly calling student-side code.
+across the boundary between the two JVMs.
+This interface has almost the same look and feel as directly calling student code.
 Security is achieved by never serializing or deserializing any objects.
 
 ### What is Charon not for?
@@ -35,16 +35,16 @@ to use [Charon-CI](https://github.com/Haspamelodica/Charon-CI) to invoke a test 
 
 ## Usage
 
-Charon provides two "frontends", "SSI" and "Mockclasses".
+Charon provides two "frontends": "SSI" and "Mockclasses".
 The Mockclasses frontend is deprecated due to serious drawbacks
 in usability, transparency, and security, and is currently undocumented.
-The following will describe only the SSI frontend.
+The following will describe the SSI frontend only.
 
 ### Overview
 
-To use the SSI frontend, the exercise creator first has to define
-which classes, methods and fields students are expected to implement,
-which is done by declaring interfaces representing student-side structure.
+To use the SSI frontend, the exercise creator - as a first step -
+defines which classes, methods and fields students are expected to implement.
+This is done by declaring interfaces representing student-side structure.
 
 Once the expected student-side code structure is defined,
 test code has to obtain an instance of
@@ -52,8 +52,8 @@ test code has to obtain an instance of
 which can then be used as an entry point to interacting with student code.
 
 The following subsections describe these steps in detail,
-using an example exercise where it's the students' job to implement a class representing rational numbers,
-along with some basic operations on them.
+using an example exercise where it's the students' job to implement a class representing rational numbers
+and some basic operations on them.
 The full example, along with an example student submission, can be found in this repository under
 [examples/rationals](examples/rationals).
 
@@ -64,11 +64,11 @@ to specify the expected structure of student code.
 
 Each expected student-side class is represented by two exercise-side interfaces,
 which should be defined by the exercise creator.
-One of these interfaces is called the "SSI" (student-side instance) of the student-side class
-and represents all non-static operations on that student-side class,
-for example calling an instance method or reading an instance field.
-The other is called the "prototype" and represents all static operations,
-for example calling a constructor or writing a static field.
+ - One of these interfaces is called the "SSI" (student-side instance) of the student-side class
+   and represents all non-static operations on that student-side class,
+   for example calling an instance method or reading an instance field.
+ - The other is called the "prototype" and represents all static operations,
+   for example calling a constructor or writing a static field.
 
 The SSI has to extend
 [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java),

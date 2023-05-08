@@ -115,6 +115,6 @@ public class CharonJUnitUtils
 			assertEquals(studentSide.getStudentSideType(expectedType).name(), studentSide.getStudentSideType(e).name(), messageSupplier);
 			return fail("Internal error: assertEquals succeeded unexpectedly");
 		}
-		return fail("Expected a student-side exception of type " + expectedType + ", but nothing thrown");
+		return fail("Expected a student-side exception of type " + studentSide.getStudentSideType(expectedType).name() + ", but nothing was thrown");
 	}
 }

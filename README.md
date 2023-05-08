@@ -225,7 +225,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 @ExtendWith(CharonExtension.class)
 public class TestRationalNumber
 {
-    
     @Test
     public void testBasic(StudentSide studentSide)
     {

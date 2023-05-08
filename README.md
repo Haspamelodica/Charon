@@ -294,7 +294,7 @@ so you will have to build that project from source as well to build Charon.
 For the Rationals example, follow these steps.
 The Maze and Sorter examples work analogously.
 
-1. Clone this repository and [streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer),
+1. Clone this repository and [streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer)
 
 2. In Eclipse, import all pom.xml files from both repositories as "Existing Maven projects":
 

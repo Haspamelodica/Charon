@@ -360,8 +360,8 @@ The Maze and Sorter examples work analogously.
 
 ### Running
 
-Running the launch group should result in both sides being executed,
-and once they finish, the JUnit tab should report the exercise-side test results.
+Running the launch group should execute both sides.
+The JUnit tab should report the exercise-side test results.
 Keep in mind only one instance of these tests can run at a time.
 
 ### Debugging

@@ -398,8 +398,8 @@ and take inspiration from how Charon-CI invokes tests:
 [student side](https://github.com/Haspamelodica/Charon-CI/blob/main/student/pom.xml#L41).
 
 If both the student side and exercise freeze without doing anything,
-make sure the pipes are specified in the same order in both the student and exercise side, like in Charon-CI,
-and make sure no other instances using these pipes are running,
+make sure the pipes are specified in the same order for both the student and exercise side, like in Charon-CI,
+and make sure no other instances using these pipes are running.
 
 #### The exercise side sometimes crashes with `Connection refused: connect` when invoking the tests via the launch group.
 

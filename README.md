@@ -406,7 +406,7 @@ and make sure no other instances using these pipes are running.
 This happens if the exercise side tries to connect to the student-side socket
 before the student side has finished opening it.
 
-On Linux, switching from sockets to named pipes resolves this issue
+On Linux, switching from sockets to named pipes (see troubleshooting step above) resolves this issue
 because for pipes it doesn't matter whether the reading or writing end opens a pipe first.
 
 Alternatively, in the launch group, set the post launch action of the student side

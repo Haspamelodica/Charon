@@ -63,18 +63,19 @@ The first thing the exercise creator should do is
 to specify the expected structure of student code.
 
 Each expected student-side class is represented by two exercise-side interfaces,
-which should be defined by the exercise creator.
- - One of these interfaces is called the "SSI" (student-side instance) of the student-side class
-   and represents all non-static operations on that student-side class,
+which should be defined by the exercise creator:
+ - One of these interfaces is called the "SSI" (student-side instance) of the student-side class.
+   It represents all non-static operations on that student-side class,
    for example calling an instance method or reading an instance field.
+
+   The SSI has to extend
+   [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java),
  - The other is called the "prototype" and represents all static operations,
    for example calling a constructor or writing a static field.
 
-The SSI has to extend
-[`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java),
-and the prototype has to extend
-[`StudentSidePrototype`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSidePrototype.java).
-By convention, the prototype interface is an inner interface of the SSI called `Prototype`, but this is not required by Charon.
+   The prototype has to extend
+   [`StudentSidePrototype`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSidePrototype.java).
+   By convention, the prototype interface is an inner interface of the SSI called `Prototype`, but this is not required by Charon.
 
 Each method of these interfaces represents one student-side member (a method, a field, a constructor, ...).
 Which kind of member each of these methods represents is declared by annotating it with 

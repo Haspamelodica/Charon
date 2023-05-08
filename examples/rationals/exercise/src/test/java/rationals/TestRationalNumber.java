@@ -17,6 +17,9 @@ public class TestRationalNumber
 	{
 		RationalNumber.Prototype RationalNumberP = studentSide.createPrototype(RationalNumber.Prototype.class);
 
+		RationalNumber zero = RationalNumberP.ZERO();
+		assertEquals(zero.approximateAsDouble(), 0);
+
 		RationalNumber rational42 = RationalNumberP.new_(42);
 		assertEquals(rational42.num(), 42);
 		assertEquals(rational42.den(), 1);
@@ -37,7 +40,7 @@ public class TestRationalNumber
 		assertEquals(rational125_6.den(), 6);
 		assertEquals(rational125_6.approximateAsDouble(), 125 / 6d);
 
-		RationalNumber rational0 = rational125_6.mul(RationalNumberP.ZERO());
+		RationalNumber rational0 = rational125_6.mul(zero);
 		assertEquals(rational0.approximateAsDouble(), 0);
 	}
 

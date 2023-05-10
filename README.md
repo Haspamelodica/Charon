@@ -427,8 +427,8 @@ it only allows commands from the exercise side to the student side, but not back
 ## TODO document:
 
 - Serialization
+- Callbacks
 - Student-side exceptions
 - Hint: Create prototypes once in a BeforeAll method
 - CharonJUnitUtils
 - Mockclasses frontend?
-- Setting up Eclipse for debugging

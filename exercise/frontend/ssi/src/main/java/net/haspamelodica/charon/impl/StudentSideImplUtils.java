@@ -12,11 +12,21 @@ import java.util.function.Function;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
 import net.haspamelodica.charon.annotations.UseSerDes;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.SerDes;
 
 public class StudentSideImplUtils
 {
+	public static Method checkReturnAndParameterTypes(Method method, Class<?> expectedReturnType, Class<?>... expectedParameterTypes)
+	{
+		if(!Arrays.equals(method.getParameterTypes(), expectedParameterTypes))
+			throw new FrameworkCausedException("Unexpected parameter types: expected " + expectedParameterTypes + " for " + method);
+		if(!method.getReturnType().equals(expectedReturnType))
+			throw new FrameworkCausedException("Unknown method of Object: " + method);
+		return method;
+	}
+
 	public static <K extends Annotation> MethodHandler handlerFor(Method method, Class<K> kindClass,
 			StudentSideHandlerGenerator<MethodHandler, K> generateStudentSideHandler)
 	{

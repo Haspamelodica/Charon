@@ -1,6 +1,7 @@
 package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkReturnAndParameterTypes;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getStudentSideName;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
@@ -8,12 +9,14 @@ import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
@@ -104,12 +107,33 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		return studentSideType;
 	}
 
+	private record MethodWithHandler(Method method, MethodHandler handler)
+	{}
 	private Map<Method, MethodHandler> createMethodHandlers()
 	{
-		// We are guaranteed to catch all (relevant) methods this way: abstract interface methods have to be public
-		//TODO add implementations for methods from java.lang.Object.
-		return Arrays.stream(prototypeClass.getMethods())
-				.collect(Collectors.toUnmodifiableMap(m -> m, this::methodHandlerFor));
+		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
+		return Stream.concat(
+				Arrays.stream(prototypeClass.getMethods())
+						.map(m -> new MethodWithHandler(m, methodHandlerFor(m))),
+				objectMethodHandlers())
+				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
+	}
+	private Stream<MethodWithHandler> objectMethodHandlers()
+	{
+		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
+		// So, throwing an exception (via checkReturnAndParameterTypes) is appropriate.
+		return Arrays.stream(Object.class.getMethods())
+				.filter(method -> !Modifier.isFinal(method.getModifiers()))
+				.map(method -> switch(method.getName())
+				{
+					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
+							(proxy, args) -> "Prototype[" + studentSideType.name() + "]");
+					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
+							(proxy, args) -> System.identityHashCode(proxy));
+					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),
+							(proxy, args) -> proxy == args[0]);
+					default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
+				});
 	}
 
 	private SP createPrototype()

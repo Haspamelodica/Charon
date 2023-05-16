@@ -1,6 +1,6 @@
 package net.haspamelodica.charon.impl;
 
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.*;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
@@ -87,15 +87,6 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 							(proxy, args) -> proxy == args[0]);
 					default -> throw new FrameworkCausedException("Unknown method of Object: " + method);
 				});
-	}
-
-	private Method checkReturnAndParameterTypes(Method method, Class<?> expectedReturnType, Class<?>... expectedParameterTypes)
-	{
-		if(!Arrays.equals(method.getParameterTypes(), expectedParameterTypes))
-			throw new FrameworkCausedException("Unexpected parameter types: expected " + expectedParameterTypes + " for " + method);
-		if(!method.getReturnType().equals(expectedReturnType))
-			throw new FrameworkCausedException("Unknown method of Object: " + method);
-		return method;
 	}
 
 	private MethodHandler methodHandlerFor(Method method)

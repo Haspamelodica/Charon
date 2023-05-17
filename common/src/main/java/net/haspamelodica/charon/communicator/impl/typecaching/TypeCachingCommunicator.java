@@ -18,6 +18,7 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 	private final UnidirectionalMap<TYPEREF, TYPEREF>								arrayTypes;
 	private final UnidirectionalMap<REF, TYPEREF>									typesByRef;
 	private final UnidirectionalMap<TYPEREF, StudentSideTypeDescription<TYPEREF>>	typeDescriptions;
+	private final UnidirectionalMap<REF, TYPEREF>									typesHandledBySerdeses;
 
 	public TypeCachingCommunicator(StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM> communicator)
 	{
@@ -26,6 +27,7 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		this.arrayTypes = UnidirectionalMap.builder().concurrent().identityMap(communicator.storeRefsIdentityBased()).build();
 		this.typesByRef = UnidirectionalMap.builder().concurrent().identityMap(communicator.storeRefsIdentityBased()).weakKeys().build();
 		this.typeDescriptions = UnidirectionalMap.builder().concurrent().identityMap(communicator.storeRefsIdentityBased()).build();
+		this.typesHandledBySerdeses = UnidirectionalMap.builder().concurrent().identityMap(communicator.storeRefsIdentityBased()).weakKeys().build();
 	}
 
 	@Override
@@ -52,6 +54,12 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		return typeDescriptions.computeIfAbsent(type, communicator::describeType);
 	}
 
+	@Override
+	public TYPEREF getTypeHandledBySerdes(REF serdesRef)
+	{
+		return typesHandledBySerdeses.computeIfAbsent(serdesRef, communicator::getTypeHandledBySerdes);
+	}
+
 	// Delegated methods
 
 	@Override
@@ -68,6 +76,11 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions)
 	{
 		return communicator.newMultiArray(componentType, dimensions);
+	}
+	@Override
+	public REF newArrayWithInitialValues(TYPEREF componentType, List<REF> initialValues)
+	{
+		return communicator.newArrayWithInitialValues(componentType, initialValues);
 	}
 	@Override
 	public int getArrayLength(REF arrayRef)

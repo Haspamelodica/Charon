@@ -17,6 +17,7 @@ import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind;
 import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
@@ -70,6 +71,15 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
+	public Class<?> getTypeHandledBySerdes(Object serdesRef)
+	{
+		// responsibility of caller
+		SerDes<?> serdes = (SerDes<?>) serdesRef;
+
+		return serdes.getHandledClass();
+	}
+
+	@Override
 	public Object newArray(Class<?> componentType, int length)
 	{
 		return ReflectionUtils.newArray(componentType, length);
@@ -79,6 +89,12 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	public Object newMultiArray(Class<?> componentType, List<Integer> dimensions)
 	{
 		return ReflectionUtils.newMultiArray(componentType, dimensions);
+	}
+
+	@Override
+	public Object newArrayWithInitialValues(Class<?> componentType, List<Object> initialValues)
+	{
+		return ReflectionUtils.newArrayWithInitialValues(componentType, initialValues);
 	}
 
 	@Override

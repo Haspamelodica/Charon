@@ -1,6 +1,8 @@
 package net.haspamelodica.charon.impl;
 
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.*;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkReturnAndParameterTypes;
+import static net.haspamelodica.charon.impl.StudentSideImplUtils.defaultHandler;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
@@ -8,6 +10,7 @@ import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyIns
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -23,12 +26,20 @@ import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.exceptions.StudentSideException;
+import net.haspamelodica.charon.impl.StudentSidePrototypeBuilder.PrototypeVariant;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
+import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSSI;
+import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSerializable;
+import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSerializableSSI;
 
 public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI extends StudentSideInstance>
 {
 	public final Class<SI>						instanceClass;
 	public final StudentSideInstanceKind.Kind	kind;
+
+	private final PrototypeVariant	prototypeVariant;
+	private final Class<?>			componentSSIType;
+	private final Class<?>			componentSerializableType;
 
 	public final MarshalingCommunicator<REF, TYPEREF, StudentSideException> instanceWideMarshalingCommunicator;
 
@@ -37,6 +48,9 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 	public <SP extends StudentSidePrototype<SI>> StudentSideInstanceBuilder(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder)
 	{
 		this.instanceClass = prototypeBuilder.instanceClass;
+		this.prototypeVariant = prototypeBuilder.prototypeVariant;
+		this.componentSSIType = prototypeBuilder.componentSSIType;
+		this.componentSerializableType = prototypeBuilder.componentSerializableType;
 
 		this.instanceWideMarshalingCommunicator = prototypeBuilder.prototypeWideMarshalingCommunicator;
 
@@ -54,23 +68,42 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 		checkNotAnnotatedWith(instanceClass, StudentSideInstanceMethodKind.class);
 		checkNotAnnotatedWith(instanceClass, StudentSidePrototypeMethodKind.class);
 
-		StudentSideInstanceKind kind = instanceClass.getAnnotation(StudentSideInstanceKind.class);
-		if(kind == null)
+		checkInstanceClassDoesNotImplementExceptIfArrayVariantMatches(StudentSideArrayOfSSI.class);
+		checkInstanceClassDoesNotImplementExceptIfArrayVariantMatches(StudentSideArrayOfSerializable.class);
+		checkInstanceClassDoesNotImplementExceptIfArrayVariantMatches(StudentSideArrayOfSerializableSSI.class);
+
+		StudentSideInstanceKind kindAnnotation = instanceClass.getAnnotation(StudentSideInstanceKind.class);
+		if(kindAnnotation == null)
 			throw new InconsistentHierarchyException("A student-side instance class has to be annotated with StudentSideInstanceKind: " + instanceClass);
-		return kind.value();
+
+		StudentSideInstanceKind.Kind kind = kindAnnotation.value();
+		if(prototypeVariant.isArray())
+		{
+			if(kind != StudentSideInstanceKind.Kind.ARRAY)
+				throw new InconsistentHierarchyException("A student-side instance class for an array prototype has to be declared to have kind ARRAY, but was "
+						+ kind + ": " + instanceClass);
+		} else if(kind != StudentSideInstanceKind.Kind.CLASS && kind != StudentSideInstanceKind.Kind.INTERFACE)
+			throw new InconsistentHierarchyException("A student-side instance class for a non-array prototype can't be declared to have kind "
+					+ kind + ": " + instanceClass);
+
+		return kind;
+	}
+
+	private void checkInstanceClassDoesNotImplementExceptIfArrayVariantMatches(Class<?> clazz)
+	{
+		if(clazz != prototypeVariant.instanceBaseClass() && clazz.isAssignableFrom(instanceClass))
+			throw new InconsistentHierarchyException("A student-side instance class unexpectedly implemented "
+					+ clazz.getSimpleName() + ": " + instanceClass);
 	}
 
 	private record MethodWithHandler(Method method, MethodHandler handler)
 	{}
 	private Map<Method, MethodHandler> createMethodHandlers()
 	{
-		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
-		return Stream.concat(
-				Arrays.stream(instanceClass.getMethods())
-						.map(m -> new MethodWithHandler(m, methodHandlerFor(m))),
-				objectMethodHandlers())
+		return Stream.concat(ssiOrArrayMethodHandlers(), objectMethodHandlers())
 				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
 	}
+
 	private Stream<MethodWithHandler> objectMethodHandlers()
 	{
 		// Yes, those methods could be overloaded. But even so, we wouldn't know what to do with the overloaded variants.
@@ -89,7 +122,78 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 				});
 	}
 
-	private MethodHandler methodHandlerFor(Method method)
+	private Stream<MethodWithHandler> ssiOrArrayMethodHandlers()
+	{
+		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
+		return Arrays.stream(instanceClass.getMethods())
+				.map(prototypeVariant.isArray() ? this::arrayMethodHandlerFor : m -> new MethodWithHandler(m, ssiMethodHandlerFor(m)));
+	}
+
+	private MethodWithHandler arrayMethodHandlerFor(Method method)
+	{
+		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
+		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
+
+		if(!Modifier.isAbstract(method.getModifiers()))
+		{
+			checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
+			return new MethodWithHandler(method, defaultHandler(method));
+		}
+
+		if(method.getDeclaringClass() != prototypeVariant.instanceBaseClass())
+			throw new InconsistentHierarchyException("An array SSI can't define new abstract methods: " + instanceClass);
+
+		return switch(method.getName())
+		{
+			case "length" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
+					arrayLengthHandler());
+			case "get", "getAsSerializable" -> new MethodWithHandler(method, arrayGetMethodHandler(method));
+			case "set" -> new MethodWithHandler(method, arraySetMethodHandler(method));
+			default -> throw new FrameworkCausedException("Unknown method of " + prototypeVariant.instanceBaseClass() + ": " + method);
+		};
+	}
+
+	private MethodHandler arrayLengthHandler()
+	{
+		return (proxy, args) -> instanceWideMarshalingCommunicator.getArrayLength(instanceClass, proxy);
+	}
+
+	private MethodHandler arrayGetMethodHandler(Method method)
+	{
+		if(method.getParameterCount() != 1)
+			throw new FrameworkCausedException("Array get method had not exactly one parameter");
+
+		if(method.getParameters()[0].getType() != int.class)
+			throw new FrameworkCausedException("Array get method's parameter wasn't int");
+
+		Class<?> valueType = chooseComponentTypeFromErasure(method.getReturnType(), method);
+
+		return (proxy, args) -> instanceWideMarshalingCommunicator.getArrayElement(instanceClass, valueType, proxy, (Integer) args[0]);
+	}
+
+	private MethodHandler arraySetMethodHandler(Method method)
+	{
+		if(method.getParameterCount() != 2)
+			throw new FrameworkCausedException("Array set method had not exactly two parameters");
+
+		if(method.getReturnType() != void.class)
+			throw new FrameworkCausedException("Array set method's return type wasn't void");
+
+		Parameter[] parameters = method.getParameters();
+
+		if(parameters[0].getType() != int.class)
+			throw new FrameworkCausedException("Array set method's first parameter wasn't int");
+
+		Class<?> valueType = chooseComponentTypeFromErasure(parameters[1].getType(), method);
+
+		return (proxy, args) ->
+		{
+			instanceWideMarshalingCommunicator.setArrayElement(instanceClass, valueType, proxy, (Integer) args[0], args[1]);
+			return null;
+		};
+	}
+
+	private MethodHandler ssiMethodHandlerFor(Method method)
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
@@ -160,5 +264,10 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 			methodWideMarshalingCommunicator.setInstanceField(instanceClass, name, fieldType, proxy, argCasted);
 			return null;
 		};
+	}
+
+	private Class<?> chooseComponentTypeFromErasure(Class<?> componentTypeErasure, Method method)
+	{
+		return StudentSidePrototypeBuilder.chooseComponentTypeFromErasure(componentTypeErasure, method, componentSSIType, componentSerializableType);
 	}
 }

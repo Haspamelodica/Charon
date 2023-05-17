@@ -78,7 +78,7 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	@Override
 	public TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 	{
-		return Objects.requireNonNull(communicator.get().getTypeByName(ReflectionUtils.classToName(representationClass)));
+		return Objects.requireNonNull(communicator.get().getTypeByNameAndVerify(ReflectionUtils.classToName(representationClass)));
 	}
 
 	@Override

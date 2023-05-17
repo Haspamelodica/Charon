@@ -154,8 +154,10 @@ public class DataCommunicatorServer
 					case GET_ARRAY_TYPE -> respondGetArrayType(in, out);
 					case GET_TYPE_OF -> respondGetTypeOf(in, out);
 					case DESCRIBE_TYPE -> respondDescribeType(in, out);
+					case GET_TYPE_HANDLED_BY_SERDES -> respondGetTypeHandledBySerdes(in, out);
 					case NEW_ARRAY -> respondNewArray(in, out);
 					case NEW_MULTI_ARRAY -> respondNewMultiArray(in, out);
+					case NEW_ARRAY_WITH_INITIAL_VALUES -> respondNewArrayWithInitialValues(in, out);
 					case GET_ARRAY_LENGTH -> respondGetArrayLength(in, out);
 					case GET_ARRAY_ELEMENT -> respondGetArrayElement(in, out);
 					case SET_ARRAY_ELEMENT -> respondSetArrayElement(in, out);
@@ -246,6 +248,16 @@ public class DataCommunicatorServer
 		writeRef(out, result.componentTypeIfArray().orElse(null));
 	}
 
+	private void respondGetTypeHandledBySerdes(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef serdesRef = readRef(in);
+
+		LongRef result = communicator.getTypeHandledBySerdes(serdesRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
+	}
+
 	private void respondNewArray(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef componentType = readRef(in);
@@ -267,6 +279,21 @@ public class DataCommunicatorServer
 			dimensions[i] = in.readInt();
 
 		LongRef result = communicator.newMultiArray(componentType, List.of(dimensions));
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeRef(out, result);
+	}
+
+	private void respondNewArrayWithInitialValues(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef componentType = readRef(in);
+
+		int length = in.readInt();
+		LongRef[] initialValues = new LongRef[length];
+		for(int i = 0; i < length; i ++)
+			initialValues[i] = readRef(in);
+
+		LongRef result = communicator.newArrayWithInitialValues(componentType, List.of(initialValues));
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);

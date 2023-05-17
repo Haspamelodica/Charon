@@ -13,8 +13,10 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_INSTANCE_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_STATIC_FIELD;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_BY_NAME;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_HANDLED_BY_SERDES;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.GET_TYPE_OF;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_ARRAY;
+import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_ARRAY_WITH_INITIAL_VALUES;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.NEW_MULTI_ARRAY;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.RECEIVE;
 import static net.haspamelodica.charon.communicator.impl.data.ThreadCommand.SEND;
@@ -171,6 +173,12 @@ public class DataCommunicatorClient
 	}
 
 	@Override
+	public LongRef getTypeHandledBySerdes(LongRef serdesRef)
+	{
+		return executeRefCommand(GET_TYPE_HANDLED_BY_SERDES, ALLOW_CALLBACKS, out -> writeRef(out, serdesRef));
+	}
+
+	@Override
 	public LongRef newArray(LongRef componentType, int length)
 	{
 		return executeRefCommand(NEW_ARRAY, DISALLOW_CALLBACKS, out ->
@@ -192,6 +200,21 @@ public class DataCommunicatorClient
 			// index-based iteration to defend against botched List implementations
 			for(int i = 0; i < dimensionsSize; i ++)
 				out.writeInt(dimensions.get(i));
+		});
+	}
+
+	@Override
+	public LongRef newArrayWithInitialValues(LongRef componentType, List<LongRef> initialValues)
+	{
+		return executeRefCommand(NEW_ARRAY_WITH_INITIAL_VALUES, DISALLOW_CALLBACKS, out ->
+		{
+			writeRef(out, componentType);
+
+			int length = initialValues.size();
+			out.writeInt(length);
+			// index-based iteration to defend against botched List implementations
+			for(int i = 0; i < length; i ++)
+				writeRef(out, initialValues.get(i));
 		});
 	}
 

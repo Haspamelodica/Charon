@@ -157,6 +157,11 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		return translator.translateTo(objRefs);
 	}
 
+	public TYPEREF getTypeHandledByStudentSideSerdes(Class<? extends SerDes<?>> serdesClass)
+	{
+		return communicator.getTypeHandledBySerdes(getSerDesFromSerDesClass(serdesClass).studentSideSerDesRef().get());
+	}
+
 	public void throwIfError(RefOrError<REF> objRef) throws SSX
 	{
 		if(!objRef.isError())

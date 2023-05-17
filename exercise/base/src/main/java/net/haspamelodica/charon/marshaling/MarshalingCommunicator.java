@@ -2,6 +2,7 @@ package net.haspamelodica.charon.marshaling;
 
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 
+import java.util.Collections;
 import java.util.List;
 
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
@@ -12,6 +13,7 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
+import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.reflection.ExceptionInTargetException;
@@ -116,9 +118,20 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		return new MarshalingCommunicator<>(callbacks, communicator, marshaler.withAdditionalSerDeses(serDeses));
 	}
 
-	public TYPEREF getTypeByName(String typeName)
+	public TYPEREF getTypeByNameAndVerify(String typeName)
 	{
-		return communicator.getTypeByName(typeName);
+		TYPEREF result = communicator.getTypeByName(typeName);
+
+		String actualName = describeType(result).name();
+		if(!actualName.equals(typeName))
+			throw new FrameworkCausedException("Name of type created by name mismatched: expected " + typeName + ", but was " + actualName);
+
+		return result;
+	}
+
+	public TYPEREF getArrayType(TYPEREF componentType)
+	{
+		return communicator.getArrayType(componentType);
 	}
 
 	public TYPEREF getTypeOf(Object representationObject)
@@ -129,6 +142,58 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	public StudentSideTypeDescription<TYPEREF> describeType(TYPEREF type)
 	{
 		return communicator.describeType(type);
+	}
+
+	public TYPEREF getTypeHandledByStudentSideSerdes(Class<? extends SerDes<?>> serdesClass)
+	{
+		return marshaler.getTypeHandledByStudentSideSerdes(serdesClass);
+	}
+
+	public <T> T newArray(Class<T> arrayType, TYPEREF componentType, int length)
+	{
+		REF resultRef = communicator.newArray(componentType, length);
+
+		return marshaler.receive(arrayType, resultRef);
+	}
+
+	public <T> T newMultiArray(Class<T> arrayType, TYPEREF componentType, List<Integer> dimensions)
+	{
+		REF resultRef = communicator.newMultiArray(componentType, dimensions);
+
+		return marshaler.receive(arrayType, resultRef);
+	}
+
+	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> componentType, List<Object> initialValues)
+	{
+		List<REF> initialValuesRefs = marshaler.send(Collections.nCopies(initialValues.size(), componentType), initialValues);
+
+		REF resultRef = communicator.newArrayWithInitialValues(lookupCorrespondingStudentSideTypeOrThrow(componentType), initialValuesRefs);
+
+		return marshaler.receive(arrayType, resultRef);
+	}
+
+	public int getArrayLength(Class<?> arrayType, Object array)
+	{
+		REF arrayRef = marshaler.send(arrayType, array);
+
+		return communicator.getArrayLength(arrayRef);
+	}
+
+	public <T> T getArrayElement(Class<?> arrayType, Class<T> valueType, Object array, int index)
+	{
+		REF arrayRef = marshaler.send(arrayType, array);
+
+		REF valueRef = communicator.getArrayElement(arrayRef, index);
+
+		return marshaler.receive(valueType, valueRef);
+	}
+
+	public void setArrayElement(Class<?> arrayType, Class<?> valueType, Object array, int index, Object value)
+	{
+		REF arrayRef = marshaler.send(arrayType, array);
+		REF valueRef = marshaler.send(valueType, value);
+
+		communicator.setArrayElement(arrayRef, index, valueRef);
 	}
 
 	public <T> T callConstructor(Class<T> type, List<Class<?>> params, List<Object> args) throws SSX

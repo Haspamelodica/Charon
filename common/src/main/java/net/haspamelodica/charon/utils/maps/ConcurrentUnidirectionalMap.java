@@ -24,7 +24,7 @@ public class ConcurrentUnidirectionalMap<K, V> extends AbstractUnidirectionalMap
 			return map.containsKey(key);
 		}
 	}
-	
+
 	@Override
 	public V get(K key)
 	{

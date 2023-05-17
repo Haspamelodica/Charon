@@ -79,6 +79,15 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	}
 
 	@Override
+	public TYPEREF getTypeHandledBySerdes(REF serdesRef)
+	{
+		logger.logEnter("Serdes type " + serdesRef);
+		TYPEREF result = communicator.getTypeHandledBySerdes(serdesRef);
+		logger.logExit(result);
+		return result;
+	}
+
+	@Override
 	public REF newArray(TYPEREF componentType, int length)
 	{
 		logger.logEnter("newarray " + t(componentType) + "[" + length + "]");
@@ -92,6 +101,15 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	{
 		logger.logEnter("newarray " + t(componentType) + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining("][", "[", "]")));
 		REF result = communicator.newMultiArray(componentType, dimensions);
+		logger.logExit(result);
+		return result;
+	}
+
+	@Override
+	public REF newArrayWithInitialValues(TYPEREF componentType, List<REF> initialValues)
+	{
+		logger.logEnter("newarray " + t(componentType) + " initial " + initialValues.stream().map(i -> i.toString()).collect(Collectors.joining(", ")));
+		REF result = communicator.newArrayWithInitialValues(componentType, initialValues);
 		logger.logExit(result);
 		return result;
 	}

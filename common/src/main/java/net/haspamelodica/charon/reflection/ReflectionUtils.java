@@ -42,6 +42,17 @@ public class ReflectionUtils
 		return Array.newInstance(componentClass, dimensions.stream().mapToInt(i -> i).toArray());
 	}
 
+	public static Object newArrayWithInitialValues(Class<?> componentClass, List<Object> initialValues)
+	{
+		int length = initialValues.size();
+		Object array = newArray(componentClass, length);
+		// index-based to defend against botched List implementations
+		for(int i = 0; i < length; i ++)
+			setArrayElement(array, i, initialValues.get(i));
+
+		return array;
+	}
+
 	public static int getArrayLength(Object array)
 	{
 		return Array.getLength(array);

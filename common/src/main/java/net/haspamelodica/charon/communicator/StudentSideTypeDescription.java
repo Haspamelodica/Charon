@@ -1,7 +1,11 @@
 package net.haspamelodica.charon.communicator;
 
+import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind.ARRAY;
+import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind.CLASS;
+import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind.INTERFACE;
+import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind.PRIMITIVE;
+
 import java.util.List;
-import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind.*;
 import java.util.Objects;
 import java.util.Optional;
 

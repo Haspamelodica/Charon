@@ -15,7 +15,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 public class WrappedStudentSide implements AutoCloseable
 {
 	private final WrappedDataCommunicatorClient	communicator;
-	private final StudentSide			studentSide;
+	private final StudentSide					studentSide;
 
 	public WrappedStudentSide(String... args) throws IOException, InterruptedException, IncorrectUsageException
 	{

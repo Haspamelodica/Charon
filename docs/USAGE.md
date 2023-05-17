@@ -47,6 +47,11 @@ or
 [`StudentSidePrototypeMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSidePrototypeMethodKind.java),
 respectively, specifies which kind of member it represents.
 
+All parameter types and the return type of each of these methods have to be either primitive or an SSI.
+(An exception to this is serialization, which is described later).
+Field getters have to have no parameters and the represented field's type as their return type;
+field setters have to have return type `void` and exactly one parameter with the field's type.
+
 <details>
 <summary>Example</summary>
 
@@ -242,6 +247,7 @@ but to the SSI interface defined earlier by the exercise creator.
 
 # TODO document:
 
+- Overriding student-side names
 - Serialization
 - Callbacks
 - Student-side exceptions

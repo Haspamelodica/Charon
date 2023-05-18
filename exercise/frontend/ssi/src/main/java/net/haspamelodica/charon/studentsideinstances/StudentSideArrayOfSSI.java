@@ -1,5 +1,7 @@
 package net.haspamelodica.charon.studentsideinstances;
 
+import java.util.List;
+
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 
@@ -17,5 +19,6 @@ public interface StudentSideArrayOfSSI<E extends StudentSideInstance> extends St
 		public A createArray(int length);
 		public A createArray(int... dimensions);
 		public A createArray(@SuppressWarnings("unchecked") E... initialValues);
+		public A createArray(List<E> initialValues);
 	}
 }

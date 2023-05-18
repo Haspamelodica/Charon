@@ -252,12 +252,13 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 
 		return switch(method.getName())
 		{
-			case "createArray" -> new MethodWithHandler(method, createArrayHandler(method));
+			case "createArray" -> new MethodWithHandler(method, createArrayHandler(method, false));
+			case "createArrayFromSerializable" -> new MethodWithHandler(method, createArrayHandler(method, true));
 			default -> throw new FrameworkCausedException("Unknown method of " + prototypeVariant.prototypeBaseClass() + ": " + method);
 		};
 	}
 
-	private MethodHandler createArrayHandler(Method method)
+	private MethodHandler createArrayHandler(Method method, boolean hasToBeListOfSerializable)
 	{
 		// Unfortunately we can't easily check the return type because it's generic.
 
@@ -265,11 +266,31 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 			throw new FrameworkCausedException("Array creation method doesn't have exactly one parameter: " + prototypeClass);
 
 		Class<?> parameterTypeErasure = method.getParameters()[0].getType();
+
+		if(parameterTypeErasure == List.class)
+		{
+			Class<?> componentType = hasToBeListOfSerializable || prototypeVariant == PrototypeVariant.ARRAY_SERIALIZABLE
+					? componentSerializableType
+					: componentSSIType;
+			return (proxy, args) ->
+			{
+				@SuppressWarnings("unchecked")
+				List<Object> initialValues = (List<Object>) args[0];
+				return prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType, initialValues);
+			};
+		}
+
+		if(hasToBeListOfSerializable)
+			throw new FrameworkCausedException("Serializable-based array creation method's parameter had unexpected type "
+					+ parameterTypeErasure + ": " + prototypeClass);
+
 		if(parameterTypeErasure == int.class)
 			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArray(instanceClass, studentSideType.getTyperef(), (Integer) args[0]);
+
 		if(parameterTypeErasure == int[].class)
 			return (proxy, args) -> prototypeWideMarshalingCommunicator.newMultiArray(instanceClass, studentSideType.getTyperef(),
 					Arrays.stream((int[]) args[0]).boxed().toList());
+
 		if(Object[].class.isAssignableFrom(parameterTypeErasure))
 		{
 			Class<?> componentType = chooseComponentTypeFromErasure(parameterTypeErasure.getComponentType(), method);

@@ -147,7 +147,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 
 			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
 			Class<SI> instanceClass = prototypeBuilder.instanceClass;
-			String studentSideCN = prototypeBuilder.studentSideType.name();
+			String studentSideCN = prototypeBuilder.instanceBuilder.studentSideType.name();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
@@ -172,7 +172,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	@Override
 	public StudentSideType getStudentSideType(StudentSidePrototype<?> prototype)
 	{
-		return prototypeBuildersByPrototype.get(prototype).studentSideType;
+		return prototypeBuildersByPrototype.get(prototype).instanceBuilder.studentSideType;
 	}
 
 	@Override
@@ -213,7 +213,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	{
 		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
 		if(prototypeBuilder != null)
-			return prototypeBuilder.studentSideType.getTyperef();
+			return prototypeBuilder.instanceBuilder.studentSideType.getTyperef();
 
 		if(!throwIfNotFound)
 			return null;
@@ -271,7 +271,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				//TODO try to support multiple callback interfaces
 				throw new FrameworkCausedException("Multiple student side classes for " + clazz);
 
-		return prototypeBuilders.get(0).studentSideType.name();
+		return prototypeBuilders.get(0).instanceBuilder.studentSideType.name();
 	}
 
 	private CallbackMethod<Method> lookupCallbackInstanceMethod(TYPEREF receiverStaticType, String name, TYPEREF returnType, List<TYPEREF> params,

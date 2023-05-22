@@ -13,6 +13,7 @@ public interface StudentSideCommunicator<REF, TYPEREF extends REF, TC extends Tr
 
 	public TYPEREF getTypeHandledBySerdes(REF serdesRef);
 
+	//TODO change to take array type
 	public REF newArray(TYPEREF componentType, int length);
 	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions);
 	public REF newArrayWithInitialValues(TYPEREF componentType, List<REF> initialValues);

@@ -2,15 +2,14 @@ package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkNotAnnotatedWith;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkReturnAndParameterTypes;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.defaultHandler;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
-import static net.haspamelodica.charon.impl.StudentSideImplUtils.getStudentSideName;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
 import java.util.Arrays;
@@ -23,33 +22,19 @@ import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
-import net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
-import net.haspamelodica.charon.exceptions.ExerciseCausedException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
-import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSSI;
-import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSerializable;
-import net.haspamelodica.charon.studentsideinstances.StudentSideArrayOfSerializableSSI;
 
 public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final Class<SP>	prototypeClass;
 	public final Class<SI>	instanceClass;
 
-	private final ParameterizedType				parameterizedPrototypeBaseClass;
-	public final PrototypeVariant				prototypeVariant;
-	public final Class<?>						componentSSIType;
-	public final Class<?>						componentSerializableType;
-	private final Class<? extends SerDes<?>>	arrayElementSerdes;
-
 	public final MarshalingCommunicator<REF, TYPEREF, StudentSideException> prototypeWideMarshalingCommunicator;
-
-	public final StudentSideTypeImpl<REF, TYPEREF> studentSideType;
 
 	public final StudentSideInstanceBuilder<REF, TYPEREF, SI> instanceBuilder;
 
@@ -59,26 +44,16 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 
 	public StudentSidePrototypeBuilder(MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator, Class<SP> prototypeClass)
 	{
-		// The order of the following operations is important: (almost) each step depends on the last
+		// The order of the following operations is important: each step depends on the last
 		this.prototypeClass = prototypeClass;
-		InfoFromPrototypeClass<SI> infoFromPrototypeClass = checkPrototypeClassAndGetInstanceClass();
-		this.instanceClass = infoFromPrototypeClass.instanceClass();
-		this.parameterizedPrototypeBaseClass = infoFromPrototypeClass.parameterizedPrototypeBaseClass();
-		this.prototypeVariant = infoFromPrototypeClass.prototypeVariant();
-		this.componentSSIType = getSSIComponentType();
-		this.componentSerializableType = getSerializableComponentType();
-		this.arrayElementSerdes = getArrayElementSerdes();
+		this.instanceClass = checkPrototypeClassAndGetInstanceClass();
 		this.prototypeWideMarshalingCommunicator = createPrototypeWideMarshalingCommunicator(globalMarshalingCommunicator);
-		this.studentSideType = lookupAndVerifyStudentSideType();
 		this.instanceBuilder = new StudentSideInstanceBuilder<>(this);
 		this.methodHandlers = createMethodHandlers();
 		this.prototype = createPrototype();
 	}
 
-	private static record InfoFromPrototypeClass<SI>(ParameterizedType parameterizedPrototypeBaseClass, Class<SI> instanceClass,
-			PrototypeVariant prototypeVariant)
-	{}
-	private InfoFromPrototypeClass<SI> checkPrototypeClassAndGetInstanceClass()
+	private Class<SI> checkPrototypeClassAndGetInstanceClass()
 	{
 		if(!prototypeClass.isInterface())
 			throw new InconsistentHierarchyException("Prototype classes have to be interfaces: " + prototypeClass);
@@ -92,110 +67,36 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 			throw new InconsistentHierarchyException("A prototype class should not implement "
 					+ StudentSideInstance.class.getSimpleName() + ": " + prototypeClass);
 
-		InfoFromPrototypeClass<SI> info = null;
-
 		for(Type genericSuperinterface : prototypeClass.getGenericInterfaces())
 			if(genericSuperinterface.equals(StudentSidePrototype.class))
 				throw new InconsistentHierarchyException("A prototype class has to give a type argument to "
 						+ StudentSidePrototype.class.getSimpleName() + ": " + prototypeClass);
 			else if(genericSuperinterface instanceof ParameterizedType parameterizedSuperinterface)
-				for(PrototypeVariant variant : PrototypeVariant.values())
-					info = updatePrototypeInfo(info, parameterizedSuperinterface, variant);
+			{
+				if(parameterizedSuperinterface.getRawType() != StudentSidePrototype.class)
+					continue;
 
-		if(info == null)
-			throw new InconsistentHierarchyException("A prototype class has to implement exactly one of "
-					+ Arrays.stream(PrototypeVariant.values()).map(PrototypeVariant::prototypeBaseClass)
-							.map(Class::getSimpleName).collect(Collectors.joining(", "))
-					+ " directly: " + prototypeClass);
+				Type typeArgumentUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
+				if(!(typeArgumentUnchecked instanceof Class<?> instanceType))
+					throw new InconsistentHierarchyException("The type argument to " + StudentSidePrototype.class.getSimpleName()
+							+ " has to be an unparameterized or raw class: " + prototypeClass);
 
-		return info;
-	}
+				// Verified by instanceof check above and StudentSidePrototype's signature.
+				@SuppressWarnings("unchecked")
+				Class<SI> instanceClass = (Class<SI>) typeArgumentUnchecked;
+				return instanceClass;
+			}
 
-	private InfoFromPrototypeClass<SI> updatePrototypeInfo(InfoFromPrototypeClass<SI> oldInfo,
-			ParameterizedType parameterizedSuperinterface, PrototypeVariant prototypeVariant)
-	{
-		if(parameterizedSuperinterface.getRawType() != prototypeVariant.prototypeBaseClass())
-			return oldInfo;
-
-		if(oldInfo != null)
-			throw new InconsistentHierarchyException("Prototype class is prototype in multiple ways: "
-					+ prototypeVariant.prototypeBaseClass().getSimpleName() + " and at least one other: " + prototypeClass);
-
-		// From the type signature of StudentSidePrototype (and its array-related subclasses), we know SP's type parameter to StudentSidePrototype is SI.
-		// So, this cast has to succeed.
-		@SuppressWarnings("unchecked")
-		Class<SI> instanceClass = (Class<SI>) getNthTypeArgumentAndCheckIsClass(parameterizedSuperinterface,
-				prototypeVariant.prototypeBaseClass(), prototypeVariant.arrayTypeArgumentIndex());
-
-		return new InfoFromPrototypeClass<>(parameterizedSuperinterface, instanceClass, prototypeVariant);
-	}
-
-	private Class<?> getSSIComponentType()
-	{
-		return getNthTypeArgumentOfPrototypeClassAndCheckIsClassOrNull(prototypeVariant.ssiComponentTypeArgumentIndex());
-	}
-
-	private Class<?> getSerializableComponentType()
-	{
-		return getNthTypeArgumentOfPrototypeClassAndCheckIsClassOrNull(prototypeVariant.serializableComponentTypeArgumentIndex());
-	}
-
-	private Class<? extends SerDes<?>> getArrayElementSerdes()
-	{
-		// From the type signature of StudentSidePrototype (and its array-related subclasses), we know SP's type parameter to StudentSidePrototype is SI.
-		// So, this cast has to succeed.
-		@SuppressWarnings("unchecked")
-		Class<? extends SerDes<?>> result = (Class<? extends SerDes<?>>) getNthTypeArgumentOfPrototypeClassAndCheckIsClassOrNull(prototypeVariant.arrayElementSerdesArgumentIndex());
-		return result;
+		throw new InconsistentHierarchyException("A prototype class has to implement " + StudentSidePrototype.class.getSimpleName()
+				+ " directly: " + prototypeClass);
 	}
 
 	private MarshalingCommunicator<REF, TYPEREF, StudentSideException> createPrototypeWideMarshalingCommunicator(
 			MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator)
 	{
-		MarshalingCommunicator<REF, TYPEREF, StudentSideException> withSerDesesFromPrototypeAndInstanceClass = globalMarshalingCommunicator
+		return globalMarshalingCommunicator
 				.withAdditionalSerDeses(getSerDeses(prototypeClass))
 				.withAdditionalSerDeses(getSerDeses(instanceClass));
-
-		if(arrayElementSerdes == null)
-			return withSerDesesFromPrototypeAndInstanceClass;
-
-		return withSerDesesFromPrototypeAndInstanceClass.withAdditionalSerDeses(List.of(arrayElementSerdes));
-	}
-
-	private StudentSideTypeImpl<REF, TYPEREF> lookupAndVerifyStudentSideType()
-	{
-		return new StudentSideTypeImpl<>(prototypeWideMarshalingCommunicator,
-				prototypeVariant.isArray() ? lookupAndVerifyTyperefForArray() : lookupAndVerifyTyperefForNonarray());
-	}
-
-	private TYPEREF lookupAndVerifyTyperefForArray()
-	{
-		return prototypeWideMarshalingCommunicator.getArrayType(lookupAndVerifyComponentTyperefForArray());
-	}
-
-	private TYPEREF lookupAndVerifyComponentTyperefForArray()
-	{
-		TYPEREF componentTyperefViaSSI = componentSSIType == null
-				? null
-				: prototypeWideMarshalingCommunicator.getTypeByNameAndVerify(getStudentSideName(componentSSIType));
-
-		TYPEREF componentTyperefViaSerializable = prototypeWideMarshalingCommunicator.getTypeHandledByStudentSideSerdes(arrayElementSerdes);
-
-		if(componentTyperefViaSSI == null)
-			return componentTyperefViaSerializable;
-
-		if(componentTyperefViaSerializable == null)
-			return componentTyperefViaSSI;
-
-		if(componentTyperefViaSSI != componentTyperefViaSerializable)
-			throw new ExerciseCausedException("The SSI and Serializable components for an array don't resolve to the same student-side type: " + prototypeClass);
-
-		return componentTyperefViaSSI;
-	}
-
-	private TYPEREF lookupAndVerifyTyperefForNonarray()
-	{
-		return prototypeWideMarshalingCommunicator.getTypeByNameAndVerify(getStudentSideName(instanceClass));
 	}
 
 	private SP createPrototype()
@@ -207,7 +108,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 	{}
 	private Map<Method, MethodHandler> createMethodHandlers()
 	{
-		return Stream.concat(ssiOrArrayMethodHandlers(), objectMethodHandlers())
+		return Stream.concat(ssiMethodHandlers(), objectMethodHandlers())
 				.collect(Collectors.toUnmodifiableMap(MethodWithHandler::method, MethodWithHandler::handler));
 	}
 
@@ -220,7 +121,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				.map(method -> switch(method.getName())
 				{
 					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
-							(proxy, args) -> "Prototype[" + studentSideType.name() + "]");
+							(proxy, args) -> "Prototype[" + instanceBuilder.studentSideType.name() + "]");
 					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
 							(proxy, args) -> System.identityHashCode(proxy));
 					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),
@@ -229,77 +130,10 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				});
 	}
 
-	private Stream<MethodWithHandler> ssiOrArrayMethodHandlers()
+	private Stream<MethodWithHandler> ssiMethodHandlers()
 	{
 		// We are guaranteed to catch all (relevant) methods with getMethods(): abstract interface methods have to be public
-		return Arrays.stream(prototypeClass.getMethods())
-				.map(prototypeVariant.isArray() ? this::arrayMethodHandlerFor : m -> new MethodWithHandler(m, ssiMethodHandlerFor(m)));
-	}
-
-	private MethodWithHandler arrayMethodHandlerFor(Method method)
-	{
-		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
-		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
-
-		if(!Modifier.isAbstract(method.getModifiers()))
-		{
-			checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
-			return new MethodWithHandler(method, defaultHandler(method));
-		}
-
-		if(method.getDeclaringClass() != prototypeVariant.prototypeBaseClass())
-			throw new InconsistentHierarchyException("An array prototype can't define new abstract methods: " + prototypeClass);
-
-		return switch(method.getName())
-		{
-			case "createArray" -> new MethodWithHandler(method, createArrayHandler(method, false));
-			case "createArrayFromSerializable" -> new MethodWithHandler(method, createArrayHandler(method, true));
-			default -> throw new FrameworkCausedException("Unknown method of " + prototypeVariant.prototypeBaseClass() + ": " + method);
-		};
-	}
-
-	private MethodHandler createArrayHandler(Method method, boolean hasToBeListOfSerializable)
-	{
-		// Unfortunately we can't easily check the return type because it's generic.
-
-		if(method.getParameterCount() != 1)
-			throw new FrameworkCausedException("Array creation method doesn't have exactly one parameter: " + prototypeClass);
-
-		Class<?> parameterTypeErasure = method.getParameters()[0].getType();
-
-		if(parameterTypeErasure == List.class)
-		{
-			Class<?> componentType = hasToBeListOfSerializable || prototypeVariant == PrototypeVariant.ARRAY_SERIALIZABLE
-					? componentSerializableType
-					: componentSSIType;
-			return (proxy, args) ->
-			{
-				@SuppressWarnings("unchecked")
-				List<Object> initialValues = (List<Object>) args[0];
-				return prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType, initialValues);
-			};
-		}
-
-		if(hasToBeListOfSerializable)
-			throw new FrameworkCausedException("Serializable-based array creation method's parameter had unexpected type "
-					+ parameterTypeErasure + ": " + prototypeClass);
-
-		if(parameterTypeErasure == int.class)
-			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArray(instanceClass, studentSideType.getTyperef(), (Integer) args[0]);
-
-		if(parameterTypeErasure == int[].class)
-			return (proxy, args) -> prototypeWideMarshalingCommunicator.newMultiArray(instanceClass, studentSideType.getTyperef(),
-					Arrays.stream((int[]) args[0]).boxed().toList());
-
-		if(Object[].class.isAssignableFrom(parameterTypeErasure))
-		{
-			Class<?> componentType = chooseComponentTypeFromErasure(parameterTypeErasure.getComponentType(), method);
-
-			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType,
-					Arrays.asList((Object[]) args[0]));
-		}
-
-		throw new FrameworkCausedException("Array creation method's parameter had unexpected type " + parameterTypeErasure + ": " + prototypeClass);
+		return Arrays.stream(prototypeClass.getMethods()).map(m -> new MethodWithHandler(m, ssiMethodHandlerFor(m)));
 	}
 
 	private MethodHandler ssiMethodHandlerFor(Method method)
@@ -310,21 +144,27 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				prototypeWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class,
-				(kind, name, nameOverridden) -> switch(kind.value())
+				(kindAnnotation, name, nameOverridden) ->
 				{
-					case CONSTRUCTOR -> constructorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
-					case STATIC_METHOD -> staticMethodHandler(method, methodWideMarshalingCommunicator, name);
-					case STATIC_FIELD_GETTER -> staticFieldGetterHandler(method, methodWideMarshalingCommunicator, name);
-					case STATIC_FIELD_SETTER -> staticFieldSetterHandler(method, methodWideMarshalingCommunicator, name);
+					StudentSidePrototypeMethodKind.Kind kind = kindAnnotation.value();
+					if(!kind.allowedInstanceKinds().contains(instanceBuilder.kind))
+						throw new InconsistentHierarchyException("A prototype method of kind " + kind
+								+ " isn't allowed for an SSI of kind " + instanceBuilder.kind + ": " + prototypeClass);
+					return switch(kind)
+					{
+						case CONSTRUCTOR -> constructorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+						case STATIC_METHOD -> staticMethodHandler(method, methodWideMarshalingCommunicator, name);
+						case STATIC_FIELD_GETTER -> staticFieldGetterHandler(method, methodWideMarshalingCommunicator, name);
+						case STATIC_FIELD_SETTER -> staticFieldSetterHandler(method, methodWideMarshalingCommunicator, name);
+						case ARRAY_CREATOR -> arrayCreatorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+						case ARRAY_INITIALIZER -> arrayInitializerHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+					};
 				});
 	}
 
 	private MethodHandler constructorHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
-		if(instanceBuilder.kind != Kind.CLASS)
-			throw new InconsistentHierarchyException("Only student-side classes can have constructors: " + method);
-
 		if(nameOverridden)
 			throw new InconsistentHierarchyException("Student-side constructor had name overridden: " + method);
 
@@ -384,95 +224,97 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		};
 	}
 
-	private Class<?> chooseComponentTypeFromErasure(Class<?> componentTypeErasure, Method method)
+	private MethodHandler arrayCreatorHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+			boolean nameOverridden)
 	{
-		return chooseComponentTypeFromErasure(componentTypeErasure, method, componentSSIType, componentSerializableType);
+		if(!method.getReturnType().equals(instanceClass))
+			throw new InconsistentHierarchyException("Array creator's return type wasn't the associated student-side component type: " +
+					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
+
+		if(method.getParameterCount() != 1)
+			throw new InconsistentHierarchyException("Array creator had not exactly one parameter: " + method);
+
+		Parameter parameter = method.getParameters()[0];
+		Class<?> parameterTypeErasure = parameter.getType();
+
+		if(parameterTypeErasure == int.class)
+			return (proxy, args) -> marshalingCommunicator.newArray(instanceClass, instanceBuilder.studentSideType.getTyperef(),
+					(Integer) args[0]);
+
+		if(parameterTypeErasure == int[].class)
+			return (proxy, args) -> marshalingCommunicator.newMultiArray(instanceClass, instanceBuilder.studentSideType.getTyperef(),
+					Arrays.stream((int[]) args[0]).boxed().toList());
+
+		if(parameterTypeErasure == List.class)
+		{
+			Type parameterizedParameterTypeUnchecked = parameter.getParameterizedType();
+			if(!(parameterizedParameterTypeUnchecked instanceof ParameterizedType parameterizedParameterType))
+				throw new InconsistentHierarchyException("Array creator's List parameter wasn't parameterized: " + method);
+
+			if(parameterizedParameterType.getActualTypeArguments()[0] != Integer.class)
+				throw new InconsistentHierarchyException("Array creator's List parameter's type argument has to be Integer: " + method);
+
+			return (proxy, args) ->
+			{
+				@SuppressWarnings("unchecked")
+				List<Integer> dimensions = (List<Integer>) args[0];
+				return marshalingCommunicator.newMultiArray(instanceClass, instanceBuilder.studentSideType.getTyperef(), dimensions);
+			};
+		}
+
+		throw new InconsistentHierarchyException("Array creator's parameter had unexpected type " + parameterTypeErasure + ": " + method);
 	}
 
-	public static Class<?> chooseComponentTypeFromErasure(Class<?> componentTypeErasure, Method method, Class<?> componentSSIType, Class<?> componentSerializableType)
+	private MethodHandler arrayInitializerHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+			boolean nameOverridden)
 	{
-		if(componentTypeErasure == StudentSideInstance.class)
-			return componentSSIType;
-		else if(componentTypeErasure == Object.class)
-			return componentSerializableType;
-		else
-			throw new FrameworkCausedException("Component type erasure neither " + StudentSideInstance.class.getSimpleName()
-					+ " nor " + Object.class.getSimpleName() + ": " + method);
-	}
+		if(!method.getReturnType().equals(instanceClass))
+			throw new InconsistentHierarchyException("Array initializer's return type wasn't the associated student-side component type: " +
+					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
 
-	private Class<?> getNthTypeArgumentOfPrototypeClassAndCheckIsClassOrNull(int argumentIndex)
-	{
-		return argumentIndex < 0 ? null : getNthTypeArgumentAndCheckIsClass(parameterizedPrototypeBaseClass, prototypeVariant.prototypeBaseClass(), argumentIndex);
-	}
+		if(method.getParameterCount() != 1)
+			throw new InconsistentHierarchyException("Array initializer had not exactly one parameter: " + method);
 
-	private Class<?> getNthTypeArgumentAndCheckIsClass(ParameterizedType parameterizedType, Class<?> rawType, int typeArgumentIndex)
-	{
-		Type typeArgumentUnchecked = parameterizedType.getActualTypeArguments()[typeArgumentIndex];
-		if(!(typeArgumentUnchecked instanceof Class<?> instanceType))
-			throw new InconsistentHierarchyException("The type argument " + rawType.getTypeParameters()[typeArgumentIndex].getName()
-					+ " to " + rawType.getSimpleName()
-					+ " has to be an unparameterized or raw class: " + prototypeClass);
+		Parameter parameter = method.getParameters()[0];
+		Class<?> parameterTypeErasure = parameter.getType();
 
-		return instanceType;
-	}
-
-	public static enum PrototypeVariant
-	{
-		NONARRAY(false, StudentSidePrototype.class, 0, -1, -1, -1),
-		ARRAY_SSI(true, StudentSideArrayOfSSI.Prototype.class, 1, 0, -1, -1),
-		ARRAY_SERIALIZABLE(true, StudentSideArrayOfSerializable.Prototype.class, 2, -1, 0, 1),
-		ARRAY_SERIALIZBLE_SSI(true, StudentSideArrayOfSerializableSSI.Prototype.class, 3, 0, 1, 2);
-
-		private final boolean	isArray;
-		private final Class<?>	prototypeBaseClass;
-		private final Class<?>	instanceBaseClass;
-
-		private final int	arrayTypeArgumentIndex;
-		private final int	ssiComponentTypeArgumentIndex;
-		private final int	serializableComponentTypeArgumentIndex;
-		private final int	arrayElementSerdesArgumentIndex;
-
-		private PrototypeVariant(boolean isArray, Class<?> prototypeBaseClass,
-				int arrayTypeArgumentIndex, int ssiComponentTypeArgumentIndex, int serializableComponentTypeArgumentIndex, int arrayElementSerdesArgumentIndex)
+		if(parameterTypeErasure == List.class)
 		{
-			this.isArray = isArray;
-			this.prototypeBaseClass = prototypeBaseClass;
-			// All array-type prototypes are declared inside their corresponding SSI classes.
-			Class<?> prototypeEnclosingClass = prototypeBaseClass.getEnclosingClass();
-			this.instanceBaseClass = prototypeEnclosingClass == null ? StudentSideInstance.class : prototypeEnclosingClass;
-			this.arrayTypeArgumentIndex = arrayTypeArgumentIndex;
-			this.ssiComponentTypeArgumentIndex = ssiComponentTypeArgumentIndex;
-			this.serializableComponentTypeArgumentIndex = serializableComponentTypeArgumentIndex;
-			this.arrayElementSerdesArgumentIndex = arrayElementSerdesArgumentIndex;
+			Type parameterizedParameterTypeUnchecked = parameter.getParameterizedType();
+			if(!(parameterizedParameterTypeUnchecked instanceof ParameterizedType parameterizedParameterType))
+				throw new InconsistentHierarchyException("Array initializer's List parameter wasn't parameterized: " + method);
+
+			Type listTypeArgumentUnchecked = parameterizedParameterType.getActualTypeArguments()[0];
+
+			if(!(listTypeArgumentUnchecked instanceof Class<?> componentType))
+				throw new InconsistentHierarchyException("Array initializer's List parameter's type parameter wasn't raw or unparameterized: "
+						+ method);
+
+			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(componentType) != instanceBuilder.studentSideComponentType)
+				throw new InconsistentHierarchyException("Array initializer's List parameter's type argument wasn't "
+						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
+						+ ", but was " + componentType + ": " + method);
+
+			return (proxy, args) ->
+			{
+				@SuppressWarnings("unchecked")
+				List<Object> initialValues = (List<Object>) args[0];
+				return prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType, initialValues);
+			};
 		}
 
-		public boolean isArray()
+		if(Object[].class.isAssignableFrom(parameterTypeErasure))
 		{
-			return isArray;
+			Class<?> componentType = parameterTypeErasure.componentType();
+			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(componentType) != instanceBuilder.studentSideComponentType)
+				throw new InconsistentHierarchyException("Array initializer's parameter's component type wasn't "
+						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
+						+ ", but was " + componentType + ": " + method);
+
+			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType,
+					Arrays.asList((Object[]) args[0]));
 		}
-		public Class<?> prototypeBaseClass()
-		{
-			return prototypeBaseClass;
-		}
-		public Class<?> instanceBaseClass()
-		{
-			return instanceBaseClass;
-		}
-		public int ssiComponentTypeArgumentIndex()
-		{
-			return ssiComponentTypeArgumentIndex;
-		}
-		public int serializableComponentTypeArgumentIndex()
-		{
-			return serializableComponentTypeArgumentIndex;
-		}
-		public int arrayTypeArgumentIndex()
-		{
-			return arrayTypeArgumentIndex;
-		}
-		public int arrayElementSerdesArgumentIndex()
-		{
-			return arrayElementSerdesArgumentIndex;
-		}
+
+		throw new InconsistentHierarchyException("Array initializer's parameter had unexpected type " + parameterTypeErasure + ": " + method);
 	}
 }

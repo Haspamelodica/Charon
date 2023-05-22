@@ -297,6 +297,6 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		if(marshaler.isSerializedType(serializableOrRepresentationClass))
 			return communicator.getTypeByName(classToName(serializableOrRepresentationClass));
 
-		return callbacks.lookupCorrespondingStudentSideTypeForRepresentationClass(serializableOrRepresentationClass, throwIfNotFound);
+		return callbacks.lookupCorrespondingStudentSideTypeForRepresentationClass((Class<?>) serializableOrRepresentationClass, throwIfNotFound);
 	}
 }

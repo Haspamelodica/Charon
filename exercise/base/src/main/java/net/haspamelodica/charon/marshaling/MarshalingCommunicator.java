@@ -163,7 +163,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		return marshaler.receive(arrayType, resultRef);
 	}
 
-	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> initialValuesType, List<Object> initialValues)
+	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> initialValuesType, List<?> initialValues)
 	{
 		List<REF> initialValuesRefs = marshaler.send(Collections.nCopies(initialValues.size(), initialValuesType), initialValues);
 
@@ -196,7 +196,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		communicator.setArrayElement(arrayRef, index, valueRef);
 	}
 
-	public <T> T callConstructor(Class<T> type, List<Class<?>> params, List<Object> args) throws SSX
+	public <T> T callConstructor(Class<T> type, List<Class<?>> params, List<?> args) throws SSX
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 
@@ -204,7 +204,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	}
 	// Neccessary for the Mockclasses frontend
 	public REF callConstructorExistingRepresentationObject(Class<?> type, List<Class<?>> params,
-			List<Object> args, Object representationObject) throws SSX
+			List<?> args, Object representationObject) throws SSX
 	{
 		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
 		marshaler.throwIfError(resultRef);
@@ -212,7 +212,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		marshaler.setRepresentationObjectRefPair(resultRef.resultOrErrorRef(), representationObject);
 		return resultRef.resultOrErrorRef();
 	}
-	private RefOrError<REF> callConstructorRawRef(Class<?> type, List<Class<?>> params, List<Object> args)
+	private RefOrError<REF> callConstructorRawRef(Class<?> type, List<Class<?>> params, List<?> args)
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 
@@ -221,7 +221,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		return resultRef;
 	}
 
-	public <T> T callStaticMethod(Class<?> type, String name, Class<T> returnType, List<Class<?>> params, List<Object> args) throws SSX
+	public <T> T callStaticMethod(Class<?> type, String name, Class<T> returnType, List<Class<?>> params, List<?> args) throws SSX
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 
@@ -245,7 +245,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	}
 
 	public <T> T callInstanceMethod(Class<?> type, String name, Class<T> returnType,
-			List<Class<?>> params, Object receiver, List<Object> args) throws SSX
+			List<Class<?>> params, Object receiver, List<?> args) throws SSX
 	{
 		REF receiverRef = marshaler.send(type, receiver);
 
@@ -253,7 +253,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	}
 	// Neccessary for the Mockclasses frontend
 	public <T> T callInstanceMethodRawReceiver(Class<?> type, String name, Class<T> returnType,
-			List<Class<?>> params, REF receiverRef, List<Object> args) throws SSX
+			List<Class<?>> params, REF receiverRef, List<?> args) throws SSX
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 

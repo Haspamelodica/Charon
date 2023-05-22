@@ -5,7 +5,10 @@ import static net.haspamelodica.charon.impl.StudentSideImplUtils.checkReturnAndP
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.arrayToListHandlersHandlingPrimitives;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.getPrimitiveTypeOfBox;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.isBoxedPrimitive;
 
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -15,6 +18,7 @@ import java.lang.reflect.Type;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -284,14 +288,11 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 
 			Type listTypeArgumentUnchecked = parameterizedParameterType.getActualTypeArguments()[0];
 
-			if(!(listTypeArgumentUnchecked instanceof Class<?> initialValuesType))
+			if(!(listTypeArgumentUnchecked instanceof Class<?> initialValuesTypeOrBox))
 				throw new InconsistentHierarchyException("Array initializer's List parameter's type parameter wasn't raw or unparameterized: "
 						+ method);
 
-			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(initialValuesType) != instanceBuilder.studentSideComponentType)
-				throw new InconsistentHierarchyException("Array initializer's List parameter's type argument wasn't "
-						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
-						+ ", but was " + initialValuesType + ": " + method);
+			Class<?> initialValuesType = maybeUnboxAndCheckInitialValuesType(initialValuesTypeOrBox, marshalingCommunicator, method);
 
 			return (proxy, args) ->
 			{
@@ -301,7 +302,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 			};
 		}
 
-		if(Object[].class.isAssignableFrom(parameterTypeErasure))
+		if(parameterTypeErasure.isArray())
 		{
 			Class<?> initialValuesType = parameterTypeErasure.componentType();
 			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(initialValuesType) != instanceBuilder.studentSideComponentType)
@@ -309,10 +310,29 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
 						+ ", but was " + initialValuesType + ": " + method);
 
+			Function<Object, List<?>> arrayToListHandler = arrayToListHandlersHandlingPrimitives(initialValuesType);
 			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, initialValuesType,
-					Arrays.asList((Object[]) args[0]));
+					arrayToListHandler.apply(args[0]));
 		}
 
 		throw new InconsistentHierarchyException("Array initializer's parameter had unexpected type " + parameterTypeErasure + ": " + method);
+	}
+
+	private Class<?> maybeUnboxAndCheckInitialValuesType(Class<?> initialValuesTypeOrBox,
+			MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator, Method method)
+	{
+		if(isBoxedPrimitive(initialValuesTypeOrBox))
+		{
+			Class<?> primitiveInitialValueType = getPrimitiveTypeOfBox(initialValuesTypeOrBox);
+			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(primitiveInitialValueType) == instanceBuilder.studentSideComponentType)
+				return getPrimitiveTypeOfBox(initialValuesTypeOrBox);
+		}
+
+		if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(initialValuesTypeOrBox) != instanceBuilder.studentSideComponentType)
+			throw new InconsistentHierarchyException("Array initializer's List parameter's type argument wasn't "
+					+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
+					+ ", but was " + initialValuesTypeOrBox + ": " + method);
+
+		return initialValuesTypeOrBox;
 	}
 }

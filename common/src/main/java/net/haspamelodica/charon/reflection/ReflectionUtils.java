@@ -10,12 +10,15 @@ import java.lang.reflect.Proxy;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class ReflectionUtils
 {
-	private static final Map<Class<?>, Class<?>> PRIMITIVE_CLASS_WRAPPERS = Map.of(
+	private static final Map<Class<?>, Class<?>> PRIMITIVE_CLASS_TO_BOX = Map.of(
 			boolean.class, Boolean.class,
 			char.class, Character.class,
 			byte.class, Byte.class,
@@ -26,9 +29,24 @@ public class ReflectionUtils
 			double.class, Double.class,
 			void.class, Void.class);
 
-	private static final Set<Class<?>>			PRIMITIVE_CLASSES			= PRIMITIVE_CLASS_WRAPPERS.keySet();
-	private static final Map<String, Class<?>>	PRIMITIVE_CLASSES_BY_NAME	= PRIMITIVE_CLASSES.stream()
+	private static final Map<Class<?>, Class<?>> PRIMITIVE_BOX_TO_CLASS = PRIMITIVE_CLASS_TO_BOX.entrySet().stream()
+			.collect(Collectors.toMap(Entry::getValue, Entry::getKey));
+
+	private static final Set<Class<?>>	PRIMITIVE_CLASSES	= PRIMITIVE_CLASS_TO_BOX.keySet();
+	private static final Set<Class<?>>	PRIMITIVE_BOXES		= PRIMITIVE_BOX_TO_CLASS.keySet();
+
+	private static final Map<String, Class<?>> PRIMITIVE_CLASSES_BY_NAME = PRIMITIVE_CLASSES.stream()
 			.collect(Collectors.toUnmodifiableMap(Class::getName, c -> c));
+
+	private static final Map<Class<?>, Function<Object, List<?>>> PRIMITIVE_CLASS_TO_LIST_HANDLERS = Map.of(
+			boolean.class, a -> IntStream.range(0, ((boolean[]) a).length).mapToObj(i -> ((boolean[]) a)[i]).toList(),
+			char.class, a -> IntStream.range(0, ((char[]) a).length).mapToObj(i -> ((char[]) a)[i]).toList(),
+			byte.class, a -> IntStream.range(0, ((byte[]) a).length).mapToObj(i -> ((byte[]) a)[i]).toList(),
+			short.class, a -> IntStream.range(0, ((short[]) a).length).mapToObj(i -> ((short[]) a)[i]).toList(),
+			int.class, a -> Arrays.stream((int[]) a).boxed().toList(),
+			long.class, a -> Arrays.stream((long[]) a).boxed().toList(),
+			float.class, a -> IntStream.range(0, ((float[]) a).length).mapToObj(i -> ((float[]) a)[i]).toList(),
+			double.class, a -> Arrays.stream((double[]) a).boxed().toList());
 
 	public static Object newArray(Class<?> arrayType, int length)
 	{
@@ -212,17 +230,37 @@ public class ReflectionUtils
 		if(!clazz.isPrimitive())
 			return clazz.cast(obj);
 
-		Class<?> wrapper = PRIMITIVE_CLASS_WRAPPERS.get(clazz);
-		// For primitives, primivite.class has type Class<PrimitiveWrapper>.
-		// So, if we get passed primitive.class, T is PrimitiveWrapper.
+		Class<?> box = getBoxOfPrimitiveType(clazz);
+		// For primitives, primivite.class has type Class<PrimitiveBox>.
+		// So, if we get passed primitive.class, T is PrimitiveBox.
 		@SuppressWarnings("unchecked")
-		Class<T> wrapperCasted = (Class<T>) wrapper;
-		return wrapperCasted.cast(obj);
+		Class<T> boxCasted = (Class<T>) box;
+		return boxCasted.cast(obj);
 	}
 
 	public static boolean isPrimitiveName(String classname)
 	{
 		return PRIMITIVE_CLASSES_BY_NAME.containsKey(classname);
+	}
+
+	public static <T> Class<?> getBoxOfPrimitiveType(Class<T> clazz)
+	{
+		return PRIMITIVE_CLASS_TO_BOX.get(clazz);
+	}
+
+	public static boolean isBoxedPrimitive(Class<?> clazz)
+	{
+		return PRIMITIVE_BOXES.contains(clazz);
+	}
+
+	public static Class<?> getPrimitiveTypeOfBox(Class<?> clazz)
+	{
+		return PRIMITIVE_BOX_TO_CLASS.get(clazz);
+	}
+
+	public static Function<Object, List<?>> arrayToListHandlersHandlingPrimitives(Class<?> componentType)
+	{
+		return componentType.isPrimitive() ? PRIMITIVE_CLASS_TO_LIST_HANDLERS.get(componentType) : a -> List.of((Object[]) a);
 	}
 
 	public static List<Class<?>> nameToClass(List<String> classnames)

@@ -299,4 +299,9 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 
 		return callbacks.lookupCorrespondingStudentSideTypeForRepresentationClass((Class<?>) serializableOrRepresentationClass, throwIfNotFound);
 	}
+
+	public REF getRawRef(Object representationObject)
+	{
+		return marshaler.translateFrom(representationObject);
+	}
 }

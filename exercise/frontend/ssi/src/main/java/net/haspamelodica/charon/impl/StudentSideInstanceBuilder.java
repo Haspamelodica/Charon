@@ -125,7 +125,7 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 				.map(method -> switch(method.getName())
 				{
 					case "toString" -> new MethodWithHandler(checkReturnAndParameterTypes(method, String.class),
-							(proxy, args) -> "SSI#" + Integer.toHexString(System.identityHashCode(proxy))); //TODO can we easily show the RefID here?
+							(proxy, args) -> "SSI" + instanceWideMarshalingCommunicator.getRawRef(proxy));
 					case "hashCode" -> new MethodWithHandler(checkReturnAndParameterTypes(method, int.class),
 							(proxy, args) -> System.identityHashCode(proxy));
 					case "equals" -> new MethodWithHandler(checkReturnAndParameterTypes(method, boolean.class, Object.class),

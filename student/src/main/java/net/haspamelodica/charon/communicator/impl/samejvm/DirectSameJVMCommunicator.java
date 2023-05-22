@@ -80,21 +80,21 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Object newArray(Class<?> componentType, int length)
+	public Object newArray(Class<?> arrayType, int length)
 	{
-		return ReflectionUtils.newArray(componentType, length);
+		return ReflectionUtils.newArray(arrayType, length);
 	}
 
 	@Override
-	public Object newMultiArray(Class<?> componentType, List<Integer> dimensions)
+	public Object newMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
-		return ReflectionUtils.newMultiArray(componentType, dimensions);
+		return ReflectionUtils.newMultiArray(arrayType, dimensions);
 	}
 
 	@Override
-	public Object newArrayWithInitialValues(Class<?> componentType, List<Object> initialValues)
+	public Object newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
 	{
-		return ReflectionUtils.newArrayWithInitialValues(componentType, initialValues);
+		return ReflectionUtils.newArrayWithInitialValues(arrayType, initialValues);
 	}
 
 	@Override

@@ -30,27 +30,35 @@ public class ReflectionUtils
 	private static final Map<String, Class<?>>	PRIMITIVE_CLASSES_BY_NAME	= PRIMITIVE_CLASSES.stream()
 			.collect(Collectors.toUnmodifiableMap(Class::getName, c -> c));
 
-	public static Object newArray(Class<?> componentClass, int length)
+	public static Object newArray(Class<?> arrayType, int length)
 	{
 		// Don't try to cast to T[] (where T is the type argument to componentClass):
 		// If componentClass is primitive, the resulting primitive array won't be an instance of Object[].
-		return Array.newInstance(componentClass, length);
+		return Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), length);
 	}
 
-	public static Object newMultiArray(Class<?> componentClass, List<Integer> dimensions)
+	public static Object newMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
-		return Array.newInstance(componentClass, dimensions.stream().mapToInt(i -> i).toArray());
+		return Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), dimensions.stream().mapToInt(i -> i).toArray());
 	}
 
-	public static Object newArrayWithInitialValues(Class<?> componentClass, List<Object> initialValues)
+	public static Object newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
 	{
 		int length = initialValues.size();
-		Object array = newArray(componentClass, length);
+		Object array = newArray(arrayType, length);
 		// index-based to defend against botched List implementations
 		for(int i = 0; i < length; i ++)
 			setArrayElement(array, i, initialValues.get(i));
 
 		return array;
+	}
+
+	private static Class<?> checkIsArrayTypeAndGetComponentType(Class<?> arrayType)
+	{
+		if(!arrayType.isArray())
+			throw new IllegalArgumentException("The given array type is not an array type: " + arrayType);
+
+		return arrayType.getComponentType();
 	}
 
 	public static int getArrayLength(Object array)

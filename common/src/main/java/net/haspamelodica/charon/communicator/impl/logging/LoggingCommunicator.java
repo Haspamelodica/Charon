@@ -88,28 +88,28 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	}
 
 	@Override
-	public REF newArray(TYPEREF componentType, int length)
+	public REF newArray(TYPEREF arrayType, int length)
 	{
-		logger.logEnter("newarray " + t(componentType) + "[" + length + "]");
-		REF result = communicator.newArray(componentType, length);
+		logger.logEnter("newarray " + t(arrayType) + "[" + length + "]");
+		REF result = communicator.newArray(arrayType, length);
 		logger.logExit(result);
 		return result;
 	}
 
 	@Override
-	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions)
+	public REF newMultiArray(TYPEREF arrayType, List<Integer> dimensions)
 	{
-		logger.logEnter("newarray " + t(componentType) + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining("][", "[", "]")));
-		REF result = communicator.newMultiArray(componentType, dimensions);
+		logger.logEnter("newarray " + t(arrayType) + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining("][", "[", "]")));
+		REF result = communicator.newMultiArray(arrayType, dimensions);
 		logger.logExit(result);
 		return result;
 	}
 
 	@Override
-	public REF newArrayWithInitialValues(TYPEREF componentType, List<REF> initialValues)
+	public REF newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues)
 	{
-		logger.logEnter("newarray " + t(componentType) + " initial " + initialValues.stream().map(i -> i.toString()).collect(Collectors.joining(", ")));
-		REF result = communicator.newArrayWithInitialValues(componentType, initialValues);
+		logger.logEnter("newarray " + t(arrayType) + " initial " + initialValues.stream().map(i -> i.toString()).collect(Collectors.joining(", ")));
+		REF result = communicator.newArrayWithInitialValues(arrayType, initialValues);
 		logger.logExit(result);
 		return result;
 	}

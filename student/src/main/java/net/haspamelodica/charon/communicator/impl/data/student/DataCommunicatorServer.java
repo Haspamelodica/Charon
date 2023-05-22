@@ -260,10 +260,10 @@ public class DataCommunicatorServer
 
 	private void respondNewArray(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef componentType = readRef(in);
+		LongRef arrayType = readRef(in);
 		int length = in.readInt();
 
-		LongRef result = communicator.newArray(componentType, length);
+		LongRef result = communicator.newArray(arrayType, length);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
@@ -271,14 +271,14 @@ public class DataCommunicatorServer
 
 	private void respondNewMultiArray(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef componentType = readRef(in);
+		LongRef arrayType = readRef(in);
 
 		int dimensionsSize = in.readInt();
 		Integer[] dimensions = new Integer[dimensionsSize];
 		for(int i = 0; i < dimensionsSize; i ++)
 			dimensions[i] = in.readInt();
 
-		LongRef result = communicator.newMultiArray(componentType, List.of(dimensions));
+		LongRef result = communicator.newMultiArray(arrayType, List.of(dimensions));
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
@@ -286,14 +286,14 @@ public class DataCommunicatorServer
 
 	private void respondNewArrayWithInitialValues(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef componentType = readRef(in);
+		LongRef arrayType = readRef(in);
 
 		int length = in.readInt();
 		LongRef[] initialValues = new LongRef[length];
 		for(int i = 0; i < length; i ++)
 			initialValues[i] = readRef(in);
 
-		LongRef result = communicator.newArrayWithInitialValues(componentType, List.of(initialValues));
+		LongRef result = communicator.newArrayWithInitialValues(arrayType, List.of(initialValues));
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);

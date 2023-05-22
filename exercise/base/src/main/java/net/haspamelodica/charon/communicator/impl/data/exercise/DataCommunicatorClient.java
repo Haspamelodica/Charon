@@ -179,21 +179,21 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public LongRef newArray(LongRef componentType, int length)
+	public LongRef newArray(LongRef arrayType, int length)
 	{
 		return executeRefCommand(NEW_ARRAY, DISALLOW_CALLBACKS, out ->
 		{
-			writeRef(out, componentType);
+			writeRef(out, arrayType);
 			out.writeInt(length);
 		});
 	}
 
 	@Override
-	public LongRef newMultiArray(LongRef componentType, List<Integer> dimensions)
+	public LongRef newMultiArray(LongRef arrayType, List<Integer> dimensions)
 	{
 		return executeRefCommand(NEW_MULTI_ARRAY, DISALLOW_CALLBACKS, out ->
 		{
-			writeRef(out, componentType);
+			writeRef(out, arrayType);
 
 			int dimensionsSize = dimensions.size();
 			out.writeInt(dimensionsSize);
@@ -204,11 +204,11 @@ public class DataCommunicatorClient
 	}
 
 	@Override
-	public LongRef newArrayWithInitialValues(LongRef componentType, List<LongRef> initialValues)
+	public LongRef newArrayWithInitialValues(LongRef arrayType, List<LongRef> initialValues)
 	{
 		return executeRefCommand(NEW_ARRAY_WITH_INITIAL_VALUES, DISALLOW_CALLBACKS, out ->
 		{
-			writeRef(out, componentType);
+			writeRef(out, arrayType);
 
 			int length = initialValues.size();
 			out.writeInt(length);

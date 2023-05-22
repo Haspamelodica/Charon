@@ -118,19 +118,20 @@ public class RefTranslatorCommunicator<
 		return translator.translateTo(communicator.getTypeHandledBySerdes(translator.translateFrom(serdesRef)));
 	}
 	@Override
-	public REF_TO newArray(REF_TO componentType, int length)
+	public REF_TO newArray(REF_TO arrayType, int length)
 	{
-		return translator.translateTo(communicator.newArray(translateTypeFrom(componentType), length));
+		return translator.translateTo(communicator.newArray(translateTypeFrom(arrayType), length));
 	}
 	@Override
-	public REF_TO newMultiArray(REF_TO componentType, List<Integer> dimensions)
+	public REF_TO newMultiArray(REF_TO arrayType, List<Integer> dimensions)
 	{
-		return translator.translateTo(communicator.newMultiArray(translateTypeFrom(componentType), dimensions));
+		return translator.translateTo(communicator.newMultiArray(translateTypeFrom(arrayType), dimensions));
 	}
 	@Override
-	public REF_TO newArrayWithInitialValues(REF_TO componentType, List<REF_TO> initialValues)
+	public REF_TO newArrayWithInitialValues(REF_TO arrayType, List<REF_TO> initialValues)
 	{
-		return translator.translateTo(communicator.newArrayWithInitialValues(translateTypeFrom(componentType), translator.translateFrom(initialValues)));
+		return translator.translateTo(communicator.newArrayWithInitialValues(
+				translateTypeFrom(arrayType), translator.translateFrom(initialValues)));
 	}
 	@Override
 	public int getArrayLength(REF_TO arrayRef)

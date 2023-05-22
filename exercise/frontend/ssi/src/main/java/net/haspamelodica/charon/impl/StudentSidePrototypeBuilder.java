@@ -238,12 +238,10 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		Class<?> parameterTypeErasure = parameter.getType();
 
 		if(parameterTypeErasure == int.class)
-			return (proxy, args) -> marshalingCommunicator.newArray(instanceClass, instanceBuilder.studentSideType.getTyperef(),
-					(Integer) args[0]);
+			return (proxy, args) -> marshalingCommunicator.newArray(instanceClass, (Integer) args[0]);
 
 		if(parameterTypeErasure == int[].class)
-			return (proxy, args) -> marshalingCommunicator.newMultiArray(instanceClass, instanceBuilder.studentSideType.getTyperef(),
-					Arrays.stream((int[]) args[0]).boxed().toList());
+			return (proxy, args) -> marshalingCommunicator.newMultiArray(instanceClass, Arrays.stream((int[]) args[0]).boxed().toList());
 
 		if(parameterTypeErasure == List.class)
 		{
@@ -258,7 +256,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 			{
 				@SuppressWarnings("unchecked")
 				List<Integer> dimensions = (List<Integer>) args[0];
-				return marshalingCommunicator.newMultiArray(instanceClass, instanceBuilder.studentSideType.getTyperef(), dimensions);
+				return marshalingCommunicator.newMultiArray(instanceClass, dimensions);
 			};
 		}
 
@@ -286,32 +284,32 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 
 			Type listTypeArgumentUnchecked = parameterizedParameterType.getActualTypeArguments()[0];
 
-			if(!(listTypeArgumentUnchecked instanceof Class<?> componentType))
+			if(!(listTypeArgumentUnchecked instanceof Class<?> initialValuesType))
 				throw new InconsistentHierarchyException("Array initializer's List parameter's type parameter wasn't raw or unparameterized: "
 						+ method);
 
-			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(componentType) != instanceBuilder.studentSideComponentType)
+			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(initialValuesType) != instanceBuilder.studentSideComponentType)
 				throw new InconsistentHierarchyException("Array initializer's List parameter's type argument wasn't "
 						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
-						+ ", but was " + componentType + ": " + method);
+						+ ", but was " + initialValuesType + ": " + method);
 
 			return (proxy, args) ->
 			{
 				@SuppressWarnings("unchecked")
 				List<Object> initialValues = (List<Object>) args[0];
-				return prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType, initialValues);
+				return prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, initialValuesType, initialValues);
 			};
 		}
 
 		if(Object[].class.isAssignableFrom(parameterTypeErasure))
 		{
-			Class<?> componentType = parameterTypeErasure.componentType();
-			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(componentType) != instanceBuilder.studentSideComponentType)
+			Class<?> initialValuesType = parameterTypeErasure.componentType();
+			if(marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(initialValuesType) != instanceBuilder.studentSideComponentType)
 				throw new InconsistentHierarchyException("Array initializer's parameter's component type wasn't "
 						+ "the associated student-side component type: expected " + instanceBuilder.studentSideComponentType
-						+ ", but was " + componentType + ": " + method);
+						+ ", but was " + initialValuesType + ": " + method);
 
-			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, componentType,
+			return (proxy, args) -> prototypeWideMarshalingCommunicator.newArrayWithInitialValues(instanceClass, initialValuesType,
 					Arrays.asList((Object[]) args[0]));
 		}
 

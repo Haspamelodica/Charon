@@ -149,25 +149,25 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		return marshaler.getTypeHandledByStudentSideSerdes(serdesClass);
 	}
 
-	public <T> T newArray(Class<T> arrayType, TYPEREF componentType, int length)
+	public <T> T newArray(Class<T> arrayType, int length)
 	{
-		REF resultRef = communicator.newArray(componentType, length);
+		REF resultRef = communicator.newArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), length);
 
 		return marshaler.receive(arrayType, resultRef);
 	}
 
-	public <T> T newMultiArray(Class<T> arrayType, TYPEREF componentType, List<Integer> dimensions)
+	public <T> T newMultiArray(Class<T> arrayType, List<Integer> dimensions)
 	{
-		REF resultRef = communicator.newMultiArray(componentType, dimensions);
+		REF resultRef = communicator.newMultiArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), dimensions);
 
 		return marshaler.receive(arrayType, resultRef);
 	}
 
-	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> componentType, List<Object> initialValues)
+	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> initialValuesType, List<Object> initialValues)
 	{
-		List<REF> initialValuesRefs = marshaler.send(Collections.nCopies(initialValues.size(), componentType), initialValues);
+		List<REF> initialValuesRefs = marshaler.send(Collections.nCopies(initialValues.size(), initialValuesType), initialValues);
 
-		REF resultRef = communicator.newArrayWithInitialValues(lookupCorrespondingStudentSideTypeOrThrow(componentType), initialValuesRefs);
+		REF resultRef = communicator.newArrayWithInitialValues(lookupCorrespondingStudentSideTypeOrThrow(arrayType), initialValuesRefs);
 
 		return marshaler.receive(arrayType, resultRef);
 	}

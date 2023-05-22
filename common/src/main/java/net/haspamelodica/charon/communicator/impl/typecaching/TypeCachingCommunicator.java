@@ -68,19 +68,19 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		return communicator.storeRefsIdentityBased();
 	}
 	@Override
-	public REF newArray(TYPEREF componentType, int length)
+	public REF newArray(TYPEREF arrayType, int length)
 	{
-		return communicator.newArray(componentType, length);
+		return communicator.newArray(arrayType, length);
 	}
 	@Override
-	public REF newMultiArray(TYPEREF componentType, List<Integer> dimensions)
+	public REF newMultiArray(TYPEREF arrayType, List<Integer> dimensions)
 	{
-		return communicator.newMultiArray(componentType, dimensions);
+		return communicator.newMultiArray(arrayType, dimensions);
 	}
 	@Override
-	public REF newArrayWithInitialValues(TYPEREF componentType, List<REF> initialValues)
+	public REF newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues)
 	{
-		return communicator.newArrayWithInitialValues(componentType, initialValues);
+		return communicator.newArrayWithInitialValues(arrayType, initialValues);
 	}
 	@Override
 	public int getArrayLength(REF arrayRef)

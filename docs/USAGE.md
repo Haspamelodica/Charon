@@ -248,9 +248,10 @@ but to the SSI interface defined earlier by the exercise creator.
 # TODO document:
 
 - Overriding student-side names
+- Arrays
 - Serialization
 - Callbacks
 - Student-side exceptions
-- Hint: Create prototypes once in a BeforeAll method
+- Hint: Create prototypes once in a BeforeAll method or constructor
 - CharonJUnitUtils
 - Mockclasses frontend?

@@ -6,7 +6,8 @@
 	<artifactId>exercise.frontend.mockclasses</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>charon.exercise.frontend.mockclasses</name>
-	<description>(Exercise-side) dynamically-generated mock classes of student side classes</description>
+	<description>(Exercise-side) dynamically-generated mock classes of student
+		side classes</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -32,6 +33,19 @@
 				<configuration>
 					<release>19</release>
 				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-source-plugin</artifactId>
+				<version>3.3.0</version>
+				<executions>
+					<execution>
+						<id>attach-sources</id>
+						<goals>
+							<goal>jar</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>

@@ -57,7 +57,13 @@ public class ReflectionUtils
 
 	public static Object newMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
-		return Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), dimensions.stream().mapToInt(i -> i).toArray());
+		int[] dimensionsArray = dimensions.stream().mapToInt(i -> i).toArray();
+
+		Class<?> componentType = arrayType;
+		for(int i = 0; i < dimensionsArray.length; i ++)
+			componentType = checkIsArrayTypeAndGetComponentType(componentType);
+
+		return Array.newInstance(componentType, dimensionsArray);
 	}
 
 	public static Object newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)

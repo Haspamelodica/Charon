@@ -219,8 +219,13 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 			return null;
 
 		if(StudentSideInstance.class.isAssignableFrom(representationClass))
+		{
+			//TODO this is ugly
+			if(representationClass == StudentSideInstance.class)
+				return globalMarshalingCommunicator.getTypeByNameAndVerify(Object.class.getName());
 			//TODO this shouldn't be a requirement to exercise code.
 			throw new ExerciseCausedException("No prototype created for " + representationClass);
+		}
 
 		throw new ExerciseCausedException("Tried using class which is neither a " + StudentSideInstance.class + " nor serializable: " + representationClass);
 	}
@@ -279,6 +284,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	{
 		List<CallbackMethod<Method>> candidates = new ArrayList<>();
 		List<Method> unsafeCandidates = new ArrayList<>();
+		List<Method> unserializableCandidates = new ArrayList<>();
 
 		for(Method method : receiverDynamicType.getMethods())
 		{
@@ -296,8 +302,16 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 			// There's no need for a separate null check on the result of lookup since the param types / return type given to us will always be non-null;
 			// so if a type can't be found, the corresponding check will fail, so the method won't be considered eligible.
 			for(int i = 0; i < actualParams.length; i ++)
-				if(methodWideMarshalingCommunicator.lookupCorrespondingStudentSideTypeOrNull(actualParams[i]) != params.get(i))
+			{
+				TYPEREF actualStudentSideParam = methodWideMarshalingCommunicator.lookupCorrespondingStudentSideTypeOrNull(actualParams[i]);
+				if(actualStudentSideParam == null)
+				{
+					unserializableCandidates.add(method);
 					continue;
+				}
+				if(actualStudentSideParam != params.get(i))
+					continue;
+			}
 			if(methodWideMarshalingCommunicator.lookupCorrespondingStudentSideTypeOrNull(actualReturnType) != returnType)
 				//TODO do we want to skip this method, throw an error, or warn?
 				continue;
@@ -327,6 +341,10 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		if(unsafeCandidatesCount > 1)
 			throw new ExerciseCausedException("Multiple candidates found, but none marked as safe for call by student,"
 					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+
+		if(unserializableCandidates.size() > 0)
+			throw new ExerciseCausedException("No candidate found for callback method except some with unserializable types: "
+					+ callbackMethodToString(receiverDynamicType, name, params));
 
 		throw new ExerciseCausedException("No candidate found"
 				+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));

@@ -6,7 +6,8 @@
 	<artifactId>examples.testing.student</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
 	<name>charon.examples.testing.student</name>
-	<description>Student side of the testing example, as it could be submitted by a student</description>
+	<description>Student side of the testing example, as it could be submitted
+		by a student</description>
 	<properties>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
@@ -19,6 +20,7 @@
 				<artifactId>maven-compiler-plugin</artifactId>
 				<version>3.8.1</version>
 				<configuration>
+					<source>19</source>
 					<release>19</release>
 				</configuration>
 			</plugin>

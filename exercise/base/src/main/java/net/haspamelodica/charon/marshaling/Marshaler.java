@@ -118,7 +118,10 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 
 	public REF handleOperationOutcome(OperationKind operationKind, OperationOutcome<REF, TYPEREF> outcome)
 	{
-		return handleOperationOutcome(operationKind, outcome, thrown -> throwSSX(callbacks, thrown));
+		// The Eclipse compiler is able to deduce that this can only throw SSX, not Exception, javac is not.
+		// Probably a bug in the Eclipse compiler.
+		// Workaround: Specify the type arguments to the method explicitly.
+		return Marshaler.<SSX, REF, TYPEREF> handleOperationOutcome(operationKind, outcome, thrown -> throwSSX(callbacks, thrown));
 	}
 
 	private <R, SST> R throwSSX(MarshalerCallbacks<REF, TYPEREF, SST, SSX> callbacks, OperationOutcome.Thrown<REF, TYPEREF> outcome) throws SSX

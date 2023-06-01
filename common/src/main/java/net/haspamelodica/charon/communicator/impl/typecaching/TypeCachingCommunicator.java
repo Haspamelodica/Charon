@@ -2,8 +2,8 @@ package net.haspamelodica.charon.communicator.impl.typecaching;
 
 import java.util.List;
 
+import net.haspamelodica.charon.OperationOutcome;
 import net.haspamelodica.charon.communicator.CallbackManager;
-import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.Transceiver;
@@ -14,7 +14,7 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 {
 	private final StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM> communicator;
 
-	private final UnidirectionalMap<String, TYPEREF>								typesByName;
+	private final UnidirectionalMap<String, OperationOutcome<REF, TYPEREF>>			typesByName;
 	private final UnidirectionalMap<TYPEREF, TYPEREF>								arrayTypes;
 	private final UnidirectionalMap<REF, TYPEREF>									typesByRef;
 	private final UnidirectionalMap<TYPEREF, StudentSideTypeDescription<TYPEREF>>	typeDescriptions;
@@ -31,7 +31,7 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 	}
 
 	@Override
-	public TYPEREF getTypeByName(String typeName)
+	public OperationOutcome<REF, TYPEREF> getTypeByName(String typeName)
 	{
 		return typesByName.computeIfAbsent(typeName, communicator::getTypeByName);
 	}
@@ -68,17 +68,17 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		return communicator.storeRefsIdentityBased();
 	}
 	@Override
-	public REF newArray(TYPEREF arrayType, int length)
+	public OperationOutcome<REF, TYPEREF> newArray(TYPEREF arrayType, int length)
 	{
 		return communicator.newArray(arrayType, length);
 	}
 	@Override
-	public REF newMultiArray(TYPEREF arrayType, List<Integer> dimensions)
+	public OperationOutcome<REF, TYPEREF> newMultiArray(TYPEREF arrayType, List<Integer> dimensions)
 	{
 		return communicator.newMultiArray(arrayType, dimensions);
 	}
 	@Override
-	public REF newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues)
+	public OperationOutcome<REF, TYPEREF> newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues)
 	{
 		return communicator.newArrayWithInitialValues(arrayType, initialValues);
 	}
@@ -88,49 +88,49 @@ public class TypeCachingCommunicator<REF, TYPEREF extends REF, TC extends Transc
 		return communicator.getArrayLength(arrayRef);
 	}
 	@Override
-	public REF getArrayElement(REF arrayRef, int index)
+	public OperationOutcome<REF, TYPEREF> getArrayElement(REF arrayRef, int index)
 	{
 		return communicator.getArrayElement(arrayRef, index);
 	}
 	@Override
-	public void setArrayElement(REF arrayRef, int index, REF valueRef)
+	public OperationOutcome<Void, TYPEREF> setArrayElement(REF arrayRef, int index, REF valueRef)
 	{
-		communicator.setArrayElement(arrayRef, index, valueRef);
+		return communicator.setArrayElement(arrayRef, index, valueRef);
 	}
 	@Override
-	public RefOrError<REF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs)
+	public OperationOutcome<REF, TYPEREF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs)
 	{
 		return communicator.callConstructor(type, params, argRefs);
 	}
 	@Override
-	public RefOrError<REF> callStaticMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, List<REF> argRefs)
+	public OperationOutcome<REF, TYPEREF> callStaticMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, List<REF> argRefs)
 	{
 		return communicator.callStaticMethod(type, name, returnType, params, argRefs);
 	}
 	@Override
-	public REF getStaticField(TYPEREF type, String name, TYPEREF fieldType)
+	public OperationOutcome<REF, TYPEREF> getStaticField(TYPEREF type, String name, TYPEREF fieldType)
 	{
 		return communicator.getStaticField(type, name, fieldType);
 	}
 	@Override
-	public void setStaticField(TYPEREF type, String name, TYPEREF fieldType, REF valueRef)
+	public OperationOutcome<Void, TYPEREF> setStaticField(TYPEREF type, String name, TYPEREF fieldType, REF valueRef)
 	{
-		communicator.setStaticField(type, name, fieldType, valueRef);
+		return communicator.setStaticField(type, name, fieldType, valueRef);
 	}
 	@Override
-	public RefOrError<REF> callInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, REF receiverRef, List<REF> argRefs)
+	public OperationOutcome<REF, TYPEREF> callInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, REF receiverRef, List<REF> argRefs)
 	{
 		return communicator.callInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
 	}
 	@Override
-	public REF getInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef)
+	public OperationOutcome<REF, TYPEREF> getInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef)
 	{
 		return communicator.getInstanceField(type, name, fieldType, receiverRef);
 	}
 	@Override
-	public void setInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef, REF valueRef)
+	public OperationOutcome<Void, TYPEREF> setInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef, REF valueRef)
 	{
-		communicator.setInstanceField(type, name, fieldType, receiverRef, valueRef);
+		return communicator.setInstanceField(type, name, fieldType, receiverRef, valueRef);
 	}
 	@Override
 	public TC getTransceiver()

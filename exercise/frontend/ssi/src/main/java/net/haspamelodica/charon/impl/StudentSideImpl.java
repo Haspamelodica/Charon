@@ -2,8 +2,8 @@ package net.haspamelodica.charon.impl;
 
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getSerDeses;
 import static net.haspamelodica.charon.impl.StudentSideImplUtils.getStudentSideName;
-import static net.haspamelodica.charon.reflection.ReflectionUtils.doChecked;
 
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +12,7 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
@@ -25,6 +26,7 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedTyperef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
+import net.haspamelodica.charon.exceptions.ForStudentException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.exceptions.MissingSerDesException;
@@ -35,7 +37,6 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 
@@ -92,8 +93,8 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 					}
 
 					@Override
-					public Object callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)
-							throws ExceptionInTargetException
+					public CallbackOperationOutcome<Object, ThrowableSSI> callCallbackInstanceMethodChecked(
+							Method callbackMethod, Object receiver, List<Object> args)
 					{
 						return StudentSideImpl.this.callCallbackInstanceMethodChecked(callbackMethod, receiver, args);
 					}
@@ -356,9 +357,21 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				+ params.stream().map(globalMarshalingCommunicator::describeType).map(StudentSideTypeDescription::name).collect(Collectors.joining(", ")) + ")";
 	}
 
-	private Object callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)
-			throws ExceptionInTargetException
+	private CallbackOperationOutcome<Object, ThrowableSSI> callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)
 	{
-		return doChecked(() -> callbackMethod.invoke(receiver, args.toArray()));
+		try
+		{
+			return new CallbackOperationOutcome.Result<>(callbackMethod.invoke(receiver, args.toArray()));
+		} catch(IllegalAccessException e)
+		{
+			throw new ExerciseCausedException("Charon doesn't have access to callback method: " + callbackMethod, e);
+		} catch(InvocationTargetException e)
+		{
+			Throwable exerciseThrownException = e.getTargetException();
+			if(exerciseThrownException instanceof ForStudentException forStudentException)
+				return new CallbackOperationOutcome.Thrown<Object, ThrowableSSI>(forStudentException.getStudentSideCause());
+
+			return new CallbackOperationOutcome.HiddenError<>();
+		}
 	}
 }

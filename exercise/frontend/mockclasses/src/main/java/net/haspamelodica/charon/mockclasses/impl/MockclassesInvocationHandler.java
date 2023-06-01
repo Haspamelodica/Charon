@@ -91,7 +91,14 @@ public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
 	}
 	private Class<?> toClass(TypeDefinition typeDefinition)
 	{
-		return ReflectionUtils.nameToClass(toClassname(typeDefinition), transformer.getClassloader());
+		try
+		{
+			return ReflectionUtils.nameToClass(toClassname(typeDefinition), transformer.getClassloader());
+		} catch(ClassNotFoundException e)
+		{
+			//TODO better exception type
+			throw new RuntimeException(e);
+		}
 	}
 	private static String toClassname(TypeDefinition typeDefinition)
 	{

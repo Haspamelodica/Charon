@@ -12,15 +12,15 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCo
 public class LoggingRefTranslatorCommunicatorSupplier<REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager>
 		implements RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
 {
-	private final CommunicationLoggerParams									loggerParams;
-	private final RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>	communicatorSupplier;
-	private final BiFunction<CommunicationLogger<REF_TO>, TC_TO, TC_TO>		wrapTransceiverLogging;
-	private final BiFunction<CommunicationLogger<REF_TO>, CM_TO, CM_TO>		wrapCallbackManagerLogging;
+	private final CommunicationLoggerParams										loggerParams;
+	private final RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>		communicatorSupplier;
+	private final BiFunction<CommunicationLogger<REF_TO, REF_TO>, TC_TO, TC_TO>	wrapTransceiverLogging;
+	private final BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO>	wrapCallbackManagerLogging;
 
 	public LoggingRefTranslatorCommunicatorSupplier(CommunicationLoggerParams loggerParams,
 			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO> communicatorSupplier,
-			BiFunction<CommunicationLogger<REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging,
-			BiFunction<CommunicationLogger<REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+			BiFunction<CommunicationLogger<REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging,
+			BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
 	{
 		this.loggerParams = loggerParams;
 		this.communicatorSupplier = communicatorSupplier;

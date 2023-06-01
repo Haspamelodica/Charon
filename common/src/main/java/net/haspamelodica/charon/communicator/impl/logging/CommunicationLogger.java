@@ -1,9 +1,14 @@
 package net.haspamelodica.charon.communicator.impl.logging;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
+import java.util.stream.Collectors;
 
-public class CommunicationLogger<TYPEREF>
+import net.haspamelodica.charon.CallbackOperationOutcome;
+import net.haspamelodica.charon.OperationOutcome;
+
+public class CommunicationLogger<REF, TYPEREF extends REF>
 {
 	public static final String DEFAULT_PREFIX = "";
 
@@ -57,6 +62,73 @@ public class CommunicationLogger<TYPEREF>
 		if(exit)
 			nestingDepth --;
 		this.nestingDepth.set(nestingDepth);
+	}
+
+	public String callbackOutcomeToString(CallbackOperationOutcome<?, ?> outcome)
+	{
+		//TODO replace with pattern matching swich once those exist in Java
+		return switch(outcome.kind())
+		{
+			case CALLBACK_RESULT -> String.valueOf(((CallbackOperationOutcome.Result<?, ?>) outcome).returnValue());
+			case CALLBACK_THROWN -> "threw " + ((CallbackOperationOutcome.Thrown<?, ?>) outcome).thrownThrowable().toString();
+			case CALLBACK_HIDDEN_ERROR -> "hidden error";
+		};
+	}
+
+	public String outcomeToString(OperationOutcome<?, TYPEREF> outcome)
+	{
+		//TODO replace with pattern matching swich once those exist in Java
+		return switch(outcome.kind())
+		{
+			case RESULT -> String.valueOf(((OperationOutcome.Result<?, TYPEREF>) outcome).returnValue());
+			case SUCCESS_WITHOUT_RESULT -> "";
+			case THROWN -> "threw " + ((OperationOutcome.Thrown<?, TYPEREF>) outcome).thrownThrowable().toString();
+			case CLASS_NOT_FOUND -> "not found: " + ((OperationOutcome.ClassNotFound<?, TYPEREF>) outcome).classname();
+			case FIELD_NOT_FOUND ->
+			{
+				OperationOutcome.FieldNotFound<?, TYPEREF> fieldNotFound =
+						(OperationOutcome.FieldNotFound<?, TYPEREF>) outcome;
+				yield "not found: "
+						+ (fieldNotFound.isStatic() ? "static " : "") + typerefToString(fieldNotFound.fieldType()) + " "
+						+ typerefToString(fieldNotFound.type()) + "." + fieldNotFound.fieldName();
+			}
+			case METHOD_NOT_FOUND ->
+			{
+				OperationOutcome.MethodNotFound<?, TYPEREF> methodNotFound =
+						(OperationOutcome.MethodNotFound<?, TYPEREF>) outcome;
+				yield "not found: "
+						+ (methodNotFound.isStatic() ? "static " : "") + typerefToString(methodNotFound.returnType()) + " "
+						+ typerefToString(methodNotFound.type()) + "." + methodNotFound.methodName() + typerefsToString(methodNotFound.parameters());
+			}
+			case CONSTRUCTOR_NOT_FOUND ->
+			{
+				OperationOutcome.ConstructorNotFound<?, TYPEREF> constructorNotFound =
+						(OperationOutcome.ConstructorNotFound<?, TYPEREF>) outcome;
+				yield "not found: "
+						+ "" + typerefToString(constructorNotFound.type()) + typerefsToString(constructorNotFound.parameters());
+			}
+			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED ->
+			{
+				OperationOutcome.ConstructorOfAbstractClassCalled<?, TYPEREF> constructorOfAbstractClassCalled =
+						(OperationOutcome.ConstructorOfAbstractClassCalled<?, TYPEREF>) outcome;
+				yield "abstract constructor: "
+						+ typerefToString(constructorOfAbstractClassCalled.type()) + typerefsToString(constructorOfAbstractClassCalled.parameters());
+			}
+			case ARRAY_INDEX_OUT_OF_BOUNDS ->
+			{
+				OperationOutcome.ArrayIndexOutOfBounds<?, TYPEREF> arrayIndexOutOfBounds =
+						(OperationOutcome.ArrayIndexOutOfBounds<?, TYPEREF>) outcome;
+				yield "array index out of bounds: index " + arrayIndexOutOfBounds.index() + ", length " + arrayIndexOutOfBounds.length();
+			}
+			case ARRAY_SIZE_NEGATIVE -> "array size negative: " + ((OperationOutcome.ArraySizeNegative<?, TYPEREF>) outcome).size();
+			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY -> "array size negative in multi array: "
+					+ ((OperationOutcome.ArraySizeNegativeInMultiArray<?, TYPEREF>) outcome).dimensions();
+		};
+	}
+
+	public String typerefsToString(List<TYPEREF> typerefs)
+	{
+		return typerefs.stream().map(this::typerefToString).collect(Collectors.joining(", ", "(", ")"));
 	}
 
 	public String typerefToString(TYPEREF typeref)

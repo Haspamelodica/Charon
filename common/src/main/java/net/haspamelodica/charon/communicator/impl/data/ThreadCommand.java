@@ -3,7 +3,6 @@ package net.haspamelodica.charon.communicator.impl.data;
 public enum ThreadCommand
 {
 	EXERCISE_FINISHED,
-	EXERCISE_ERROR,
 
 	//no callback possible
 	//TODO theoretically classloading could trigger a callback.

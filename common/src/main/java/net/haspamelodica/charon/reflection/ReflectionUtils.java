@@ -16,6 +16,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import net.haspamelodica.charon.OperationOutcome;
+
 public class ReflectionUtils
 {
 	private static final Map<Class<?>, Class<?>> PRIMITIVE_CLASS_TO_BOX = Map.of(
@@ -48,33 +50,45 @@ public class ReflectionUtils
 			float.class, a -> IntStream.range(0, ((float[]) a).length).mapToObj(i -> ((float[]) a)[i]).toList(),
 			double.class, a -> Arrays.stream((double[]) a).boxed().toList());
 
-	public static Object newArray(Class<?> arrayType, int length)
+	public static OperationOutcome<Object, Class<?>> newArray(Class<?> arrayType, int length)
 	{
-		// Don't try to cast to T[] (where T is the type argument to componentClass):
-		// If componentClass is primitive, the resulting primitive array won't be an instance of Object[].
-		return Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), length);
+		try
+		{
+			// Don't try to cast to T[] (where T is the type argument to componentClass):
+			// If componentClass is primitive, the resulting primitive array won't be an instance of Object[].
+			return new OperationOutcome.Result<>(Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), length));
+		} catch(NegativeArraySizeException e)
+		{
+			return new OperationOutcome.ArraySizeNegative<>(length);
+		}
 	}
 
-	public static Object newMultiArray(Class<?> arrayType, List<Integer> dimensions)
+	public static OperationOutcome<Object, Class<?>> newMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
-		int[] dimensionsArray = dimensions.stream().mapToInt(i -> i).toArray();
+		try
+		{
+			int[] dimensionsArray = dimensions.stream().mapToInt(i -> i).toArray();
 
-		Class<?> componentType = arrayType;
-		for(int i = 0; i < dimensionsArray.length; i ++)
-			componentType = checkIsArrayTypeAndGetComponentType(componentType);
+			Class<?> componentType = arrayType;
+			for(int i = 0; i < dimensionsArray.length; i ++)
+				componentType = checkIsArrayTypeAndGetComponentType(componentType);
 
-		return Array.newInstance(componentType, dimensionsArray);
+			return new OperationOutcome.Result<>(Array.newInstance(componentType, dimensionsArray));
+		} catch(NegativeArraySizeException e)
+		{
+			return new OperationOutcome.ArraySizeNegativeInMultiArray<>(dimensions);
+		}
 	}
 
-	public static Object newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
+	public static OperationOutcome<Object, Class<?>> newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
 	{
 		int length = initialValues.size();
-		Object array = newArray(arrayType, length);
+		Object array = Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), length);
 		// index-based to defend against botched List implementations
 		for(int i = 0; i < length; i ++)
-			setArrayElement(array, i, initialValues.get(i));
+			Array.set(array, i, initialValues.get(i));
 
-		return array;
+		return new OperationOutcome.Result<>(array);
 	}
 
 	private static Class<?> checkIsArrayTypeAndGetComponentType(Class<?> arrayType)
@@ -90,81 +104,152 @@ public class ReflectionUtils
 		return Array.getLength(array);
 	}
 
-	public static Object getArrayElement(Object array, int index)
+	public static OperationOutcome<Object, Class<?>> getArrayElement(Object array, int index)
 	{
-		return Array.get(array, index);
-	}
-
-	public static void setArrayElement(Object array, int index, Object value)
-	{
-		Array.set(array, index, value);
-	}
-
-	public static <T> T callConstructor(Class<T> clazz, List<Class<?>> paramTypes, List<Object> args) throws ExceptionInTargetException
-	{
-		return doChecked(() -> clazz.getConstructor(paramTypes.toArray(Class[]::new)).newInstance(args.toArray()));
-	}
-
-	public static <R> R callStaticMethod(Class<?> clazz, String name, Class<R> returnType, List<Class<?>> paramTypes,
-			List<Object> args) throws ExceptionInTargetException
-	{
-		return doChecked(() ->
+		try
 		{
-			Method method = lookupMethod(clazz, true, name, paramTypes, returnType);
-			@SuppressWarnings("unchecked") // we checked the class manually
-			R result = (R) method.invoke(null, args.toArray());
-			return result;
-		});
-	}
-
-	public static <F> F getStaticField(Class<?> clazz, String name, Class<F> fieldType)
-	{
-		return doCheckedNoInvocationTargetException(() ->
+			return new OperationOutcome.Result<>(Array.get(array, index));
+		} catch(ArrayIndexOutOfBoundsException e)
 		{
-			Field field = lookupField(clazz, name, fieldType);
-			@SuppressWarnings("unchecked") // we checked the class manually
-			F result = (F) field.get(null);
-			return result;
-		});
+			return new OperationOutcome.ArrayIndexOutOfBounds<>(index, getArrayLength(array));
+		}
 	}
 
-	public static <F> void setStaticField(Class<?> clazz, String name, Class<F> fieldType, F value)
+	public static OperationOutcome<Void, Class<?>> setArrayElement(Object array, int index, Object value)
 	{
-		doCheckedNoInvocationTargetException(() -> lookupField(clazz, name, fieldType).set(null, value));
-	}
-
-	public static <T, R> R callInstanceMethod(Class<T> clazz, String name, Class<R> returnType, List<Class<?>> paramTypes,
-			T receiver, List<Object> args) throws ExceptionInTargetException
-	{
-		return doChecked(() ->
+		try
 		{
-			Method method = lookupMethod(clazz, false, name, paramTypes, returnType);
+			Array.set(array, index, value);
+			return new OperationOutcome.SuccessWithoutResult<>();
+		} catch(ArrayIndexOutOfBoundsException e)
+		{
+			return new OperationOutcome.ArrayIndexOutOfBounds<>(index, getArrayLength(array));
+		}
+	}
+
+	public static OperationOutcome<Object, Class<?>> callConstructor(Class<?> clazz, List<Class<?>> paramTypes, List<Object> args)
+	{
+		try
+		{
+			return new OperationOutcome.Result<>(callConstructorNoWrapReflectiveAction(clazz, paramTypes, args));
+		} catch(InvocationTargetException e)
+		{
+			return new OperationOutcome.Thrown<>(e.getTargetException());
+		} catch(NoSuchMethodException e)
+		{
+			return new OperationOutcome.ConstructorNotFound<>(clazz, paramTypes);
+		} catch(InstantiationException e)
+		{
+			return new OperationOutcome.ConstructorOfAbstractClassCalled<>(clazz, paramTypes);
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	public static <R> R callConstructorNoWrapReflectiveAction(Class<R> clazz, List<Class<?>> paramTypes, List<Object> args)
+			throws InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException
+	{
+		return clazz.getConstructor(paramTypes.toArray(Class[]::new)).newInstance(args.toArray());
+	}
+
+	public static OperationOutcome<Object, Class<?>> callStaticMethod(Class<?> clazz, String name, Class<?> returnType, List<Class<?>> paramTypes, List<Object> args)
+	{
+		try
+		{
+			return new OperationOutcome.Result<>(lookupMethod(clazz, true, name, paramTypes, returnType).invoke(null, args.toArray()));
+		} catch(InvocationTargetException e)
+		{
+			return new OperationOutcome.Thrown<Object, Class<?>>(e.getTargetException());
+		} catch(NoSuchMethodException e)
+		{
+			return new OperationOutcome.MethodNotFound<>(clazz, name, returnType, paramTypes, true);
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	public static OperationOutcome<Object, Class<?>> getStaticField(Class<?> clazz, String name, Class<?> fieldType)
+	{
+		try
+		{
+			return new OperationOutcome.Result<>(lookupField(clazz, name, fieldType).get(null));
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		} catch(NoSuchFieldException e)
+		{
+			return new OperationOutcome.FieldNotFound<>(clazz, name, fieldType, true);
+		}
+	}
+
+	public static <F> OperationOutcome<Void, Class<?>> setStaticField(Class<?> clazz, String name, Class<F> fieldType, F value)
+	{
+		try
+		{
+			lookupField(clazz, name, fieldType).set(null, value);
+			return new OperationOutcome.SuccessWithoutResult<>();
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		} catch(NoSuchFieldException e)
+		{
+			return new OperationOutcome.FieldNotFound<Void, Class<?>>(clazz, name, fieldType, true);
+		}
+	}
+
+	public static <T> OperationOutcome<Object, Class<?>> callInstanceMethod(Class<T> clazz, String name, Class<?> returnType, List<Class<?>> paramTypes,
+			T receiver, List<Object> args)
+	{
+		try
+		{
 			//TODO check if is instance method
-			@SuppressWarnings("unchecked") // we checked the class manually
-			R result = (R) method.invoke(receiver, args.toArray());
-			return result;
-		});
-	}
-
-	public static <T, F> F getInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver)
-	{
-		return doCheckedNoInvocationTargetException(() ->
+			return new OperationOutcome.Result<>(lookupMethod(clazz, false, name, paramTypes, returnType).invoke(receiver, args.toArray()));
+		} catch(InvocationTargetException e)
 		{
-			Field field = lookupField(clazz, name, fieldType);
-			//TODO check if is instance field
-			@SuppressWarnings("unchecked") // we checked the class manually
-			F result = (F) field.get(receiver);
-			return result;
-		});
+			return new OperationOutcome.Thrown<Object, Class<?>>(e.getTargetException());
+		} catch(NoSuchMethodException e)
+		{
+			return new OperationOutcome.MethodNotFound<Object, Class<?>>(clazz, name, returnType, paramTypes, false);
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
 	}
 
-	public static <T, F> void setInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver, F value)
+	public static <T> OperationOutcome<Object, Class<?>> getInstanceField(Class<T> clazz, String name, Class<?> fieldType, T receiver)
 	{
-		//TODO check if is instance field
-		doCheckedNoInvocationTargetException(() -> lookupField(clazz, name, fieldType).set(receiver, value));
+		try
+		{
+			//TODO check if is instance field
+			return new OperationOutcome.Result<>(lookupField(clazz, name, fieldType).get(receiver));
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		} catch(NoSuchFieldException e)
+		{
+			return new OperationOutcome.FieldNotFound<Object, Class<?>>(clazz, name, fieldType, false);
+		}
 	}
 
-	private static <F> Field lookupField(Class<?> clazz, String name, Class<F> fieldType) throws NoSuchFieldException, ClassNotFoundException
+	public static <T, F> OperationOutcome<Void, Class<?>> setInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver, F value)
+	{
+		try
+		{
+			//TODO check if is instance field
+			lookupField(clazz, name, fieldType).set(receiver, value);
+			return new OperationOutcome.SuccessWithoutResult<>();
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		} catch(NoSuchFieldException e)
+		{
+			return new OperationOutcome.FieldNotFound<Void, Class<?>>(clazz, name, fieldType, false);
+		}
+	}
+
+	private static Field lookupField(Class<?> clazz, String name, Class<?> fieldType) throws NoSuchFieldException
 	{
 		Field field = clazz.getDeclaredField(name);
 		if(!field.getType().equals(fieldType))
@@ -175,7 +260,7 @@ public class ReflectionUtils
 	}
 
 	private static Method lookupMethod(Class<?> clazz, boolean isStatic, String name,
-			List<Class<?>> paramTypes, Class<?> returnType) throws NoSuchMethodException, ClassNotFoundException
+			List<Class<?>> paramTypes, Class<?> returnType) throws NoSuchMethodException
 	{
 		Method method = lookupMethodIgnoreReturnTypeAndStatic(clazz, name, paramTypes);
 
@@ -269,22 +354,29 @@ public class ReflectionUtils
 		return componentType.isPrimitive() ? PRIMITIVE_CLASS_TO_LIST_HANDLERS.get(componentType) : a -> List.of((Object[]) a);
 	}
 
-	public static List<Class<?>> nameToClass(List<String> classnames)
+	public static OperationOutcome<Object, Class<?>> nameToClassWrapReflectiveAction(String classname)
 	{
-		return classnames.stream().<Class<?>> map(ReflectionUtils::nameToClass).toList();
+		return nameToClassWrapReflectiveAction(classname, null);
 	}
-	public static Class<?> nameToClass(String classname)
+	public static OperationOutcome<Object, Class<?>> nameToClassWrapReflectiveAction(String classname, ClassLoader classloader)
+	{
+		try
+		{
+			return new OperationOutcome.Result<>(nameToClass(classname, classloader));
+		} catch(ClassNotFoundException e)
+		{
+			return new OperationOutcome.ClassNotFound<>(classname);
+		}
+	}
+	public static Class<?> nameToClass(String classname) throws ClassNotFoundException
 	{
 		return nameToClass(classname, null);
 	}
-	public static Class<?> nameToClass(String classname, ClassLoader classloader)
+	public static Class<?> nameToClass(String classname, ClassLoader classloader) throws ClassNotFoundException
 	{
-		return doCheckedNoInvocationTargetException(n ->
-		{
-			Class<?> primitiveClass = primitiveNameToClassOrNull(n);
-			return primitiveClass != null ? primitiveClass : Class.forName(n, true,
-					classloader != null ? classloader : ReflectionUtils.class.getClassLoader());
-		}, classname);
+		Class<?> primitiveClass = primitiveNameToClassOrNull(classname);
+		return primitiveClass != null ? primitiveClass : Class.forName(classname, true,
+				classloader != null ? classloader : ReflectionUtils.class.getClassLoader());
 	}
 	public static Class<?> primitiveNameToClassOrThrow(String classname)
 	{
@@ -325,63 +417,10 @@ public class ReflectionUtils
 		return args == null ? List.of() : Arrays.asList(args);
 	}
 
-	public static void doChecked(UnhandledReflectiveRunnable body) throws ExceptionInTargetException
+	private static <R> R handleIllegalAccessException(IllegalAccessException e)
 	{
-		doChecked(() ->
-		{
-			body.run();
-			return null;
-		});
-	}
-
-	public static <R> R doChecked(UnhandledReflectiveSupplier<R> body) throws ExceptionInTargetException
-	{
-		return doChecked(a -> body.get(), null);
-	}
-
-	public static <A, R> R doChecked(UnhandledReflectiveFunction<A, R> body, A a) throws ExceptionInTargetException
-	{
-		try
-		{
-			return body.apply(a);
-		} catch(InstantiationException | IllegalAccessException | NoSuchMethodException | NoSuchFieldException | ClassNotFoundException e)
-		{
-			return handleReflectiveOperationException(e);
-		} catch(InvocationTargetException e)
-		{
-			throw new ExceptionInTargetException(e.getTargetException());
-		}
-	}
-
-	public static void doCheckedNoInvocationTargetException(UnhandledReflectiveRunnableNoInvocationTargetException body)
-	{
-		doCheckedNoInvocationTargetException(() ->
-		{
-			body.run();
-			return null;
-		});
-	}
-
-	public static <R> R doCheckedNoInvocationTargetException(UnhandledReflectiveSupplierNoInvocationTargetException<R> body)
-	{
-		return doCheckedNoInvocationTargetException(a -> body.get(), null);
-	}
-
-	public static <A, R> R doCheckedNoInvocationTargetException(UnhandledReflectiveFunctionNoInvocationTargetException<A, R> body, A a)
-	{
-		try
-		{
-			return body.apply(a);
-		} catch(InstantiationException | IllegalAccessException | NoSuchMethodException | NoSuchFieldException | ClassNotFoundException e)
-		{
-			return handleReflectiveOperationException(e);
-		}
-	}
-
-	private static <R> R handleReflectiveOperationException(ReflectiveOperationException e)
-	{
-		//TODO use better exception type
-		throw new RuntimeException(e);
+		//TODO better exception type
+		throw new RuntimeException("Charon wasn't able to access member", e);
 	}
 
 	private ReflectionUtils()

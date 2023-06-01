@@ -13,13 +13,13 @@ public class LoggingUninitializedStudentSideCommunicator<REF, TYPEREF extends RE
 {
 	private final CommunicationLoggerParams										loggerParams;
 	private final UninitializedStudentSideCommunicator<REF, TYPEREF, TC, CM>	communicator;
-	private final BiFunction<CommunicationLogger<TYPEREF>, TC, TC>				wrapTransceiverLogging;
-	private final BiFunction<CommunicationLogger<TYPEREF>, CM, CM>				wrapCallbackManagerLogging;
+	private final BiFunction<CommunicationLogger<REF, TYPEREF>, TC, TC>			wrapTransceiverLogging;
+	private final BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM>			wrapCallbackManagerLogging;
 
 	public LoggingUninitializedStudentSideCommunicator(CommunicationLoggerParams loggerParams,
 			UninitializedStudentSideCommunicator<REF, TYPEREF, TC, CM> communicator,
-			BiFunction<CommunicationLogger<TYPEREF>, TC, TC> wrapTransceiverLogging,
-			BiFunction<CommunicationLogger<TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+			BiFunction<CommunicationLogger<REF, TYPEREF>, TC, TC> wrapTransceiverLogging,
+			BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		this.loggerParams = loggerParams;
 		this.communicator = communicator;

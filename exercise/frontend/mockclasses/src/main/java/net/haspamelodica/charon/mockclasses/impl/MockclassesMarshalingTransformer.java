@@ -15,6 +15,7 @@ import net.bytebuddy.implementation.FieldAccessor;
 import net.bytebuddy.implementation.FieldAccessor.FieldNameExtractor;
 import net.bytebuddy.implementation.MethodCall;
 import net.bytebuddy.matcher.ElementMatcher;
+import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
@@ -22,7 +23,6 @@ import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks;
 import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassLoader;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicClassTransformer;
-import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.util.LazyValue;
 
@@ -95,7 +95,7 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public Object callCallbackInstanceMethodChecked(Method methodData, Object receiver, List<Object> args) throws ExceptionInTargetException
+	public CallbackOperationOutcome<Object, Throwable> callCallbackInstanceMethodChecked(Method methodData, Object receiver, List<Object> args)
 	{
 		throw new UnsupportedOperationException("The Mockclasses frontend does not support callbacks.");
 	}

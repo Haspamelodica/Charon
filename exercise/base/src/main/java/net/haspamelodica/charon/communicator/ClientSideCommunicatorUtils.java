@@ -130,7 +130,7 @@ public class ClientSideCommunicatorUtils
 			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends CM>
 			maybeWrapLoggingClient(boolean logging, CommunicationLoggerParams loggerParams,
 					StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends CM> communicator,
-					BiFunction<CommunicationLogger<TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicator;
@@ -141,7 +141,7 @@ public class ClientSideCommunicatorUtils
 			UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, CM>
 			maybeWrapLoggingClient(boolean logging, CommunicationLoggerParams loggerParams,
 					UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, CM> communicator,
-					BiFunction<CommunicationLogger<TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicator;
@@ -152,7 +152,7 @@ public class ClientSideCommunicatorUtils
 			RefTranslatorCommunicatorSupplier<REF_TO, ClientSideTransceiver<REF_TO>, CM_TO>
 			maybeWrapLoggingClient(boolean logging, CommunicationLoggerParams loggerParams,
 					RefTranslatorCommunicatorSupplier<REF_TO, ClientSideTransceiver<REF_TO>, CM_TO> communicatorSupplier,
-					BiFunction<CommunicationLogger<REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicatorSupplier;
@@ -211,7 +211,7 @@ public class ClientSideCommunicatorUtils
 			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends CM>
 			wrapLoggingClient(CommunicationLoggerParams loggerParams,
 					StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends CM> communicator,
-					BiFunction<CommunicationLogger<TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicator, loggingTcClient(), wrapCallbackManagerLogging);
 	}
@@ -220,7 +220,7 @@ public class ClientSideCommunicatorUtils
 			UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, CM>
 			wrapLoggingClient(CommunicationLoggerParams loggerParams,
 					UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, CM> communicator,
-					BiFunction<CommunicationLogger<TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicator, loggingTcClient(), wrapCallbackManagerLogging);
 	}
@@ -229,13 +229,13 @@ public class ClientSideCommunicatorUtils
 			RefTranslatorCommunicatorSupplier<REF_TO, ClientSideTransceiver<REF_TO>, CM_TO>
 			wrapLoggingClient(CommunicationLoggerParams loggerParams,
 					RefTranslatorCommunicatorSupplier<REF_TO, ClientSideTransceiver<REF_TO>, CM_TO> communicatorSupplier,
-					BiFunction<CommunicationLogger<REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicatorSupplier, loggingTcClient(), wrapCallbackManagerLogging);
 	}
 
-	private static <REF, TYPEREF>
-			BiFunction<CommunicationLogger<TYPEREF>, ClientSideTransceiver<REF>, ClientSideTransceiver<REF>> loggingTcClient()
+	private static <REF, TYPEREF extends REF>
+			BiFunction<CommunicationLogger<REF, TYPEREF>, ClientSideTransceiver<REF>, ClientSideTransceiver<REF>> loggingTcClient()
 	{
 		return LoggingClientSideTransceiver::new;
 	}

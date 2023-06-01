@@ -3,14 +3,16 @@ package net.haspamelodica.charon.communicator.impl.samejvm;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
-import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClass;
+import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClassWrapReflectiveAction;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
 
+import net.haspamelodica.charon.CallbackOperationOutcome;
+import net.haspamelodica.charon.HiddenCallbackErrorException;
+import net.haspamelodica.charon.OperationOutcome;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
-import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
@@ -18,7 +20,6 @@ import net.haspamelodica.charon.communicator.StudentSideTypeDescription.Kind;
 import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.marshaling.SerDes;
-import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
 public class DirectSameJVMCommunicator<TC extends Transceiver>
@@ -42,9 +43,9 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Class<?> getTypeByName(String typeName)
+	public OperationOutcome<Object, Class<?>> getTypeByName(String typeName)
 	{
-		return nameToClass(typeName);
+		return nameToClassWrapReflectiveAction(typeName);
 	}
 
 	@Override
@@ -80,19 +81,19 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Object newArray(Class<?> arrayType, int length)
+	public OperationOutcome<Object, Class<?>> newArray(Class<?> arrayType, int length)
 	{
 		return ReflectionUtils.newArray(arrayType, length);
 	}
 
 	@Override
-	public Object newMultiArray(Class<?> arrayType, List<Integer> dimensions)
+	public OperationOutcome<Object, Class<?>> newMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
 		return ReflectionUtils.newMultiArray(arrayType, dimensions);
 	}
 
 	@Override
-	public Object newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
+	public OperationOutcome<Object, Class<?>> newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
 	{
 		return ReflectionUtils.newArrayWithInitialValues(arrayType, initialValues);
 	}
@@ -104,71 +105,71 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public Object getArrayElement(Object arrayRef, int index)
+	public OperationOutcome<Object, Class<?>> getArrayElement(Object arrayRef, int index)
 	{
 		return ReflectionUtils.getArrayElement(arrayRef, index);
 	}
 
 	@Override
-	public void setArrayElement(Object arrayRef, int index, Object valueRef)
+	public OperationOutcome<Void, Class<?>> setArrayElement(Object arrayRef, int index, Object valueRef)
 	{
-		ReflectionUtils.setArrayElement(arrayRef, index, valueRef);
+		return ReflectionUtils.setArrayElement(arrayRef, index, valueRef);
 	}
 
 	@Override
-	public RefOrError<Object> callConstructor(Class<?> type, List<Class<?>> params, List<Object> argRefs)
+	public OperationOutcome<Object, Class<?>> callConstructor(Class<?> type, List<Class<?>> params, List<Object> argRefs)
 	{
-		return handleTargetExceptions(() -> ReflectionUtils.callConstructor(type, params, argRefs));
+		return ReflectionUtils.callConstructor(type, params, argRefs);
 	}
 
 	@Override
-	public RefOrError<Object> callStaticMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params,
+	public OperationOutcome<Object, Class<?>> callStaticMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params,
 			List<Object> argRefs)
 	{
-		return handleTargetExceptions(() -> ReflectionUtils.callStaticMethod(type, name, returnType, params, argRefs));
+		return ReflectionUtils.callStaticMethod(type, name, returnType, params, argRefs);
 	}
 
 	@Override
-	public Object getStaticField(Class<?> type, String name, Class<?> fieldType)
+	public OperationOutcome<Object, Class<?>> getStaticField(Class<?> type, String name, Class<?> fieldType)
 	{
 		return ReflectionUtils.getStaticField(type, name, fieldType);
 	}
 
 	@Override
-	public void setStaticField(Class<?> type, String name, Class<?> fieldType, Object valueRef)
+	public OperationOutcome<Void, Class<?>> setStaticField(Class<?> type, String name, Class<?> fieldType, Object valueRef)
 	{
-		setStaticField_(type, name, fieldType, valueRef);
+		return setStaticField_(type, name, fieldType, valueRef);
 	}
 	// extracted to method so the cast is expressible in Java
-	private <F> void setStaticField_(Class<?> clazz, String name, Class<F> fieldClass, Object value)
+	private <F> OperationOutcome<Void, Class<?>> setStaticField_(Class<?> clazz, String name, Class<F> fieldClass, Object value)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		F valueCasted = (F) value;
-		ReflectionUtils.setStaticField(clazz, name, fieldClass, valueCasted);
+		return ReflectionUtils.setStaticField(clazz, name, fieldClass, valueCasted);
 	}
 
 	@Override
-	public RefOrError<Object> callInstanceMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params,
+	public OperationOutcome<Object, Class<?>> callInstanceMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params,
 			Object receiverRef, List<Object> argRefs)
 	{
 		return callInstanceMethod_(type, name, returnType, params, receiverRef, argRefs);
 	}
 	// extracted to method so the cast is expressible in Java
-	private <T> RefOrError<Object> callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params,
+	private <T> OperationOutcome<Object, Class<?>> callInstanceMethod_(Class<T> clazz, String name, Class<?> returnClass, List<Class<?>> params,
 			Object receiver, List<Object> args)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
-		return handleTargetExceptions(() -> ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args));
+		return ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args);
 	}
 
 	@Override
-	public Object getInstanceField(Class<?> type, String name, Class<?> fieldType, Object receiverRef)
+	public OperationOutcome<Object, Class<?>> getInstanceField(Class<?> type, String name, Class<?> fieldType, Object receiverRef)
 	{
 		return getInstanceField_(type, name, fieldType, receiverRef);
 	}
 	// extracted to method so the cast is expressible in Java
-	private <T> Object getInstanceField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
+	private <T> OperationOutcome<Object, Class<?>> getInstanceField_(Class<T> clazz, String name, Class<?> fieldClass, Object receiver)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
@@ -176,18 +177,18 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	}
 
 	@Override
-	public void setInstanceField(Class<?> type, String name, Class<?> fieldType, Object receiverRef, Object valueRef)
+	public OperationOutcome<Void, Class<?>> setInstanceField(Class<?> type, String name, Class<?> fieldType, Object receiverRef, Object valueRef)
 	{
-		setInstanceField_(type, name, fieldType, receiverRef, valueRef);
+		return setInstanceField_(type, name, fieldType, receiverRef, valueRef);
 	}
 	// extracted to method so the casts are expressible in Java
-	private <T, F> void setInstanceField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)
+	private <T, F> OperationOutcome<Void, Class<?>> setInstanceField_(Class<T> clazz, String name, Class<F> fieldClass, Object receiver, Object value)
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
 		@SuppressWarnings("unchecked") // responsibility of caller
 		F valueCasted = (F) value;
-		ReflectionUtils.setInstanceField(clazz, name, fieldClass, receiverCasted, valueCasted);
+		return ReflectionUtils.setInstanceField(clazz, name, fieldClass, receiverCasted, valueCasted);
 	}
 
 	@Override
@@ -199,32 +200,27 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	@Override
 	public Object createCallbackInstance(String interfaceCn)
 	{
-		Class<?> interfaceType = nameToClass(interfaceCn);
+		OperationOutcome<Object, Class<?>> interfaceTypeReflectiveOperationOutcome = nameToClassWrapReflectiveAction(interfaceCn);
+		if(!(interfaceTypeReflectiveOperationOutcome instanceof OperationOutcome.Result<Object, Class<?>> interfaceTypeReflectiveOperationOutcomeResult))
+			// Semantically, this can only be CLASS_NOT_FOUND.
+			return interfaceTypeReflectiveOperationOutcome;
+
+		// This cast is guaranteed to work by semantics of nameToClass.
+		Class<?> interfaceType = (Class<?>) interfaceTypeReflectiveOperationOutcomeResult.returnValue();
+
 		return createProxyInstance(interfaceType, (proxy, method, args) ->
 		{
-			RefOrError<Object> result = callbacks.callCallbackInstanceMethod(
+			CallbackOperationOutcome<Object, Object> result = callbacks.callCallbackInstanceMethod(
 					interfaceType, method.getName(), method.getReturnType(), List.of(method.getParameterTypes()),
 					proxy, argsToList(args));
-			if(result.isError())
-				throw (Throwable) result.resultOrErrorRef();
-			return result.resultOrErrorRef();
-		});
-	}
 
-	private RefOrError<Object> handleTargetExceptions(ReflectiveSupplier<Object> action)
-	{
-		try
-		{
-			return RefOrError.success(action.get());
-		} catch(ExceptionInTargetException e)
-		{
-			return RefOrError.error(e.getTargetThrowable());
-		}
-	}
-	@FunctionalInterface
-	private static interface ReflectiveSupplier<R>
-	{
-		public R get() throws ExceptionInTargetException;
+			return switch(result.kind())
+			{
+				case CALLBACK_RESULT -> ((CallbackOperationOutcome.Result<Object, Object>) result).returnValue();
+				case CALLBACK_THROWN -> throw (Throwable) ((CallbackOperationOutcome.Thrown<Object, Object>) result).thrownThrowable();
+				case CALLBACK_HIDDEN_ERROR -> throw new HiddenCallbackErrorException();
+			};
+		});
 	}
 
 	@Override

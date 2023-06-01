@@ -1,19 +1,18 @@
 package net.haspamelodica.charon.communicator.impl.logging;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
-import net.haspamelodica.charon.communicator.RefOrError;
+import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 
 public class LoggingStudentSideCommunicatorCallbacks<REF, TYPEREF extends REF>
 		implements StudentSideCommunicatorCallbacks<REF, TYPEREF>
 {
-	private final CommunicationLogger<TYPEREF> logger;
+	private final CommunicationLogger<REF, TYPEREF> logger;
 
 	private final StudentSideCommunicatorCallbacks<REF, TYPEREF> callbacks;
 
-	public LoggingStudentSideCommunicatorCallbacks(CommunicationLogger<TYPEREF> logger, StudentSideCommunicatorCallbacks<REF, TYPEREF> callbacks)
+	public LoggingStudentSideCommunicatorCallbacks(CommunicationLogger<REF, TYPEREF> logger, StudentSideCommunicatorCallbacks<REF, TYPEREF> callbacks)
 	{
 		this.logger = logger;
 		this.callbacks = callbacks;
@@ -29,14 +28,23 @@ public class LoggingStudentSideCommunicatorCallbacks<REF, TYPEREF extends REF>
 	}
 
 	@Override
-	public RefOrError<REF> callCallbackInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
+	public CallbackOperationOutcome<REF, REF> callCallbackInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
 			REF receiverRef, List<REF> argRefs)
 	{
-		logger.logEnterCallback("callback " + t(returnType) + " " + t(type) + "." + name
-				+ params.stream().map(this::t).collect(Collectors.joining(", ", "(", ")")) + ": " + receiverRef + ", " + argRefs);
-		RefOrError<REF> result = callbacks.callCallbackInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
-		logger.logExitCallback(result);
+		logger.logEnterCallback("callback " + t(returnType) + " " + t(type) + "." + name + t(params) + ": " + receiverRef + ", " + argRefs);
+		CallbackOperationOutcome<REF, REF> result = callbacks.callCallbackInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
+		logger.logExitCallback(c(result));
 		return result;
+	}
+
+	private String c(CallbackOperationOutcome<REF, REF> outcome)
+	{
+		return logger.callbackOutcomeToString(outcome);
+	}
+
+	protected String t(List<TYPEREF> typerefs)
+	{
+		return logger.typerefsToString(typerefs);
 	}
 
 	protected String t(TYPEREF typeref)

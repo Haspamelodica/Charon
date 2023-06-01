@@ -1,13 +1,23 @@
 package net.haspamelodica.charon.marshaling;
 
+import static net.haspamelodica.charon.OperationKind.CALL_CONSTRUCTOR;
+import static net.haspamelodica.charon.OperationKind.CALL_METHOD;
+import static net.haspamelodica.charon.OperationKind.CREATE_ARRAY;
+import static net.haspamelodica.charon.OperationKind.CREATE_MULTI_ARRAY;
+import static net.haspamelodica.charon.OperationKind.GET_ARRAY_ELEMENT;
+import static net.haspamelodica.charon.OperationKind.GET_FIELD;
+import static net.haspamelodica.charon.OperationKind.GET_TYPE_BY_NAME;
+import static net.haspamelodica.charon.OperationKind.INITIALIZE_ARRAY;
+import static net.haspamelodica.charon.OperationKind.SET_FIELD;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 
 import java.util.Collections;
 import java.util.List;
 
+import net.haspamelodica.charon.CallbackOperationOutcome;
+import net.haspamelodica.charon.OperationOutcome;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
-import net.haspamelodica.charon.communicator.RefOrError;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
@@ -16,7 +26,6 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicatorCallbacks.CallbackMethod;
-import net.haspamelodica.charon.reflection.ExceptionInTargetException;
 
 public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends StudentSideCausedException>
 {
@@ -35,8 +44,8 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		this.marshaler = new Marshaler<>(createMarshalerCallbacks(callbacks), this.communicator, serdesClasses);
 	}
 
-	private <M> StudentSideCommunicatorCallbacks<REF, TYPEREF>
-			createStudentSideCommunicatorCallbacks(MarshalingCommunicatorCallbacks<REF, TYPEREF, M, ?, SSX> callbacks)
+	private <M, SST> StudentSideCommunicatorCallbacks<REF, TYPEREF>
+			createStudentSideCommunicatorCallbacks(MarshalingCommunicatorCallbacks<REF, TYPEREF, M, SST, SSX> callbacks)
 	{
 		return new StudentSideCommunicatorCallbacks<>()
 		{
@@ -47,7 +56,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 			}
 
 			@Override
-			public RefOrError<REF> callCallbackInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
+			public CallbackOperationOutcome<REF, REF> callCallbackInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
 					REF receiverRef, List<REF> argRefs)
 			{
 				Object receiverObj = marshaler.translateTo(receiverRef);
@@ -57,17 +66,18 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 
 				List<Object> argObjs = marshalerWithAdditionalSerdeses.receive(callbackMethod.params(), argRefs);
 
-				Object resultObj;
-				try
-				{
-					resultObj = callbacks.callCallbackInstanceMethodChecked(callbackMethod.methodData(), receiverObj, argObjs);
-				} catch(ExceptionInTargetException e)
-				{
-					//TODO transmit exception somehow, if it's a ForStudentException
-					return RefOrError.error(null);
-				}
+				CallbackOperationOutcome<Object, SST> resultOutcome = callbacks.callCallbackInstanceMethodChecked(
+						callbackMethod.methodData(), receiverObj, argObjs);
 
-				return RefOrError.success(marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(), resultObj));
+				//TODO replace with pattern matching switch once that's in Java
+				return switch(resultOutcome.kind())
+				{
+					case CALLBACK_RESULT -> new CallbackOperationOutcome.Result<>(marshalerWithAdditionalSerdeses.send(callbackMethod.returnType(),
+							((CallbackOperationOutcome.Result<Object, SST>) resultOutcome).returnValue()));
+					case CALLBACK_HIDDEN_ERROR -> new CallbackOperationOutcome.HiddenError<>();
+					case CALLBACK_THROWN -> new CallbackOperationOutcome.Thrown<>(marshaler.translateFrom(
+							((CallbackOperationOutcome.Thrown<Object, SST>) resultOutcome).thrownThrowable()));
+				};
 			}
 		};
 	}
@@ -118,9 +128,10 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		return new MarshalingCommunicator<>(callbacks, communicator, marshaler.withAdditionalSerDeses(serDeses));
 	}
 
-	public TYPEREF getTypeByNameAndVerify(String typeName)
+	public TYPEREF getTypeByNameAndVerify(String typeName) throws SSX
 	{
-		TYPEREF result = communicator.getTypeByName(typeName);
+		//TODO eliminate this cast once Outcome has three type arguments
+		TYPEREF result = (TYPEREF) marshaler.handleOperationOutcome(GET_TYPE_BY_NAME, communicator.getTypeByName(typeName));
 
 		String actualName = describeType(result).name();
 		if(!actualName.equals(typeName))
@@ -151,25 +162,25 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 
 	public <T> T newArray(Class<T> arrayType, int length)
 	{
-		REF resultRef = communicator.newArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), length);
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.newArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), length);
 
-		return marshaler.receive(arrayType, resultRef);
+		return marshaler.receiveOrThrow(CREATE_ARRAY, arrayType, resultRef);
 	}
 
 	public <T> T newMultiArray(Class<T> arrayType, List<Integer> dimensions)
 	{
-		REF resultRef = communicator.newMultiArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), dimensions);
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.newMultiArray(lookupCorrespondingStudentSideTypeOrThrow(arrayType), dimensions);
 
-		return marshaler.receive(arrayType, resultRef);
+		return marshaler.receiveOrThrow(CREATE_MULTI_ARRAY, arrayType, resultRef);
 	}
 
 	public <T> T newArrayWithInitialValues(Class<T> arrayType, Class<?> initialValuesType, List<?> initialValues)
 	{
 		List<REF> initialValuesRefs = marshaler.send(Collections.nCopies(initialValues.size(), initialValuesType), initialValues);
 
-		REF resultRef = communicator.newArrayWithInitialValues(lookupCorrespondingStudentSideTypeOrThrow(arrayType), initialValuesRefs);
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.newArrayWithInitialValues(lookupCorrespondingStudentSideTypeOrThrow(arrayType), initialValuesRefs);
 
-		return marshaler.receive(arrayType, resultRef);
+		return marshaler.receiveOrThrow(INITIALIZE_ARRAY, arrayType, resultRef);
 	}
 
 	public int getArrayLength(Class<?> arrayType, Object array)
@@ -183,9 +194,9 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	{
 		REF arrayRef = marshaler.send(arrayType, array);
 
-		REF valueRef = communicator.getArrayElement(arrayRef, index);
+		OperationOutcome<REF, TYPEREF> valueRef = communicator.getArrayElement(arrayRef, index);
 
-		return marshaler.receive(valueType, valueRef);
+		return marshaler.receiveOrThrow(GET_ARRAY_ELEMENT, valueType, valueRef);
 	}
 
 	public void setArrayElement(Class<?> arrayType, Class<?> valueType, Object array, int index, Object value)
@@ -198,50 +209,53 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 
 	public <T> T callConstructor(Class<T> type, List<Class<?>> params, List<?> args) throws SSX
 	{
-		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
+		OperationOutcome<REF, TYPEREF> resultRef = callConstructorRawRef(type, params, args);
 
-		return marshaler.receiveOrThrow(type, resultRef);
+		return marshaler.receiveOrThrow(CALL_CONSTRUCTOR, type, resultRef);
 	}
 	// Neccessary for the Mockclasses frontend
 	public REF callConstructorExistingRepresentationObject(Class<?> type, List<Class<?>> params,
 			List<?> args, Object representationObject) throws SSX
 	{
-		RefOrError<REF> resultRef = callConstructorRawRef(type, params, args);
-		marshaler.throwIfError(resultRef);
+		REF resultRef = marshaler.handleOperationOutcome(CALL_CONSTRUCTOR, callConstructorRawRef(type, params, args));
 
-		marshaler.setRepresentationObjectRefPair(resultRef.resultOrErrorRef(), representationObject);
-		return resultRef.resultOrErrorRef();
+		marshaler.setRepresentationObjectRefPair(resultRef, representationObject);
+		return resultRef;
 	}
-	private RefOrError<REF> callConstructorRawRef(Class<?> type, List<Class<?>> params, List<?> args)
+	private OperationOutcome<REF, TYPEREF> callConstructorRawRef(Class<?> type, List<Class<?>> params, List<?> args)
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 
-		RefOrError<REF> resultRef = communicator.callConstructor(lookupCorrespondingStudentSideTypeOrThrow(type), lookupCorrespondingStudentSideTypesOrThrow(params), argRefs);
-
-		return resultRef;
+		return communicator.callConstructor(lookupCorrespondingStudentSideTypeOrThrow(type), lookupCorrespondingStudentSideTypesOrThrow(params), argRefs);
 	}
 
 	public <T> T callStaticMethod(Class<?> type, String name, Class<T> returnType, List<Class<?>> params, List<?> args) throws SSX
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 
-		RefOrError<REF> resultRef = communicator.callStaticMethod(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(returnType), lookupCorrespondingStudentSideTypesOrThrow(params), argRefs);
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.callStaticMethod(
+				lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(returnType),
+				lookupCorrespondingStudentSideTypesOrThrow(params), argRefs);
 
-		return marshaler.receiveOrThrow(returnType, resultRef);
+		return marshaler.receiveOrThrow(CALL_METHOD, returnType, resultRef);
 	}
 
 	public <T> T getStaticField(Class<?> type, String name, Class<T> fieldType)
 	{
-		REF resultRef = communicator.getStaticField(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType));
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.getStaticField(
+				lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType));
 
-		return marshaler.receive(fieldType, resultRef);
+		return marshaler.receiveOrThrow(GET_FIELD, fieldType, resultRef);
 	}
 
 	public <T> void setStaticField(Class<?> type, String name, Class<T> fieldType, T value)
 	{
 		REF valRef = marshaler.send(fieldType, value);
 
-		communicator.setStaticField(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType), valRef);
+		OperationOutcome<Void, TYPEREF> outcome = communicator.setStaticField(
+				lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType), valRef);
+
+		marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
 	}
 
 	public <T> T callInstanceMethod(Class<?> type, String name, Class<T> returnType,
@@ -257,19 +271,22 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	{
 		List<REF> argRefs = marshaler.send(params, args);
 
-		RefOrError<REF> resultRef = communicator.callInstanceMethod(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(returnType), lookupCorrespondingStudentSideTypesOrThrow(params),
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.callInstanceMethod(
+				lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(returnType),
+				lookupCorrespondingStudentSideTypesOrThrow(params),
 				receiverRef, argRefs);
 
-		return marshaler.receiveOrThrow(returnType, resultRef);
+		return marshaler.receiveOrThrow(CALL_METHOD, returnType, resultRef);
 	}
 
 	public <T> T getInstanceField(Class<?> type, String name, Class<T> fieldType, Object receiver)
 	{
 		REF receiverRef = marshaler.send(type, receiver);
 
-		REF resultRef = communicator.getInstanceField(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType), receiverRef);
+		OperationOutcome<REF, TYPEREF> resultRef = communicator.getInstanceField(lookupCorrespondingStudentSideTypeOrThrow(type), name,
+				lookupCorrespondingStudentSideTypeOrThrow(fieldType), receiverRef);
 
-		return marshaler.receive(fieldType, resultRef);
+		return marshaler.receiveOrThrow(GET_FIELD, fieldType, resultRef);
 	}
 
 	public <T> void setInstanceField(Class<?> type, String name, Class<T> fieldType, Object receiver, T value)
@@ -277,7 +294,10 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		REF receiverRef = marshaler.send(type, receiver);
 		REF valRef = marshaler.send(fieldType, value);
 
-		communicator.setInstanceField(lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType), receiverRef, valRef);
+		OperationOutcome<Void, TYPEREF> outcome = communicator.setInstanceField(
+				lookupCorrespondingStudentSideTypeOrThrow(type), name, lookupCorrespondingStudentSideTypeOrThrow(fieldType), receiverRef, valRef);
+
+		marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
 	}
 
 	private List<TYPEREF> lookupCorrespondingStudentSideTypesOrThrow(List<Class<?>> types)
@@ -295,7 +315,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	public TYPEREF lookupCorrespondingStudentSideType(Class<?> serializableOrRepresentationClass, boolean throwIfNotFound)
 	{
 		if(marshaler.isSerializedType(serializableOrRepresentationClass))
-			return communicator.getTypeByName(classToName(serializableOrRepresentationClass));
+			return getTypeByNameAndVerify(classToName(serializableOrRepresentationClass));
 
 		return callbacks.lookupCorrespondingStudentSideTypeForRepresentationClass((Class<?>) serializableOrRepresentationClass, throwIfNotFound);
 	}

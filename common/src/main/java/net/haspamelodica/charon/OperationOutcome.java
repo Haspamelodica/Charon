@@ -28,11 +28,10 @@ import net.haspamelodica.charon.OperationOutcome.SuccessWithoutResult;
 import net.haspamelodica.charon.OperationOutcome.Thrown;
 
 // TODO three type arguments: RESULTREF, THROWABLEREF, TYPEREF
+@SuppressWarnings("rawtypes") // Bug in Eclipse compiler: The types named in permits cannot be parameterized. See https://github.com/eclipse-jdt/eclipse.jdt.core/issues/581
 public sealed interface OperationOutcome<REF, TYPEREF>
-		permits Result<REF, TYPEREF>, SuccessWithoutResult<REF, TYPEREF>, Thrown<REF, TYPEREF>,
-		ClassNotFound<REF, TYPEREF>, FieldNotFound<REF, TYPEREF>, MethodNotFound<REF, TYPEREF>,
-		ConstructorNotFound<REF, TYPEREF>, ConstructorOfAbstractClassCalled<REF, TYPEREF>,
-		ArrayIndexOutOfBounds<REF, TYPEREF>, ArraySizeNegative<REF, TYPEREF>, ArraySizeNegativeInMultiArray<REF, TYPEREF>
+		permits Result, SuccessWithoutResult, Thrown, ClassNotFound, FieldNotFound, MethodNotFound,
+		ConstructorNotFound, ConstructorOfAbstractClassCalled, ArrayIndexOutOfBounds, ArraySizeNegative, ArraySizeNegativeInMultiArray
 {
 	public Kind kind();
 

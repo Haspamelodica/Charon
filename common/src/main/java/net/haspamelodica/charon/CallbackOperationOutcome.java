@@ -10,8 +10,9 @@ import net.haspamelodica.charon.CallbackOperationOutcome.HiddenError;
 import net.haspamelodica.charon.CallbackOperationOutcome.Result;
 import net.haspamelodica.charon.CallbackOperationOutcome.Thrown;
 
+@SuppressWarnings("rawtypes") // Bug in Eclipse compiler: The types named in permits cannot be parameterized. See https://github.com/eclipse-jdt/eclipse.jdt.core/issues/581
 public sealed interface CallbackOperationOutcome<RESULTREF, THROWABLEREF>
-		permits Result<RESULTREF, THROWABLEREF>, Thrown<RESULTREF, THROWABLEREF>, HiddenError<RESULTREF, THROWABLEREF>
+		permits Result, Thrown, HiddenError
 {
 	public Kind kind();
 

@@ -7,6 +7,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -72,12 +73,12 @@ public class CommunicationImpl implements Communication
 		OutputStream out;
 		if(mode.inFirst())
 		{
-			in = Files.newInputStream(mode.infile());
-			out = Files.newOutputStream(mode.outfile());
+			in = openInput(mode.infile());
+			out = openOutput(mode.outfile());
 		} else
 		{
-			out = Files.newOutputStream(mode.outfile());
-			in = Files.newInputStream(mode.infile());
+			out = openOutput(mode.outfile());
+			in = openInput(mode.infile());
 		}
 
 		return new InputOutputStreamPair(in, out);
@@ -85,6 +86,43 @@ public class CommunicationImpl implements Communication
 	private InputOutputStreamPair openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
 	{
 		return new InputOutputStreamPair(System.in, System.out);
+	}
+
+	// These two methods are needed because of a bug in the JDK:
+	// https://bugs.openjdk.org/browse/JDK-8233451
+	private static InputStream openInput(Path path) throws IOException
+	{
+		InputStream realIn = Files.newInputStream(path);
+		return new InputStream()
+		{
+			@Override
+			public int read(byte[] b, int off, int len) throws IOException
+			{
+				return realIn.read(b, off, len);
+			}
+			@Override
+			public int read() throws IOException
+			{
+				return realIn.read();
+			}
+		};
+	}
+	private static OutputStream openOutput(Path path) throws IOException
+	{
+		OutputStream realOut = Files.newOutputStream(path);
+		return new OutputStream()
+		{
+			@Override
+			public void write(byte[] b, int off, int len) throws IOException
+			{
+				realOut.write(b, off, len);
+			}
+			@Override
+			public void write(int b) throws IOException
+			{
+				realOut.write(b);
+			}
+		};
 	}
 
 	private void startTimeoutThread(CommunicationParams params)

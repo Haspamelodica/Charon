@@ -62,7 +62,8 @@ public class DataCommunicatorServer
 		// write magic number for "no compilation error"
 		try
 		{
-			rawOut.write('s');
+			rawOut.write((byte) 's');
+			rawOut.flush();
 		} catch(IOException e)
 		{
 			throw new UncheckedIOException("Error while writing compilation error marker", e);

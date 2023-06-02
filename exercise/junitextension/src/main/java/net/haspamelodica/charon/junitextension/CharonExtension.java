@@ -3,6 +3,7 @@ package net.haspamelodica.charon.junitextension;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ExtensionContext.Namespace;
@@ -16,6 +17,7 @@ import org.junit.jupiter.api.extension.support.TypeBasedParameterResolver;
 
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.WrappedStudentSide;
+import net.haspamelodica.charon.exceptions.CharonException;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
@@ -31,7 +33,8 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 	public static final String	COMMUNICATIONARGS_PARAM_NAME		= CONFIGURATION_PARAMETER_NAME_BASE + "communicationargs";
 	public static final String	USE_EXTENSION_STORE_PARAM_NAME		= CONFIGURATION_PARAMETER_NAME_BASE + "useextensionstore";
 
-	private static StudentSide studentSide;
+	private static boolean		triedResolving	= false;
+	private static StudentSide	studentSide		= null;
 
 	@Override
 	public StudentSide resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
@@ -55,7 +58,7 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 
 		StudentSideCloseableResource studentSideCloseableResource = store.getOrComputeIfAbsent(
 				StudentSideCloseableResource.class,
-				k -> new StudentSideCloseableResource(connectStudentSide(extensionContext)),
+				k -> new StudentSideCloseableResource(() -> connectStudentSide(extensionContext)),
 				StudentSideCloseableResource.class);
 
 		return studentSideCloseableResource.getStudentSide();
@@ -65,6 +68,9 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 	{
 		if(studentSide != null)
 			return studentSide;
+		if(triedResolving)
+			throw secondTryAfterFailException();
+		triedResolving = true;
 		WrappedStudentSide wrappedStudentSide = connectStudentSide(extensionContext);
 		studentSide = wrappedStudentSide.getStudentSide();
 
@@ -86,6 +92,11 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 		}));
 
 		return studentSide;
+	}
+
+	private static RuntimeException secondTryAfterFailException()
+	{
+		return new CharonException("Failed while creating student side before, not trying again");
 	}
 
 	private WrappedStudentSide connectStudentSide(ExtensionContext extensionContext)
@@ -113,22 +124,43 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 
 	private static class StudentSideCloseableResource implements CloseableResource
 	{
-		private final WrappedStudentSide wrappedStudentSide;
+		private final RuntimeException		error;
+		private boolean						reportedErrorBefore;
+		private final WrappedStudentSide	wrappedStudentSide;
 
-		public StudentSideCloseableResource(WrappedStudentSide wrappedStudentSide)
+		public StudentSideCloseableResource(Supplier<WrappedStudentSide> wrappedStudentSideSupplier)
 		{
-			this.wrappedStudentSide = wrappedStudentSide;
+			WrappedStudentSide wrappedStudentSideLocal;
+			try
+			{
+				wrappedStudentSideLocal = wrappedStudentSideSupplier.get();
+			} catch(RuntimeException e)
+			{
+				this.error = e;
+				this.wrappedStudentSide = null;
+				return;
+			}
+
+			this.error = null;
+			this.wrappedStudentSide = wrappedStudentSideLocal;
 		}
 
 		public StudentSide getStudentSide()
 		{
-			return wrappedStudentSide.getStudentSide();
+			if(wrappedStudentSide != null)
+				return wrappedStudentSide.getStudentSide();
+
+			if(!reportedErrorBefore)
+				throw error;
+
+			throw secondTryAfterFailException();
 		}
 
 		@Override
 		public void close() throws Throwable
 		{
-			wrappedStudentSide.close();
+			if(wrappedStudentSide != null)
+				wrappedStudentSide.close();
 		}
 	}
 }

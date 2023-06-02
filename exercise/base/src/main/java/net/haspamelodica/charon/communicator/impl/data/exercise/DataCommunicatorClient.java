@@ -35,9 +35,11 @@ import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommu
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Queue;
@@ -60,6 +62,7 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse;
 import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
+import net.haspamelodica.charon.exceptions.CompilationErrorException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
 import net.haspamelodica.charon.marshaling.Deserializer;
@@ -97,6 +100,24 @@ public class DataCommunicatorClient
 
 	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorCallbacks<LongRef, LongRef> callbacks)
 	{
+		// read magic number
+		try
+		{
+			switch(rawIn.read())
+			{
+				case 'c' -> throw new CompilationErrorException("Student side reported a compilation error");
+				case 's' ->
+				{
+					// compilation was successful
+				}
+				case -1 -> throw new EOFException("EOF while reading compilation error marker");
+				default -> throw new CommunicationException("Student side initiated communication with incorrect magic number");
+			};
+		} catch(IOException e)
+		{
+			throw new UncheckedIOException("Error while reading compilation error marker", e);
+		}
+
 		this.callbacks = callbacks;
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 		this.nextInStreamID = new AtomicInteger(DataCommunicatorConstants.FIRST_FREE_STREAM_ID);

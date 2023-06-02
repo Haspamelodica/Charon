@@ -59,6 +59,15 @@ public class DataCommunicatorServer
 	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorSupplier<LongRef,
 			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>> communicatorSupplier)
 	{
+		// write magic number for "no compilation error"
+		try
+		{
+			rawOut.write('s');
+		} catch(IOException e)
+		{
+			throw new UncheckedIOException("Error while writing compilation error marker", e);
+		}
+
 		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
 		this.refManager = new SimpleLongRefManager(false);
 		this.communicator = communicatorSupplier.createCommunicator(false,

@@ -26,6 +26,8 @@ import net.haspamelodica.charon.exceptions.HierarchyMismatchException;
 import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 import net.haspamelodica.charon.util.LazyValue;
+import net.haspamelodica.charon.utils.maps.BidirectionalMap;
+import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 
 public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedException>
 {
@@ -39,6 +41,8 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 	private final ConcurrentMap<Class<? extends SerDes<?>>, InitializedSerDes<REF, ?>> initializedSerDesesBySerDesClass;
 
 	private final Map<Class<?>, InitializedSerDes<REF, ?>> initializedSerDesesByInstanceClass;
+
+	private final UnidirectionalMap<Class<?>, BidirectionalMap<REF, Object>> cachedPrimitives;
 
 	public Marshaler(MarshalerCallbacks<REF, TYPEREF, ?, SSX> callbacks,
 			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
@@ -63,7 +67,9 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		this.serdesClasses = List.copyOf(serdesClasses);
 
 		this.initializedSerDesesBySerDesClass = new ConcurrentHashMap<>();
+		//TODO why not concurrent?
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
+		this.cachedPrimitives = UnidirectionalMap.builder().concurrent().build();
 	}
 	private Marshaler(Marshaler<REF, TYPEREF, SSX> base, List<Class<? extends SerDes<?>>> serdesClasses)
 	{
@@ -76,6 +82,9 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		// We don't want to inherit those because
 		// we might want to use a different serializer for a class than the base.
 		this.initializedSerDesesByInstanceClass = new HashMap<>();
+		//TODO not keeping any cached primitives is suboptimal, but we need to be careful if a user overrides the default primitive serializers.
+		// We could also just disallow that.
+		this.cachedPrimitives = UnidirectionalMap.builder().concurrent().build();
 	}
 
 	public Marshaler<REF, TYPEREF, SSX> withAdditionalSerDeses(List<Class<? extends SerDes<?>>> serdesClasses)
@@ -144,6 +153,14 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		if(object == null)
 			return null;
 
+		//TODO this should even work for all immutables, but keep an eye on object identity
+		if(clazz.isPrimitive())
+			return lookupPrimitiveForPrimitiveType(clazz).computeKeyIfAbsent(object, o -> sendUncached(clazz, object));
+
+		return sendUncached(clazz, object);
+	}
+	private <T> REF sendUncached(Class<T> clazz, T object)
+	{
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
 			return communicator.getTransceiver().send(serdes.studentSideSerDesRef().get(), serdes.serdes(), object);
@@ -170,6 +187,14 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		if(objRef == null)
 			return null;
 
+		//TODO this should even work for all immutables, but keep an eye on object identity
+		if(clazz.isPrimitive())
+			return lookupPrimitiveForPrimitiveType(clazz).computeValueIfAbsent(objRef, o -> receiveUncached(clazz, objRef));
+
+		return receiveUncached(clazz, objRef);
+	}
+	private <T> Object receiveUncached(Class<T> clazz, REF objRef)
+	{
 		InitializedSerDes<REF, T> serdes = getSerDesForStaticObjectClass(clazz);
 		if(serdes != null)
 			return communicator.getTransceiver().receive(serdes.studentSideSerDesRef().get(), serdes.serdes(), objRef);
@@ -183,6 +208,12 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 	public List<Object> translateTo(List<REF> objRefs)
 	{
 		return translator.translateTo(objRefs);
+	}
+
+	private <T> BidirectionalMap<REF, Object> lookupPrimitiveForPrimitiveType(Class<T> clazz)
+	{
+		return cachedPrimitives.computeIfAbsent(clazz,
+				c -> BidirectionalMap.builder().concurrent().identityKeys(communicator.storeRefsIdentityBased()).build());
 	}
 
 	public TYPEREF getTypeHandledByStudentSideSerdes(Class<? extends SerDes<?>> serdesClass)
@@ -232,7 +263,9 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 				try
 				{
 					//TODO eliminate this cast once Outcome has three type arguments
-					serdesTyperef = (TYPEREF) handleOperationOutcome(OperationKind.GET_TYPE_BY_NAME, communicator.getTypeByName(classToName(c)));
+					@SuppressWarnings("unchecked")
+					TYPEREF serdesTyperefCasted = (TYPEREF) handleOperationOutcome(OperationKind.GET_TYPE_BY_NAME, communicator.getTypeByName(classToName(c)));
+					serdesTyperef = serdesTyperefCasted;
 				} catch(CharonException e)
 				{
 					// This can only be CLASS_NOT_FOUND

@@ -131,6 +131,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 	public TYPEREF getTypeByNameAndVerify(String typeName) throws SSX
 	{
 		//TODO eliminate this cast once Outcome has three type arguments
+		@SuppressWarnings("unchecked")
 		TYPEREF result = (TYPEREF) marshaler.handleOperationOutcome(GET_TYPE_BY_NAME, communicator.getTypeByName(typeName));
 
 		String actualName = describeType(result).name();

@@ -105,6 +105,7 @@ public class DataCommunicatorClient
 		{
 			switch(rawIn.read())
 			{
+				// This will never be written by DataCommunicatorServer, but by CharonCI's run script if it detects a student-side compilation error.
 				case 'c' -> throw new CompilationErrorException("Student side reported a compilation error");
 				case 's' ->
 				{

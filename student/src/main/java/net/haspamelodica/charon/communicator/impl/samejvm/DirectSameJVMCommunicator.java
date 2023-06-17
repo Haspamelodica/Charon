@@ -1,6 +1,5 @@
 package net.haspamelodica.charon.communicator.impl.samejvm;
 
-import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClassWrapReflectiveAction;
@@ -8,6 +7,7 @@ import static net.haspamelodica.charon.reflection.ReflectionUtils.nameToClassWra
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 
 import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.HiddenCallbackErrorException;
@@ -21,11 +21,14 @@ import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.marshaling.SerDes;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
+import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 
 public class DirectSameJVMCommunicator<TC extends Transceiver>
 		implements StudentSideCommunicator<Object, Class<?>, TC, InternalCallbackManager<Object>>, InternalCallbackManager<Object>
 {
 	private final StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks;
+
+	private final UnidirectionalMap<Object, Object> primitivesCache;
 
 	private final TC transceiver;
 
@@ -33,6 +36,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 			Function<StudentSideCommunicatorCallbacks<Object, Class<?>>, TC> createTransceiver)
 	{
 		this.callbacks = callbacks;
+		this.primitivesCache = UnidirectionalMap.builder().concurrent().build();
 		this.transceiver = createTransceiver.apply(this.callbacks);
 	}
 
@@ -107,7 +111,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	@Override
 	public OperationOutcome<Object, Class<?>> getArrayElement(Object arrayRef, int index)
 	{
-		return ReflectionUtils.getArrayElement(arrayRef, index);
+		return lookupCachedPrimitiveIfPrimitive(getTypeOf(arrayRef).componentType(), ReflectionUtils.getArrayElement(arrayRef, index));
 	}
 
 	@Override
@@ -126,13 +130,13 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	public OperationOutcome<Object, Class<?>> callStaticMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params,
 			List<Object> argRefs)
 	{
-		return ReflectionUtils.callStaticMethod(type, name, returnType, params, argRefs);
+		return lookupCachedPrimitiveIfPrimitive(returnType, ReflectionUtils.callStaticMethod(type, name, returnType, params, argRefs));
 	}
 
 	@Override
 	public OperationOutcome<Object, Class<?>> getStaticField(Class<?> type, String name, Class<?> fieldType)
 	{
-		return ReflectionUtils.getStaticField(type, name, fieldType);
+		return lookupCachedPrimitiveIfPrimitive(fieldType, ReflectionUtils.getStaticField(type, name, fieldType));
 	}
 
 	@Override
@@ -160,7 +164,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
-		return ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args);
+		return lookupCachedPrimitiveIfPrimitive(returnClass, ReflectionUtils.callInstanceMethod(clazz, name, returnClass, params, receiverCasted, args));
 	}
 
 	@Override
@@ -173,7 +177,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	{
 		@SuppressWarnings("unchecked") // responsibility of caller
 		T receiverCasted = (T) receiver;
-		return ReflectionUtils.getInstanceField(clazz, name, fieldClass, receiverCasted);
+		return lookupCachedPrimitiveIfPrimitive(fieldClass, ReflectionUtils.getInstanceField(clazz, name, fieldClass, receiverCasted));
 	}
 
 	@Override
@@ -210,9 +214,10 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 
 		return createProxyInstance(interfaceType, (proxy, method, args) ->
 		{
+			List<Class<?>> params = List.of(method.getParameterTypes());
 			CallbackOperationOutcome<Object, Object> result = callbacks.callCallbackInstanceMethod(
-					interfaceType, method.getName(), method.getReturnType(), List.of(method.getParameterTypes()),
-					proxy, argsToList(args));
+					interfaceType, method.getName(), method.getReturnType(), params,
+					proxy, argsToListAndLookupCachedPrimitives(params, args));
 
 			return switch(result.kind())
 			{
@@ -227,6 +232,39 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	public InternalCallbackManager<Object> getCallbackManager()
 	{
 		return this;
+	}
+
+	private List<Object> argsToListAndLookupCachedPrimitives(List<Class<?>> params, Object[] args)
+	{
+		return IntStream
+				.range(0, args.length)
+				.mapToObj(i -> lookupCachedPrimitiveIfPrimitive(params.get(i), args[i]))
+				.toList();
+	}
+	private OperationOutcome<Object, Class<?>> lookupCachedPrimitiveIfPrimitive(Class<?> type, OperationOutcome<Object, Class<?>> outcome)
+	{
+		if(!(outcome instanceof OperationOutcome.Result<Object, Class<?>> result))
+			return outcome;
+
+		// void counts as primitive for some reason and would cause NPEs later on (specifically, when looking up primitive cache)
+		if(!type.isPrimitive() || type == void.class)
+			return outcome;
+
+		return new OperationOutcome.Result<>(lookupCachedPrimitive(result.returnValue()));
+	}
+	private Object lookupCachedPrimitiveIfPrimitive(Class<?> type, Object object)
+	{
+		// void counts as primitive for some reason and would cause NPEs later on (specifically, when looking up primitive cache)
+		if(!type.isPrimitive() || type == void.class)
+			return object;
+		else
+			return lookupCachedPrimitive(object);
+	}
+	private Object lookupCachedPrimitive(Object primitive)
+	{
+		// Don't use primitive.getClass() to determine whether the object is a primitive or not,
+		// because that would break object identity when the student / exercise side actually transfers a primitive box object
+		return primitivesCache.computeIfAbsent(primitive, Function.identity());
 	}
 
 	public static <TC extends Transceiver> UninitializedStudentSideCommunicator<Object, Class<?>, TC, InternalCallbackManager<Object>>

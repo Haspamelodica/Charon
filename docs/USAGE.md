@@ -247,6 +247,7 @@ but to the SSI interface defined earlier by the exercise creator.
 
 # TODO document:
 
+- Setting up projects
 - Overriding student-side names
 - Arrays
 - Serialization

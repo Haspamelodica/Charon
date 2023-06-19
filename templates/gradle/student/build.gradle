@@ -1,0 +1,27 @@
+apply plugin: 'java'
+sourceCompatibility = JavaVersion.VERSION_19
+version = '1.0.0'
+compileJava.options.encoding = 'UTF-8'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    // Uncomment this line to enable running the tests locally
+    // implementation 'net.haspamelodica.charon:student:0.0.1-SNAPSHOT'
+}
+
+sourceSets {
+    main {
+        java {
+            srcDir 'src'
+        }
+    }
+    test {
+        java {
+            srcDirs = []
+        }
+    }
+}

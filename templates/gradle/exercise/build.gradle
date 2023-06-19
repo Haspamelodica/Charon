@@ -1,0 +1,45 @@
+plugins {
+}
+
+apply plugin: 'java'
+sourceCompatibility = JavaVersion.VERSION_19
+version = '1.0.0'
+compileJava.options.encoding = 'UTF-8'
+compileTestJava.options.encoding = 'UTF-8'
+
+repositories {
+    mavenCentral()
+    mavenLocal()
+}
+
+dependencies {
+    testImplementation 'net.haspamelodica.charon:exercise.junitextension:0.0.1-SNAPSHOT'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.8.1'
+}
+
+sourceSets {
+    test {
+        java {
+            srcDir 'test'
+        }
+        resources {
+            srcDir 'test'
+        }
+    }
+    main {
+        java {
+            srcDirs = []
+        }
+        resources {
+            srcDirs = []
+        }
+    }
+}
+
+test {
+    systemProperty "net.haspamelodica.charon.communicationargs", System.getProperty("net.haspamelodica.charon.communicationargs")
+    defaultCharacterEncoding = 'UTF-8'
+    testLogging.showStandardStreams = true
+    useJUnitPlatform()
+    outputs.upToDateWhen { false }
+}

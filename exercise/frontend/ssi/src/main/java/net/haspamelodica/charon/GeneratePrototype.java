@@ -73,6 +73,7 @@ public class GeneratePrototype
 		result += "import static " + StudentSidePrototypeMethodKind.Kind.class.getCanonicalName() + ".*;\n";
 		result += "\n";
 
+		//TODO actually support arrays
 		result += "@" + StudentSideInstanceKind.class.getSimpleName() + "(" + (clazz.isInterface() ? "INTERFACE" : clazz.isArray() ? "ARRAY" : "CLASS") + ")\n";
 		result += "public interface " + clazz.getSimpleName() + " extends " + StudentSideInstance.class.getSimpleName() + "\n";
 		result += "{\n";

@@ -239,7 +239,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
 	{
 		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
-		if(prototypeBuilders.size() != 1)
+		if(prototypeBuilders.stream().distinct().count() != 1)
 			if(prototypeBuilders.size() == 0)
 				throw new ExerciseCausedException("No prototype for " + untranslatedTyperef.describe().name());
 			else

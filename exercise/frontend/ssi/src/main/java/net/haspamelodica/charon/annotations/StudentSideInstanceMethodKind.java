@@ -21,7 +21,8 @@ public @interface StudentSideInstanceMethodKind
 		INSTANCE_FIELD_SETTER(CLASS),
 		ARRAY_LENGTH(ARRAY),
 		ARRAY_GETTER(ARRAY),
-		ARRAY_SETTER(ARRAY);
+		ARRAY_SETTER(ARRAY),
+		SERIALIZATION_RECEIVER(CLASS, INTERFACE, ARRAY);
 
 		private final Set<StudentSideInstanceKind.Kind> allowedInstanceKinds;
 

@@ -21,7 +21,8 @@ public @interface StudentSidePrototypeMethodKind
 		STATIC_FIELD_GETTER(CLASS, INTERFACE),
 		STATIC_FIELD_SETTER(CLASS, INTERFACE),
 		ARRAY_CREATOR(ARRAY),
-		ARRAY_INITIALIZER(ARRAY);
+		ARRAY_INITIALIZER(ARRAY),
+		SERIALIZATION_SENDER(CLASS, INTERFACE);
 
 		private final Set<StudentSideInstanceKind.Kind> allowedInstanceKinds;
 

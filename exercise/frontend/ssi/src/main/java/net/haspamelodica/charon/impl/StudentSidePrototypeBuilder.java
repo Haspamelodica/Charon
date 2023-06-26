@@ -189,6 +189,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 						case STATIC_FIELD_SETTER -> staticFieldSetterHandler(method, methodWideMarshalingCommunicator, name);
 						case ARRAY_CREATOR -> arrayCreatorHandler(method, methodWideMarshalingCommunicator, nameOverridden);
 						case ARRAY_INITIALIZER -> arrayInitializerHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+						case SERIALIZATION_SENDER -> serializationSenderHandler(method, methodWideMarshalingCommunicator, nameOverridden);
 					};
 				});
 	}
@@ -343,6 +344,30 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		}
 
 		throw new InconsistentHierarchyException("Array initializer's parameter had unexpected type " + parameterTypeErasure + ": " + method);
+	}
+
+	private MethodHandler serializationSenderHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+			boolean nameOverridden)
+	{
+		if(nameOverridden)
+			throw new InconsistentHierarchyException("Serialization sender method had name overridden: " + method);
+
+		Parameter[] parameters = method.getParameters();
+		if(parameters.length != 1)
+			throw new InconsistentHierarchyException("Serialization sender method had not exactly one parameter: " + method);
+
+		if(!method.getReturnType().equals(instanceClass))
+			throw new InconsistentHierarchyException("Serialization sender method's return type wasn't the associated student-side instance class: " +
+					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
+
+		Class<?> parameterType = parameters[0].getType();
+
+		TYPEREF studentSideParameterType = marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(parameterType);
+		// These are typerefs, so compare with ==
+		if(studentSideParameterType != instanceBuilder.studentSideType.getTyperef())
+			throw new InconsistentHierarchyException("Serialization sender method has incorrect return type: " + method);
+
+		return (proxy, args) -> marshalingCommunicator.sendAndReceive(parameterType, proxy);
 	}
 
 	private Class<?> maybeUnboxAndCheckInitialValuesType(Class<?> initialValuesTypeOrBox,

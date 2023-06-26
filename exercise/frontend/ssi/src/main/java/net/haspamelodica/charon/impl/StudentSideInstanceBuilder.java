@@ -164,6 +164,7 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 						case ARRAY_LENGTH -> arrayLengthHandler(method, methodWideMarshalingCommunicator, nameOverridden);
 						case ARRAY_GETTER -> arrayGetterHandler(method, methodWideMarshalingCommunicator, nameOverridden);
 						case ARRAY_SETTER -> arraySetterHandler(method, methodWideMarshalingCommunicator, nameOverridden);
+						case SERIALIZATION_RECEIVER -> serializationReceiverHandler(method, methodWideMarshalingCommunicator, nameOverridden);
 					};
 				});
 	}
@@ -222,8 +223,12 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 	private MethodHandler arrayLengthHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
+		if(nameOverridden)
+			throw new InconsistentHierarchyException("Array length method had name overridden: " + method);
+
 		if(method.getParameterCount() != 0)
 			throw new InconsistentHierarchyException("Array length method had parameters: " + method);
+
 		if(method.getReturnType() != int.class)
 			throw new InconsistentHierarchyException("Array length method's return type wasn't int: " + method);
 
@@ -233,6 +238,9 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 	private MethodHandler arrayGetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
+		if(nameOverridden)
+			throw new InconsistentHierarchyException("Array getter had name overridden: " + method);
+
 		if(method.getParameterCount() != 1)
 			throw new InconsistentHierarchyException("Array getter had not exactly one parameter: " + method);
 
@@ -252,6 +260,9 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 	private MethodHandler arraySetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
+		if(nameOverridden)
+			throw new InconsistentHierarchyException("Array setter had name overridden: " + method);
+
 		if(method.getParameterCount() != 2)
 			throw new InconsistentHierarchyException("Array setter had not exactly two parameters: " + method);
 
@@ -275,5 +286,25 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 			instanceWideMarshalingCommunicator.setArrayElement(instanceClass, valueType, proxy, (Integer) args[0], args[1]);
 			return null;
 		};
+	}
+
+	private MethodHandler serializationReceiverHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+			boolean nameOverridden)
+	{
+		if(nameOverridden)
+			throw new InconsistentHierarchyException("Serialization receiver method had name overridden: " + method);
+
+		Parameter[] parameters = method.getParameters();
+		if(parameters.length != 0)
+			throw new InconsistentHierarchyException("Serialization receiver method had parameters: " + method);
+
+		Class<?> returnType = method.getReturnType();
+
+		TYPEREF studentSideReturnType = marshalingCommunicator.lookupCorrespondingStudentSideTypeOrThrow(returnType);
+		// Unfortunately, we can only do this check at generation time if there are no SerDeses given as parameters
+		if(studentSideReturnType != studentSideType.getTyperef())
+			throw new InconsistentHierarchyException("Serialization receiver method has incorrect return type: " + method);
+
+		return (proxy, args) -> marshalingCommunicator.sendAndReceive(returnType, proxy);
 	}
 }

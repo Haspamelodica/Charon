@@ -301,6 +301,11 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 		marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
 	}
 
+	public <T> T sendAndReceive(Class<T> type, Object receiver)
+	{
+		return marshaler.receive(type, marshaler.send(type, receiver));
+	}
+
 	private List<TYPEREF> lookupCorrespondingStudentSideTypesOrThrow(List<Class<?>> types)
 	{
 		return types.stream().map(this::lookupCorrespondingStudentSideTypeOrThrow).toList();

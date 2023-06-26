@@ -15,6 +15,7 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.lang.reflect.WildcardType;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -83,13 +84,29 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 					continue;
 
 				Type typeArgumentUnchecked = parameterizedSuperinterface.getActualTypeArguments()[0];
-				if(!(typeArgumentUnchecked instanceof Class<?> instanceType))
-					throw new InconsistentHierarchyException("The type argument to " + StudentSidePrototype.class.getSimpleName()
-							+ " has to be an unparameterized or raw class: " + prototypeClass);
 
-				// Verified by instanceof check above and StudentSidePrototype's signature.
-				@SuppressWarnings("unchecked")
-				Class<SI> instanceClass = (Class<SI>) typeArgumentUnchecked;
+				Class<SI> instanceClass;
+				if(typeArgumentUnchecked instanceof Class<?> instanceType)
+				{
+					// Verified by instanceof check above and StudentSidePrototype's signature.
+					@SuppressWarnings("unchecked")
+					Class<SI> instanceClassCasted = (Class<SI>) instanceType;
+					instanceClass = instanceClassCasted;
+				} else if(true
+						&& typeArgumentUnchecked instanceof ParameterizedType parameterizedTypeArgument
+						&& Arrays.stream(parameterizedTypeArgument.getActualTypeArguments()).allMatch(a -> true
+								&& a instanceof WildcardType wildcardType
+								&& wildcardType.getLowerBounds().length == 0
+								&& wildcardType.getUpperBounds().length == 1
+								&& wildcardType.getUpperBounds()[0] == Object.class))
+				{
+					// Verified by StudentSidePrototype's signature.
+					@SuppressWarnings("unchecked")
+					Class<SI> instanceClassCasted = (Class<SI>) parameterizedTypeArgument.getRawType();
+					instanceClass = instanceClassCasted;
+				} else
+					throw new InconsistentHierarchyException("The type argument to " + StudentSidePrototype.class.getSimpleName()
+							+ " has to be an unparameterized or raw class, or be parameterized only with wildcards: " + prototypeClass);
 
 				if(prototypeClassToUseForInstanceClass(instanceClass) != prototypeClass)
 					throw new InconsistentHierarchyException("Tried creating a prototype for a "

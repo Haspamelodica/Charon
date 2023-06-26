@@ -25,6 +25,7 @@ import java.util.stream.Stream;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
@@ -66,6 +67,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		checkNotAnnotatedWith(prototypeClass, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(prototypeClass, StudentSideInstanceMethodKind.class);
 		checkNotAnnotatedWith(prototypeClass, StudentSidePrototypeMethodKind.class);
+		checkNotAnnotatedWith(prototypeClass, PrototypeClass.class);
 
 		if(StudentSideInstance.class.isAssignableFrom(prototypeClass))
 			throw new InconsistentHierarchyException("A prototype class should not implement "
@@ -88,6 +90,13 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				// Verified by instanceof check above and StudentSidePrototype's signature.
 				@SuppressWarnings("unchecked")
 				Class<SI> instanceClass = (Class<SI>) typeArgumentUnchecked;
+
+				if(prototypeClassToUseForInstanceClass(instanceClass) != prototypeClass)
+					throw new InconsistentHierarchyException("Tried creating a prototype for a "
+							+ StudentSideInstance.class.getSimpleName()
+							+ " which specifies another prototype using " + PrototypeClass.class.getSimpleName()
+							+ ": expected " + prototypeClass + ", but was " + prototypeClassToUseForInstanceClass(instanceClass));
+
 				return instanceClass;
 			}
 
@@ -144,6 +153,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
+		checkNotAnnotatedWith(method, PrototypeClass.class);
 		MarshalingCommunicator<REF, TYPEREF, StudentSideException> methodWideMarshalingCommunicator =
 				prototypeWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 
@@ -334,5 +344,15 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 					+ ", but was " + initialValuesTypeOrBox + ": " + method);
 
 		return initialValuesTypeOrBox;
+	}
+
+	public static <SI extends StudentSideInstance> Class<? extends StudentSidePrototype<?>>
+			prototypeClassToUseForInstanceClass(Class<SI> instanceClass)
+	{
+		PrototypeClass prototypeClassAnnotation = instanceClass.getAnnotation(PrototypeClass.class);
+		if(prototypeClassAnnotation == null)
+			throw new InconsistentHierarchyException("A " + StudentSideInstance.class.getSimpleName()
+					+ " has to be annotated with " + PrototypeClass.class.getSimpleName() + ": " + instanceClass);
+		return prototypeClassAnnotation.value();
 	}
 }

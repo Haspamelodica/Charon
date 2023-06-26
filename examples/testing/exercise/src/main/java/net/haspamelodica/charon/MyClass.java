@@ -10,6 +10,7 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind.Kind.STATIC_METHOD;
 
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
@@ -21,6 +22,7 @@ import net.haspamelodica.charon.marshaling.StringSerDes;
 // because both classes never get loaded in the same JVM anyway.
 @OverrideStudentSideName("net.haspamelodica.charon.MyClassImpl")
 @UseSerDes(StringSerDes.class)
+@PrototypeClass(MyClass.Prototype.class)
 public interface MyClass extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)

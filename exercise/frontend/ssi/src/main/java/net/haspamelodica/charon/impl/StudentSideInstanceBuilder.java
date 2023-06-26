@@ -19,6 +19,7 @@ import java.util.stream.Stream;
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideComponentTypeByClass;
 import net.haspamelodica.charon.annotations.StudentSideComponentTypeByName;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
@@ -144,6 +145,7 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, SI exten
 	{
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSidePrototypeMethodKind.class);
+		checkNotAnnotatedWith(method, PrototypeClass.class);
 		MarshalingCommunicator<REF, TYPEREF, StudentSideException> methodWideMarshalingCommunicator =
 				instanceWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 

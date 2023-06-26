@@ -4,11 +4,13 @@ import static net.haspamelodica.charon.annotations.StudentSideInstanceKind.Kind.
 
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
 @StudentSideInstanceKind(CLASS)
 @OverrideStudentSideNameByClass(NullPointerException.class)
+@PrototypeClass(NullPointerExceptionSSI.Prototype.class)
 public interface NullPointerExceptionSSI extends ThrowableSSI
 {
 	public static interface Prototype extends StudentSidePrototype<NullPointerExceptionSSI>

@@ -10,6 +10,7 @@ import java.util.List;
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideComponentTypeByClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
@@ -18,6 +19,7 @@ import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind.Kind;
 
 @StudentSideInstanceKind(ARRAY)
 @StudentSideComponentTypeByClass(float.class)
+@PrototypeClass(FloatArray.Prototype.class)
 public interface FloatArray extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(ARRAY_LENGTH)

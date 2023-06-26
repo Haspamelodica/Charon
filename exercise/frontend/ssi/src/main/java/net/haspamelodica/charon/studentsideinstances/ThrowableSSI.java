@@ -7,6 +7,7 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
@@ -15,6 +16,7 @@ import net.haspamelodica.charon.marshaling.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
 @OverrideStudentSideNameByClass(Throwable.class)
+@PrototypeClass(ThrowableSSI.Prototype.class)
 public interface ThrowableSSI extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)

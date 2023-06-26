@@ -8,11 +8,13 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 
 @StudentSideInstanceKind(CLASS)
+@PrototypeClass(RationalNumber.Prototype.class)
 public interface RationalNumber extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_FIELD_GETTER)

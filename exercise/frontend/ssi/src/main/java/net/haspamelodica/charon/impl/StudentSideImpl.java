@@ -132,19 +132,29 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP createPrototype(Class<SP> prototypeClass)
 			throws InconsistentHierarchyException, MissingSerDesException
 	{
+		return getOrCreatePrototypeBuilder(prototypeClass).prototype;
+	}
+
+	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> getOrCreatePrototypeBuilder(Class<SP> prototypeClass)
+	{
 		// computeIfAbsent would be nicer algorithmically, but results in very ugly generic casts
 
 		// fast path. Not neccessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
-		SP prototypeIfExists = tryGetPrototype(prototypeClass);
-		if(prototypeIfExists != null)
-			return prototypeIfExists;
+		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
+		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric =
+				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+		if(prototypeBuilderGeneric != null)
+			return prototypeBuilderGeneric;
 
 		synchronized(prototypeBuildersByPrototype)
 		{
 			// re-get to see if some other thread was faster
-			prototypeIfExists = tryGetPrototype(prototypeClass);
-			if(prototypeIfExists != null)
-				return prototypeIfExists;
+			@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
+			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric2 =
+					(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+			if(prototypeBuilderGeneric2 != null)
+				return prototypeBuilderGeneric2;
 
 			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
 			Class<SI> instanceClass = prototypeBuilder.instanceClass;
@@ -166,7 +176,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 			prototypeBuildersByInstanceClass.put(instanceClass, prototypeBuilder);
 			prototypeBuildersByPrototypeClass.put(prototypeClass, prototypeBuilder);
 
-			return prototypeBuilder.prototype;
+			return prototypeBuilder;
 		}
 	}
 
@@ -201,34 +211,36 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return ssiCasted;
 	}
 
-	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP tryGetPrototype(Class<SP> prototypeClass)
-	{
-		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
-		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric =
-				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
-
-		return prototypeBuilderGeneric == null ? null : prototypeBuilderGeneric.prototype;
-	}
-
 	private TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 	{
 		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
 		if(prototypeBuilder != null)
 			return prototypeBuilder.instanceBuilder.studentSideType.getTyperef();
 
-		if(!throwIfNotFound)
-			return null;
+		//TODO this is ugly
+		if(representationClass == StudentSideInstance.class)
+			return globalMarshalingCommunicator.getTypeByNameAndVerify(Object.class.getName());
 
 		if(StudentSideInstance.class.isAssignableFrom(representationClass))
 		{
-			//TODO this is ugly
-			if(representationClass == StudentSideInstance.class)
-				return globalMarshalingCommunicator.getTypeByNameAndVerify(Object.class.getName());
-			//TODO this shouldn't be a requirement to exercise code.
-			throw new ExerciseCausedException("No prototype created for " + representationClass);
+			@SuppressWarnings("unchecked") // checked with isAssignableFrom
+			Class<? extends StudentSideInstance> instanceClass = (Class<? extends StudentSideInstance>) representationClass;
+			Class<? extends StudentSidePrototype<?>> prototypeClassToUseForInstanceClass = StudentSidePrototypeBuilder.prototypeClassToUseForInstanceClass(instanceClass);
+			return getOrCreatePrototypeBuilderGeneric(prototypeClassToUseForInstanceClass).instanceBuilder.studentSideType.getTyperef();
 		}
 
-		throw new ExerciseCausedException("Tried using class which is neither a " + StudentSideInstance.class + " nor serializable: " + representationClass);
+		if(throwIfNotFound)
+			throw new ExerciseCausedException("Tried using class which is neither a " + StudentSideInstance.class + " nor serializable: " + representationClass);
+		else
+			return null;
+	}
+
+	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>
+			getOrCreatePrototypeBuilderGeneric(Class<? extends StudentSidePrototype<?>> prototypeClass)
+	{
+		@SuppressWarnings("unchecked") // responsibility of user
+		Class<SP> prototypeClassCasted = (Class<SP>) prototypeClass;
+		return getOrCreatePrototypeBuilder(prototypeClassCasted);
 	}
 
 	private StudentSideInstance createRepresentationObject(UntypedUntranslatedRef untranslatedRef)

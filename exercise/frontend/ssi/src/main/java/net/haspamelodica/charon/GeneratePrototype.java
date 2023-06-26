@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
@@ -62,6 +63,7 @@ public class GeneratePrototype
 			result += "import " + UseSerDes.class.getCanonicalName() + ";\n";
 			result += "import " + StringSerDes.class.getCanonicalName() + ";\n";
 		}
+		result += "import " + PrototypeClass.class.getCanonicalName() + ";\n";
 		result += "import " + StudentSideInstance.class.getCanonicalName() + ";\n";
 		result += "import " + StudentSidePrototype.class.getCanonicalName() + ";\n";
 		result += "import " + StudentSideInstanceKind.class.getCanonicalName() + ";\n";
@@ -75,6 +77,7 @@ public class GeneratePrototype
 
 		//TODO actually support arrays
 		result += "@" + StudentSideInstanceKind.class.getSimpleName() + "(" + (clazz.isInterface() ? "INTERFACE" : clazz.isArray() ? "ARRAY" : "CLASS") + ")\n";
+		result += "@" + PrototypeClass.class.getSimpleName() + "(" + clazz.getSimpleName() + ".Prototype.class)\n";
 		result += "public interface " + clazz.getSimpleName() + " extends " + StudentSideInstance.class.getSimpleName() + "\n";
 		result += "{\n";
 

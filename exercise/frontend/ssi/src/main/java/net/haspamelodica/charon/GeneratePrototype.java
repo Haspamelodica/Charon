@@ -76,6 +76,8 @@ public class GeneratePrototype
 		result += "\n";
 
 		//TODO actually support arrays
+		//TODO handle collections
+		//TODO handle generics
 		result += "@" + StudentSideInstanceKind.class.getSimpleName() + "(" + (clazz.isInterface() ? "INTERFACE" : clazz.isArray() ? "ARRAY" : "CLASS") + ")\n";
 		result += "@" + PrototypeClass.class.getSimpleName() + "(" + clazz.getSimpleName() + ".Prototype.class)\n";
 		result += "public interface " + clazz.getSimpleName() + " extends " + StudentSideInstance.class.getSimpleName() + "\n";

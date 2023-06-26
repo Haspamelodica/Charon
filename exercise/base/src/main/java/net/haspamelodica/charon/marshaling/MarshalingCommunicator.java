@@ -61,6 +61,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, SSX extends Studen
 			{
 				Object receiverObj = marshaler.translateTo(receiverRef);
 
+				//TODO cache looked up callback methods
 				CallbackMethod<M> callbackMethod = callbacks.lookupCallbackInstanceMethod(type, name, returnType, params, receiverObj.getClass());
 				Marshaler<REF, TYPEREF, SSX> marshalerWithAdditionalSerdeses = marshaler.withAdditionalSerDeses(callbackMethod.additionalSerdeses());
 

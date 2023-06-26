@@ -205,6 +205,8 @@ public class ReflectionUtils
 		try
 		{
 			//TODO check if is instance method
+			//TODO this causes problems when an inaccessible class overrides an accessible method.
+			// Or just always setAccessible?
 			return new OperationOutcome.Result<>(lookupMethod(clazz, false, name, paramTypes, returnType).invoke(receiver, args.toArray()));
 		} catch(InvocationTargetException e)
 		{
@@ -319,6 +321,11 @@ public class ReflectionUtils
 	public static <T> T castOrPrimitive(Class<T> clazz, Object obj)
 	{
 		if(!clazz.isPrimitive())
+			//TODO this causes a ClassCastException for the exercise creator in the following situation:
+			// - There are two classes A and B on the student side; along with their exercise-side SSIs.
+			// - The student-side B extends A, but the exercise-side (SSI of) B does not extend (the SSI of) A (this is crucial).
+			// - There is a method with return type A on the student side; along with its exercise-side representation (also declared to return A)
+			// - A call of the method returns an object of type B.
 			return clazz.cast(obj);
 
 		Class<?> box = getBoxOfPrimitiveType(clazz);

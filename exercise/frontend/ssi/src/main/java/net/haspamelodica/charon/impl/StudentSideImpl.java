@@ -213,26 +213,34 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 
 	private TYPEREF lookupCorrespondingStudentSideTypeForRepresentationClass(Class<?> representationClass, boolean throwIfNotFound)
 	{
-		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
-		if(prototypeBuilder != null)
-			return prototypeBuilder.instanceBuilder.studentSideType.getTyperef();
-
 		//TODO this is ugly
 		if(representationClass == StudentSideInstance.class)
 			return globalMarshalingCommunicator.getTypeByNameAndVerify(Object.class.getName());
 
-		if(StudentSideInstance.class.isAssignableFrom(representationClass))
-		{
-			@SuppressWarnings("unchecked") // checked with isAssignableFrom
-			Class<? extends StudentSideInstance> instanceClass = (Class<? extends StudentSideInstance>) representationClass;
-			Class<? extends StudentSidePrototype<?>> prototypeClassToUseForInstanceClass = StudentSidePrototypeBuilder.prototypeClassToUseForInstanceClass(instanceClass);
-			return getOrCreatePrototypeBuilderGeneric(prototypeClassToUseForInstanceClass).instanceBuilder.studentSideType.getTyperef();
-		}
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder =
+				tryLookupPrototypeBuilderFromClass(representationClass);
+		if(prototypeBuilder != null)
+			return prototypeBuilder.instanceBuilder.studentSideType.getTyperef();
 
 		if(throwIfNotFound)
 			throw new ExerciseCausedException("Tried using class which is neither a " + StudentSideInstance.class + " nor serializable: " + representationClass);
 		else
 			return null;
+	}
+
+	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> tryLookupPrototypeBuilderFromClass(Class<?> representationClass)
+	{
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
+		if(prototypeBuilder != null)
+			return prototypeBuilder;
+
+		if(!StudentSideInstance.class.isAssignableFrom(representationClass))
+			return null;
+
+		@SuppressWarnings("unchecked") // checked with isAssignableFrom
+		Class<? extends StudentSideInstance> instanceClass = (Class<? extends StudentSideInstance>) representationClass;
+		Class<? extends StudentSidePrototype<?>> prototypeClassToUseForInstanceClass = StudentSidePrototypeBuilder.prototypeClassToUseForInstanceClass(instanceClass);
+		return getOrCreatePrototypeBuilderGeneric(prototypeClassToUseForInstanceClass);
 	}
 
 	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>
@@ -279,10 +287,10 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		Class<?> clazz = exerciseSideObject.getClass();
 		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = Arrays
 				.stream(clazz.getInterfaces())
-				.flatMap(interfaceClazz -> Stream.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> of(prototypeBuildersByInstanceClass.get(interfaceClazz)))
+				.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> map(this::tryLookupPrototypeBuilderFromClass)
 				.filter(Objects::nonNull)
 				.toList();
-		if(prototypeBuilders.size() != 1)
+		if(prototypeBuilders.stream().distinct().count() != 1)
 			if(prototypeBuilders.size() == 0)
 				throw new ExerciseCausedException("No student side class for " + clazz);
 			else

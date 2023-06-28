@@ -164,7 +164,7 @@ public class LoggingCommunicator<REF,
 		logger.logEnter("lookup " + methodString);
 		OperationOutcome<METHODREF, Void, TYPEREF> result = communicator.lookupMethod(type, name, returnType, params, isStatic);
 		logger.registerMethod(result, methodString);
-		logger.logEnter(o(result));
+		logger.logExit(o(result));
 		return result;
 	}
 	@Override
@@ -174,7 +174,7 @@ public class LoggingCommunicator<REF,
 		logger.logEnter("lookup " + fieldString);
 		OperationOutcome<FIELDREF, Void, TYPEREF> result = communicator.lookupField(type, name, fieldType, isStatic);
 		logger.registerField(result, fieldString);
-		logger.logEnter(o(result));
+		logger.logExit(o(result));
 		return result;
 	}
 

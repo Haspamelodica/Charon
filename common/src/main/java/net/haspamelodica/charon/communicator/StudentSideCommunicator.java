@@ -4,34 +4,39 @@ import java.util.List;
 
 import net.haspamelodica.charon.OperationOutcome;
 
-public interface StudentSideCommunicator<REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
+public interface StudentSideCommunicator<REF,
+		THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+		TC extends Transceiver, CM extends CallbackManager>
 {
 	public boolean storeRefsIdentityBased();
 
-	public OperationOutcome<REF, TYPEREF> getTypeByName(String typeName);
+	public OperationOutcome<TYPEREF, Void, TYPEREF> getTypeByName(String typeName);
 	public TYPEREF getArrayType(TYPEREF componentType);
 	public TYPEREF getTypeOf(REF ref);
 	public StudentSideTypeDescription<TYPEREF> describeType(TYPEREF type);
 
 	public TYPEREF getTypeHandledBySerdes(REF serdesRef);
 
-	//TODO rename to create/initializeArray to stay consistent
-	public OperationOutcome<REF, TYPEREF> newArray(TYPEREF arrayType, int length);
-	public OperationOutcome<REF, TYPEREF> newMultiArray(TYPEREF arrayType, List<Integer> dimensions);
-	public OperationOutcome<REF, TYPEREF> newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues);
+	public OperationOutcome<REF, Void, TYPEREF> createArray(TYPEREF arrayType, int length);
+	public OperationOutcome<REF, Void, TYPEREF> createMultiArray(TYPEREF arrayType, List<Integer> dimensions);
+	public OperationOutcome<REF, Void, TYPEREF> initializeArray(TYPEREF arrayType, List<REF> initialValues);
 	public int getArrayLength(REF arrayRef);
-	public OperationOutcome<REF, TYPEREF> getArrayElement(REF arrayRef, int index);
-	public OperationOutcome<Void, TYPEREF> setArrayElement(REF arrayRef, int index, REF valueRef);
+	public OperationOutcome<REF, Void, TYPEREF> getArrayElement(REF arrayRef, int index);
+	public OperationOutcome<Void, Void, TYPEREF> setArrayElement(REF arrayRef, int index, REF valueRef);
 
-	public OperationOutcome<REF, TYPEREF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs);
+	public OperationOutcome<CONSTRUCTORREF, Void, TYPEREF> lookupConstructor(TYPEREF type, List<TYPEREF> params);
+	public OperationOutcome<METHODREF, Void, TYPEREF> lookupMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, boolean isStatic);
+	public OperationOutcome<FIELDREF, Void, TYPEREF> lookupField(TYPEREF type, String name, TYPEREF fieldType, boolean isStatic);
 
-	public OperationOutcome<REF, TYPEREF> callStaticMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, List<REF> argRefs);
-	public OperationOutcome<REF, TYPEREF> getStaticField(TYPEREF type, String name, TYPEREF fieldType);
-	public OperationOutcome<Void, TYPEREF> setStaticField(TYPEREF type, String name, TYPEREF fieldType, REF valueRef);
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callConstructor(CONSTRUCTORREF constructor, List<REF> argRefs);
 
-	public OperationOutcome<REF, TYPEREF> callInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, REF receiverRef, List<REF> argRefs);
-	public OperationOutcome<REF, TYPEREF> getInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef);
-	public OperationOutcome<Void, TYPEREF> setInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef, REF valueRef);
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callStaticMethod(METHODREF method, List<REF> argRefs);
+	public OperationOutcome<REF, Void, TYPEREF> getStaticField(FIELDREF field);
+	public OperationOutcome<Void, Void, TYPEREF> setStaticField(FIELDREF field, REF valueRef);
+
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callInstanceMethod(METHODREF method, REF receiverRef, List<REF> argRefs);
+	public OperationOutcome<REF, Void, TYPEREF> getInstanceField(FIELDREF field, REF receiverRef);
+	public OperationOutcome<Void, Void, TYPEREF> setInstanceField(FIELDREF field, REF receiverRef, REF valueRef);
 
 	public TC getTransceiver();
 	public CM getCallbackManager();

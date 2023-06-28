@@ -3,6 +3,7 @@ package net.haspamelodica.charon.marshaling;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.castOrPrimitive;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.classToName;
 
+import java.lang.reflect.Constructor;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -33,7 +34,8 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 {
 	private final MarshalerCallbacks<REF, TYPEREF, ?, SSX> callbacks;
 
-	private final StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
+	private final StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?,
+			? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator;
 
 	private final RefTranslator<Object, REF>		translator;
 	private final List<Class<? extends SerDes<?>>>	serdesClasses;
@@ -45,7 +47,8 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 	private final UnidirectionalMap<Class<?>, BidirectionalMap<REF, Object>> cachedPrimitives;
 
 	public Marshaler(MarshalerCallbacks<REF, TYPEREF, ?, SSX> callbacks,
-			StudentSideCommunicator<REF, TYPEREF, ? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
+			StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?,
+					? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator,
 			List<Class<? extends SerDes<?>>> serdesClasses)
 	{
 		this.callbacks = callbacks;
@@ -112,28 +115,28 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		return result;
 	}
 
-	public <T> T receiveOrThrow(OperationKind operationKind, Class<T> clazz, OperationOutcome<REF, TYPEREF> outcome) throws SSX
+	public <T> T receiveOrThrowVoid(OperationKind operationKind, Class<T> clazz, OperationOutcome<REF, Void, TYPEREF> outcome)
+	{
+		return receive(clazz, handleOperationOutcomeVoid(operationKind, outcome));
+	}
+
+	public <T> T receiveOrThrow(OperationKind operationKind, Class<T> clazz, OperationOutcome<REF, ? extends REF, TYPEREF> outcome) throws SSX
 	{
 		return receive(clazz, handleOperationOutcome(operationKind, outcome));
 	}
 
-	public void handleOperationOutcomeVoid(OperationKind operationKind, OperationOutcome<Void, TYPEREF> outcome)
-	{
-		handleOperationOutcome(operationKind, outcome, thrown ->
-		{
-			throw new FrameworkCausedException("Void operation outcome was of kind " + OperationOutcome.Kind.THROWN);
-		});
-	}
-
-	public REF handleOperationOutcome(OperationKind operationKind, OperationOutcome<REF, TYPEREF> outcome)
+	public <RESULTREF, THROWABLEREF extends REF> RESULTREF handleOperationOutcome(OperationKind operationKind,
+			OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF> outcome) throws SSX
 	{
 		// The Eclipse compiler is able to deduce that this can only throw SSX, not Exception, javac is not.
 		// Probably a bug in the Eclipse compiler.
 		// Workaround: Specify the type arguments to the method explicitly.
-		return Marshaler.<SSX, REF, TYPEREF> handleOperationOutcome(operationKind, outcome, thrown -> throwSSX(callbacks, thrown));
+		return Marshaler.<SSX, RESULTREF, THROWABLEREF, TYPEREF> handleOperationOutcome(operationKind, outcome,
+				thrown -> throwSSX(callbacks, thrown));
 	}
 
-	private <R, SST> R throwSSX(MarshalerCallbacks<REF, TYPEREF, SST, SSX> callbacks, OperationOutcome.Thrown<REF, TYPEREF> outcome) throws SSX
+	private <R, THROWABLEREF extends REF, SST> R throwSSX(MarshalerCallbacks<REF, TYPEREF, SST, SSX> callbacks,
+			OperationOutcome.Thrown<?, THROWABLEREF, TYPEREF> outcome) throws SSX
 	{
 		SST studentSideThrowable = callbacks.checkRepresentsStudentSideThrowableAndCastOrNull(translateTo(outcome.thrownThrowable()));
 		if(studentSideThrowable == null)
@@ -253,51 +256,75 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 	{
 		return initializedSerDesesBySerDesClass.computeIfAbsent(serdesClass, c ->
 		{
-			OperationOutcome<Object, Class<?>> localSerdesOutcome = ReflectionUtils.callConstructor(c, List.of(), List.of());
+			OperationOutcome<Constructor<?>, Void, Class<?>> localSerdesConstructorLookupOutcome =
+					ReflectionUtils.lookupConstructor(c, List.of());
+			Constructor<?> localSerdesConstructor =
+					handleOperationOutcomeVoid(OperationKind.LOOKUP_CONSTRUCTOR, localSerdesConstructorLookupOutcome);
+			OperationOutcome<Object, Throwable, Class<?>> localSerdesOutcome =
+					ReflectionUtils.callConstructor(localSerdesConstructor, List.of());
 			SerDes<?> serdes = (SerDes<?>) handleOperationOutcome(OperationKind.CALL_CONSTRUCTOR, localSerdesOutcome,
-					thrown -> new ExerciseCausedException("Error while creating SerDes for class " + c, (Throwable) thrown.thrownThrowable()));
+					thrown -> new ExerciseCausedException("Error while creating SerDes for class " + c, thrown.thrownThrowable()));
 
-			LazyValue<REF> serdesRef = new LazyValue<>(() ->
-			{
-				TYPEREF serdesTyperef;
-				try
-				{
-					//TODO eliminate this cast once Outcome has three type arguments
-					@SuppressWarnings("unchecked")
-					TYPEREF serdesTyperefCasted = (TYPEREF) handleOperationOutcome(OperationKind.GET_TYPE_BY_NAME, communicator.getTypeByName(classToName(c)));
-					serdesTyperef = serdesTyperefCasted;
-				} catch(CharonException e)
-				{
-					// This can only be CLASS_NOT_FOUND
-					throw new StudentSideCausedException("Error while looking up student-side SerDes class " + c, e);
-				}
-				try
-				{
-					return handleOperationOutcome(OperationKind.CALL_CONSTRUCTOR, communicator.callConstructor(serdesTyperef, List.of(), List.of()));
-				} catch(CharonException e)
-				{
-					throw new StudentSideCausedException("Error while creating student-side SerDes " + c, e);
-				}
-			});
+			LazyValue<REF> serdesRef = new LazyValue<REF>(() -> createStudentSerdes(c, communicator));
 			return new InitializedSerDes<>(serdes, serdesRef);
 		});
 	}
+	private <CONSTRUCTORREF extends REF> REF createStudentSerdes(Class<? extends SerDes<?>> c,
+			StudentSideCommunicator<REF, ?, TYPEREF, CONSTRUCTORREF, ?, ?,
+					? extends ClientSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator)
+	{
+		TYPEREF serdesTyperef;
+		try
+		{
+			serdesTyperef = handleOperationOutcomeVoid(OperationKind.GET_TYPE_BY_NAME, communicator.getTypeByName(classToName(c)));
+		} catch(CharonException e)
+		{
+			// This can only be CLASS_NOT_FOUND
+			throw new StudentSideCausedException("Error while looking up student-side SerDes " + c, e);
+		}
+		CONSTRUCTORREF serdesConstructorref;
+		try
+		{
+			serdesConstructorref = handleOperationOutcomeVoid(OperationKind.LOOKUP_CONSTRUCTOR,
+					communicator.lookupConstructor(serdesTyperef, List.of()));
+		} catch(CharonException e)
+		{
+			throw new StudentSideCausedException("Error while looking up student-side constructor of SerDes " + c, e);
+		}
+		try
+		{
+			return handleOperationOutcome(OperationKind.CALL_CONSTRUCTOR, communicator.callConstructor(serdesConstructorref, List.of()));
+		} catch(CharonException e)
+		{
+			throw new StudentSideCausedException("Error while creating student-side SerDes " + c, e);
+		}
+	}
 
-	public static <X extends Exception, REF, TYPEREF> REF handleOperationOutcome(OperationKind operationKind, OperationOutcome<REF, TYPEREF> outcome,
-			Function<OperationOutcome.Thrown<REF, TYPEREF>, X> wrapThrown) throws X
+	public static <RESULTREF, TYPEREF> RESULTREF handleOperationOutcomeVoid(
+			OperationKind operationKind, OperationOutcome<RESULTREF, Void, TYPEREF> outcome)
+	{
+		return handleOperationOutcome(operationKind, outcome, thrown ->
+		{
+			throw new FrameworkCausedException(operationKind + " outcome was of kind " + OperationOutcome.Kind.THROWN);
+		});
+	}
+
+	public static <X extends Exception, RESULTREF, THROWABLEREF, TYPEREF> RESULTREF handleOperationOutcome(OperationKind operationKind,
+			OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF> outcome,
+			Function<OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>, X> wrapThrown) throws X
 	{
 		operationKind.checkOutcomeAllowed(outcome);
 		return switch(outcome.kind())
 		{
-			case RESULT -> ((OperationOutcome.Result<REF, ?>) outcome).returnValue();
+			case RESULT -> ((OperationOutcome.Result<RESULTREF, THROWABLEREF, TYPEREF>) outcome).returnValue();
 			case SUCCESS_WITHOUT_RESULT -> null;
-			case THROWN -> throw wrapThrown.apply((OperationOutcome.Thrown<REF, TYPEREF>) outcome);
+			case THROWN -> throw wrapThrown.apply((OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>) outcome);
 			// TODO better error messages for the cases below; for this, extract some toString code from CommunicationLogger to OperationOutcome
 			case CLASS_NOT_FOUND -> throw new HierarchyMismatchException("class not found: " + outcome);
 			case FIELD_NOT_FOUND -> throw new HierarchyMismatchException("field not found: " + outcome);
 			case METHOD_NOT_FOUND -> throw new HierarchyMismatchException("method not found: " + outcome);
 			case CONSTRUCTOR_NOT_FOUND -> throw new HierarchyMismatchException("constructor not found: " + outcome);
-			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED -> throw new HierarchyMismatchException("constructor of abstract class: " + outcome);
+			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED -> throw new HierarchyMismatchException("constructor of abstract created: " + outcome);
 			case ARRAY_INDEX_OUT_OF_BOUNDS -> throw new ExerciseCausedException("Array index out of bounds: " + outcome);
 			case ARRAY_SIZE_NEGATIVE -> throw new ExerciseCausedException("Array size negative: " + outcome);
 			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY -> throw new ExerciseCausedException("Array size negative for multiarray: " + outcome);

@@ -20,4 +20,10 @@ public class CompilationErrorException extends StudentSideCausedException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public CompilationErrorException withContext(String message)
+	{
+		return new CompilationErrorException(message, this);
+	}
 }

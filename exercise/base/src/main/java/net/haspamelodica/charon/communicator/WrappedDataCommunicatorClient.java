@@ -24,7 +24,8 @@ public class WrappedDataCommunicatorClient implements AutoCloseable
 		this.client = new UninitializedDataCommunicatorClient(communication.getIn(), communication.getOut());
 	}
 
-	public UninitializedStudentSideCommunicator<LongRef, LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>> getClient()
+	public UninitializedStudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,
+			ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>> getClient()
 	{
 		return client;
 	}

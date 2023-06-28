@@ -1,5 +1,8 @@
 package net.haspamelodica.charon.communicator;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.function.Function;
 
 import net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient;
@@ -15,8 +18,9 @@ public class ClientSideSameJVMCommunicatorUtils
 	 * <p>
 	 * For more details, see {@link DirectSameJVMClientSideTransceiver}.
 	 */
-	public static StudentSideCommunicator<Object, Class<?>, ? extends ClientSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
-			createDirectCommClient(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
+	public static StudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
+			? extends ClientSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
+			createDirectCommClient(StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks)
 	{
 		return new DirectSameJVMCommunicator<>(callbacks, directTcClient());
 	}
@@ -28,13 +32,14 @@ public class ClientSideSameJVMCommunicatorUtils
 	 * <p>
 	 * For more details, see {@link DirectSameJVMClientSideTransceiver}.
 	 */
-	public static UninitializedStudentSideCommunicator<Object, Class<?>, ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
+	public static UninitializedStudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
+			ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
 			createDirectCommClient()
 	{
 		return DirectSameJVMCommunicator.createUninitializedCommunicator(directTcClient());
 	}
 
-	private static Function<StudentSideCommunicatorCallbacks<Object, Class<?>>, ClientSideTransceiver<Object>> directTcClient()
+	private static Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, ClientSideTransceiver<Object>> directTcClient()
 	{
 		return DirectSameJVMClientSideTransceiver::new;
 	}

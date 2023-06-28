@@ -4,10 +4,10 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 
 public class UntranslatedRef<REF, TYPEREF extends REF> implements UntypedUntranslatedRef
 {
-	private final StudentSideCommunicator<REF, TYPEREF, ?, ?>	communicator;
-	private final REF											ref;
+	private final StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?, ?, ?>	communicator;
+	private final REF														ref;
 
-	public UntranslatedRef(StudentSideCommunicator<REF, TYPEREF, ?, ?> communicator, REF ref)
+	public UntranslatedRef(StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?, ?, ?> communicator, REF ref)
 	{
 		this.communicator = communicator;
 		this.ref = ref;

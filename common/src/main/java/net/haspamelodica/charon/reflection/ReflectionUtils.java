@@ -1,6 +1,7 @@
 package net.haspamelodica.charon.reflection;
 
 import java.lang.reflect.Array;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.InvocationTargetException;
@@ -50,7 +51,7 @@ public class ReflectionUtils
 			float.class, a -> IntStream.range(0, ((float[]) a).length).mapToObj(i -> ((float[]) a)[i]).toList(),
 			double.class, a -> Arrays.stream((double[]) a).boxed().toList());
 
-	public static OperationOutcome<Object, Class<?>> newArray(Class<?> arrayType, int length)
+	public static OperationOutcome<Object, Void, Class<?>> createArray(Class<?> arrayType, int length)
 	{
 		try
 		{
@@ -63,7 +64,7 @@ public class ReflectionUtils
 		}
 	}
 
-	public static OperationOutcome<Object, Class<?>> newMultiArray(Class<?> arrayType, List<Integer> dimensions)
+	public static OperationOutcome<Object, Void, Class<?>> createMultiArray(Class<?> arrayType, List<Integer> dimensions)
 	{
 		try
 		{
@@ -80,7 +81,7 @@ public class ReflectionUtils
 		}
 	}
 
-	public static OperationOutcome<Object, Class<?>> newArrayWithInitialValues(Class<?> arrayType, List<Object> initialValues)
+	public static OperationOutcome<Object, Void, Class<?>> initializeArray(Class<?> arrayType, List<Object> initialValues)
 	{
 		int length = initialValues.size();
 		Object array = Array.newInstance(checkIsArrayTypeAndGetComponentType(arrayType), length);
@@ -104,7 +105,7 @@ public class ReflectionUtils
 		return Array.getLength(array);
 	}
 
-	public static OperationOutcome<Object, Class<?>> getArrayElement(Object array, int index)
+	public static OperationOutcome<Object, Void, Class<?>> getArrayElement(Object array, int index)
 	{
 		try
 		{
@@ -115,7 +116,7 @@ public class ReflectionUtils
 		}
 	}
 
-	public static OperationOutcome<Void, Class<?>> setArrayElement(Object array, int index, Object value)
+	public static OperationOutcome<Void, Void, Class<?>> setArrayElement(Object array, int index, Object value)
 	{
 		try
 		{
@@ -127,136 +128,147 @@ public class ReflectionUtils
 		}
 	}
 
-	public static OperationOutcome<Object, Class<?>> callConstructor(Class<?> clazz, List<Class<?>> paramTypes, List<Object> args)
+	public static OperationOutcome<Constructor<?>, Void, Class<?>> lookupConstructor(Class<?> clazz, List<Class<?>> paramTypes)
 	{
+		if(Modifier.isAbstract(clazz.getModifiers()))
+			return new OperationOutcome.ConstructorOfAbstractClassCreated<>(clazz, paramTypes);
 		try
 		{
-			return new OperationOutcome.Result<>(callConstructorNoWrapReflectiveAction(clazz, paramTypes, args));
-		} catch(InvocationTargetException e)
-		{
-			return new OperationOutcome.Thrown<>(e.getTargetException());
+			return new OperationOutcome.Result<>(clazz.getConstructor(paramTypes.toArray(Class[]::new)));
 		} catch(NoSuchMethodException e)
 		{
 			return new OperationOutcome.ConstructorNotFound<>(clazz, paramTypes);
-		} catch(InstantiationException e)
-		{
-			return new OperationOutcome.ConstructorOfAbstractClassCalled<>(clazz, paramTypes);
-		} catch(IllegalAccessException e)
-		{
-			return handleIllegalAccessException(e);
 		}
 	}
 
-	public static <R> R callConstructorNoWrapReflectiveAction(Class<R> clazz, List<Class<?>> paramTypes, List<Object> args)
-			throws InstantiationException, IllegalAccessException, InvocationTargetException, NoSuchMethodException
-	{
-		return clazz.getConstructor(paramTypes.toArray(Class[]::new)).newInstance(args.toArray());
-	}
-
-	public static OperationOutcome<Object, Class<?>> callStaticMethod(Class<?> clazz, String name, Class<?> returnType, List<Class<?>> paramTypes, List<Object> args)
+	public static OperationOutcome<Method, Void, Class<?>> lookupMethod(
+			Class<?> clazz, String name, Class<?> returnType, List<Class<?>> paramTypes, boolean isStatic)
 	{
 		try
 		{
-			return new OperationOutcome.Result<>(lookupMethod(clazz, true, name, paramTypes, returnType).invoke(null, args.toArray()));
-		} catch(InvocationTargetException e)
-		{
-			return new OperationOutcome.Thrown<Object, Class<?>>(e.getTargetException());
+			return new OperationOutcome.Result<>(lookupMethod(clazz, isStatic, name, paramTypes, returnType));
 		} catch(NoSuchMethodException e)
 		{
 			return new OperationOutcome.MethodNotFound<>(clazz, name, returnType, paramTypes, true);
-		} catch(IllegalAccessException e)
-		{
-			return handleIllegalAccessException(e);
 		}
 	}
 
-	public static OperationOutcome<Object, Class<?>> getStaticField(Class<?> clazz, String name, Class<?> fieldType)
+	public static OperationOutcome<Field, Void, Class<?>> lookupField(Class<?> clazz, String name, Class<?> fieldType, boolean isStatic)
 	{
 		try
 		{
-			return new OperationOutcome.Result<>(lookupField(clazz, name, fieldType).get(null));
-		} catch(IllegalAccessException e)
-		{
-			return handleIllegalAccessException(e);
+			return new OperationOutcome.Result<>(lookupField(clazz, isStatic, name, fieldType));
 		} catch(NoSuchFieldException e)
 		{
 			return new OperationOutcome.FieldNotFound<>(clazz, name, fieldType, true);
 		}
 	}
 
-	public static <F> OperationOutcome<Void, Class<?>> setStaticField(Class<?> clazz, String name, Class<F> fieldType, F value)
+	public static OperationOutcome<Object, Throwable, Class<?>> callConstructor(Constructor<?> constructor, List<Object> args)
 	{
 		try
 		{
-			lookupField(clazz, name, fieldType).set(null, value);
-			return new OperationOutcome.SuccessWithoutResult<>();
-		} catch(IllegalAccessException e)
-		{
-			return handleIllegalAccessException(e);
-		} catch(NoSuchFieldException e)
-		{
-			return new OperationOutcome.FieldNotFound<Void, Class<?>>(clazz, name, fieldType, true);
-		}
-	}
-
-	public static <T> OperationOutcome<Object, Class<?>> callInstanceMethod(Class<T> clazz, String name, Class<?> returnType, List<Class<?>> paramTypes,
-			T receiver, List<Object> args)
-	{
-		try
-		{
-			//TODO check if is instance method
-			//TODO this causes problems when an inaccessible class overrides an accessible method.
-			// Or just always setAccessible?
-			return new OperationOutcome.Result<>(lookupMethod(clazz, false, name, paramTypes, returnType).invoke(receiver, args.toArray()));
+			return new OperationOutcome.Result<>(constructor.newInstance(args.toArray()));
 		} catch(InvocationTargetException e)
 		{
-			return new OperationOutcome.Thrown<Object, Class<?>>(e.getTargetException());
-		} catch(NoSuchMethodException e)
+			return new OperationOutcome.Thrown<>(e.getTargetException());
+		} catch(InstantiationException e)
 		{
-			return new OperationOutcome.MethodNotFound<Object, Class<?>>(clazz, name, returnType, paramTypes, false);
+			// This shouldn't happen because this exception is only thrown when calling the constructor of an abstract class,
+			// and we specifically check for that in lookupConstructor
+			//TODO better exception type
+			throw new RuntimeException("Unexpected instantiation exception:", e);
 		} catch(IllegalAccessException e)
 		{
 			return handleIllegalAccessException(e);
 		}
 	}
 
-	public static <T> OperationOutcome<Object, Class<?>> getInstanceField(Class<T> clazz, String name, Class<?> fieldType, T receiver)
+	public static OperationOutcome<Object, Throwable, Class<?>> callStaticMethod(Method method, List<Object> args)
 	{
 		try
 		{
-			//TODO check if is instance field
-			return new OperationOutcome.Result<>(lookupField(clazz, name, fieldType).get(receiver));
+			return new OperationOutcome.Result<>(method.invoke(null, args.toArray()));
+		} catch(InvocationTargetException e)
+		{
+			return new OperationOutcome.Thrown<Object, Throwable, Class<?>>(e.getTargetException());
 		} catch(IllegalAccessException e)
 		{
 			return handleIllegalAccessException(e);
-		} catch(NoSuchFieldException e)
-		{
-			return new OperationOutcome.FieldNotFound<Object, Class<?>>(clazz, name, fieldType, false);
 		}
 	}
 
-	public static <T, F> OperationOutcome<Void, Class<?>> setInstanceField(Class<T> clazz, String name, Class<F> fieldType, T receiver, F value)
+	public static OperationOutcome<Object, Void, Class<?>> getStaticField(Field field)
 	{
 		try
 		{
-			//TODO check if is instance field
-			lookupField(clazz, name, fieldType).set(receiver, value);
+			return new OperationOutcome.Result<>(field.get(null));
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	public static OperationOutcome<Void, Void, Class<?>> setStaticField(Field field, Object value)
+	{
+		try
+		{
+			field.set(null, value);
 			return new OperationOutcome.SuccessWithoutResult<>();
 		} catch(IllegalAccessException e)
 		{
 			return handleIllegalAccessException(e);
-		} catch(NoSuchFieldException e)
-		{
-			return new OperationOutcome.FieldNotFound<Void, Class<?>>(clazz, name, fieldType, false);
 		}
 	}
 
-	private static Field lookupField(Class<?> clazz, String name, Class<?> fieldType) throws NoSuchFieldException
+	public static OperationOutcome<Object, Throwable, Class<?>> callInstanceMethod(Method method, Object receiver, List<Object> args)
+	{
+		try
+		{
+			//TODO this causes problems when an inaccessible class overrides an accessible method.
+			// Or just always setAccessible?
+			return new OperationOutcome.Result<>(method.invoke(receiver, args.toArray()));
+		} catch(InvocationTargetException e)
+		{
+			return new OperationOutcome.Thrown<Object, Throwable, Class<?>>(e.getTargetException());
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	public static OperationOutcome<Object, Void, Class<?>> getInstanceField(Field field, Object receiver)
+	{
+		try
+		{
+			return new OperationOutcome.Result<>(field.get(receiver));
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	public static OperationOutcome<Void, Void, Class<?>> setInstanceField(Field field, Object receiver, Object value)
+	{
+		try
+		{
+			field.set(receiver, value);
+			return new OperationOutcome.SuccessWithoutResult<>();
+		} catch(IllegalAccessException e)
+		{
+			return handleIllegalAccessException(e);
+		}
+	}
+
+	private static Field lookupField(Class<?> clazz, boolean isStatic, String name, Class<?> fieldType) throws NoSuchFieldException
 	{
 		Field field = clazz.getDeclaredField(name);
 		if(!field.getType().equals(fieldType))
 			throw new NoSuchFieldException("Field was found, but type mismatches: expected " + fieldType + ", but field is " + field);
 		// isAccessible is deprecated. We can tolerate the inefficiency generated by always setting accessible.
+		if(isStatic != Modifier.isStatic(field.getModifiers()))
+			throw new NoSuchFieldException(
+					"Field was found, but whether it is static or not mismatches: expected " + isStatic + ", but field is " + field);
 		field.setAccessible(true);
 		return field;
 	}
@@ -361,11 +373,11 @@ public class ReflectionUtils
 		return componentType.isPrimitive() ? PRIMITIVE_CLASS_TO_LIST_HANDLERS.get(componentType) : a -> List.of((Object[]) a);
 	}
 
-	public static OperationOutcome<Object, Class<?>> nameToClassWrapReflectiveAction(String classname)
+	public static OperationOutcome<Class<?>, Void, Class<?>> nameToClassWrapReflectiveAction(String classname)
 	{
 		return nameToClassWrapReflectiveAction(classname, null);
 	}
-	public static OperationOutcome<Object, Class<?>> nameToClassWrapReflectiveAction(String classname, ClassLoader classloader)
+	public static OperationOutcome<Class<?>, Void, Class<?>> nameToClassWrapReflectiveAction(String classname, ClassLoader classloader)
 	{
 		try
 		{

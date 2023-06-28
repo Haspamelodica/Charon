@@ -55,14 +55,15 @@ import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 // ..Benefit: Handles non-immutable datastructures fine.
 public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 {
-	private final MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator;
+	private final MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, StudentSideException> globalMarshalingCommunicator;
 
-	private final UnidirectionalMap<StudentSidePrototype<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>	prototypeBuildersByPrototype;
-	private final UnidirectionalMap<String, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByStudentSideClassname;
-	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByInstanceClass;
-	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>>					prototypeBuildersByPrototypeClass;
+	private final UnidirectionalMap<StudentSidePrototype<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>>	prototypeBuildersByPrototype;
+	private final UnidirectionalMap<String, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>>					prototypeBuildersByStudentSideClassname;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>>					prototypeBuildersByInstanceClass;
+	private final UnidirectionalMap<Class<?>, StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>>					prototypeBuildersByPrototypeClass;
 
-	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
+	public StudentSideImpl(UninitializedStudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?,
+			ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
 		this.globalMarshalingCommunicator = new MarshalingCommunicator<>(communicator,
 				new MarshalingCommunicatorCallbacks<REF, TYPEREF, Method, ThrowableSSI, StudentSideException>()
@@ -132,18 +133,18 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	public <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP createPrototype(Class<SP> prototypeClass)
 			throws InconsistentHierarchyException, MissingSerDesException
 	{
-		return getOrCreatePrototypeBuilder(prototypeClass).prototype;
+		return getOrCreatePrototypeBuilder(prototypeClass).prototype.get();
 	}
 
 	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
-			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> getOrCreatePrototypeBuilder(Class<SP> prototypeClass)
+			StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP> getOrCreatePrototypeBuilder(Class<SP> prototypeClass)
 	{
 		// computeIfAbsent would be nicer algorithmically, but results in very ugly generic casts
 
 		// fast path. Not neccessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
 		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
-		StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric =
-				(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP> prototypeBuilderGeneric =
+				(StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
 		if(prototypeBuilderGeneric != null)
 			return prototypeBuilderGeneric;
 
@@ -151,18 +152,19 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		{
 			// re-get to see if some other thread was faster
 			@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
-			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilderGeneric2 =
-					(StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
+			StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP> prototypeBuilderGeneric2 =
+					(StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
 			if(prototypeBuilderGeneric2 != null)
 				return prototypeBuilderGeneric2;
 
-			StudentSidePrototypeBuilder<REF, TYPEREF, SI, SP> prototypeBuilder = new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
+			StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP> prototypeBuilder =
+					new StudentSidePrototypeBuilder<>(globalMarshalingCommunicator, prototypeClass);
 			Class<SI> instanceClass = prototypeBuilder.instanceClass;
 			String studentSideCN = prototypeBuilder.instanceBuilder.studentSideType.name();
 
 			if(prototypeBuildersByStudentSideClassname.containsKey(studentSideCN))
 			{
-				StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
+				StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> otherPrototypeBuilder = prototypeBuildersByStudentSideClassname.get(studentSideCN);
 				if(otherPrototypeBuilder.instanceClass.equals(instanceClass))
 					throw new InconsistentHierarchyException("Two prototype classes for " + instanceClass + ": " +
 							prototypeClass + " and " + otherPrototypeBuilder.prototypeClass);
@@ -171,10 +173,13 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 							instanceClass + " and " + otherPrototypeBuilder.instanceClass);
 			}
 
-			prototypeBuildersByPrototype.put(prototypeBuilder.prototype, prototypeBuilder);
 			prototypeBuildersByStudentSideClassname.put(studentSideCN, prototypeBuilder);
 			prototypeBuildersByInstanceClass.put(instanceClass, prototypeBuilder);
 			prototypeBuildersByPrototypeClass.put(prototypeClass, prototypeBuilder);
+			// Do this last, because if this prototype builder needs other prototypes, they'll get used here.
+			// If these other prototype builders in turn need this prototype builder, they need
+			// this prototype builder to be in the other three maps, otherwise StackOverflowErrors will occur.
+			prototypeBuildersByPrototype.put(prototypeBuilder.prototype.get(), prototypeBuilder);
 
 			return prototypeBuilder;
 		}
@@ -217,7 +222,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		if(representationClass == StudentSideInstance.class)
 			return globalMarshalingCommunicator.getTypeByNameAndVerify(Object.class.getName());
 
-		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder =
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder =
 				tryLookupPrototypeBuilderFromClass(representationClass);
 		if(prototypeBuilder != null)
 			return prototypeBuilder.instanceBuilder.studentSideType.getTyperef();
@@ -228,9 +233,9 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 			return null;
 	}
 
-	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> tryLookupPrototypeBuilderFromClass(Class<?> representationClass)
+	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> tryLookupPrototypeBuilderFromClass(Class<?> representationClass)
 	{
-		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder = prototypeBuildersByInstanceClass.get(representationClass);
 		if(prototypeBuilder != null)
 			return prototypeBuilder;
 
@@ -243,7 +248,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return getOrCreatePrototypeBuilderGeneric(prototypeClassToUseForInstanceClass);
 	}
 
-	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>
+	private <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>
 			getOrCreatePrototypeBuilderGeneric(Class<? extends StudentSidePrototype<?>> prototypeClass)
 	{
 		@SuppressWarnings("unchecked") // responsibility of user
@@ -256,24 +261,24 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return lookupPrototypeBuilder(untranslatedRef.getType()).instanceBuilder.createInstance();
 	}
 
-	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
+	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
 	{
-		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
+		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
 		if(prototypeBuilders.stream().distinct().count() != 1)
 			if(prototypeBuilders.size() == 0)
 				throw new ExerciseCausedException("No prototype for " + untranslatedTyperef.describe().name());
 			else
 				//TODO try to support multiple prototypes
 				throw new FrameworkCausedException("Multiple prototypes for " + untranslatedTyperef.describe().name());
-		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuilders.get(0);
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder = prototypeBuilders.get(0);
 		return prototypeBuilder;
 	}
 
-	private Stream<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> streamPrototypeBuilders(UntypedUntranslatedTyperef untranslatedTyperef)
+	private Stream<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> streamPrototypeBuilders(UntypedUntranslatedTyperef untranslatedTyperef)
 	{
 		StudentSideTypeDescription<? extends UntypedUntranslatedTyperef> description = untranslatedTyperef.describe();
 
-		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(description.name());
+		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(description.name());
 		if(prototypeBuilder != null)
 			return Stream.of(prototypeBuilder);
 
@@ -285,9 +290,9 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	private String getCallbackInterfaceCn(Object exerciseSideObject)
 	{
 		Class<?> clazz = exerciseSideObject.getClass();
-		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> prototypeBuilders = Arrays
+		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> prototypeBuilders = Arrays
 				.stream(clazz.getInterfaces())
-				.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?>> map(this::tryLookupPrototypeBuilderFromClass)
+				.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> map(this::tryLookupPrototypeBuilderFromClass)
 				.filter(Objects::nonNull)
 				.toList();
 		if(prototypeBuilders.stream().distinct().count() != 1)
@@ -311,7 +316,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		{
 			List<Class<? extends SerDes<?>>> serdeses = getSerDeses(method);
 
-			MarshalingCommunicator<REF, TYPEREF, StudentSideException> methodWideMarshalingCommunicator =
+			MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, StudentSideException> methodWideMarshalingCommunicator =
 					globalMarshalingCommunicator.withAdditionalSerDeses(serdeses);
 			if(!getStudentSideName(method).equals(name))
 				continue;

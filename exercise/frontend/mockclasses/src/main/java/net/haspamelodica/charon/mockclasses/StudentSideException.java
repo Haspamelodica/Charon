@@ -15,4 +15,6 @@ public class StudentSideException extends StudentSideCausedException
 	{
 		return studentSideCause;
 	}
+
+	// don't override withContext; we can't do better than a StudentSideCausedException
 }

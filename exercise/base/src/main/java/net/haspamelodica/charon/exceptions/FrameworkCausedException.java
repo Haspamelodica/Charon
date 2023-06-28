@@ -20,4 +20,10 @@ public class FrameworkCausedException extends CharonException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public FrameworkCausedException withContext(String message)
+	{
+		return new FrameworkCausedException(message, this);
+	}
 }

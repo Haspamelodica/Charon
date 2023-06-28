@@ -20,4 +20,9 @@ public class CharonException extends RuntimeException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	public CharonException withContext(String message)
+	{
+		return new CharonException(message, this);
+	}
 }

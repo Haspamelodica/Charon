@@ -10,7 +10,8 @@ import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicato
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 
 public class UninitializedDataCommunicatorClient
-		implements UninitializedStudentSideCommunicator<LongRef, LongRef, ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>
+		implements UninitializedStudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,
+				ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>
 {
 	private final InputStream	rawIn;
 	private final OutputStream	rawOut;
@@ -24,7 +25,7 @@ public class UninitializedDataCommunicatorClient
 	}
 
 	@Override
-	public DataCommunicatorClient initialize(StudentSideCommunicatorCallbacks<LongRef, LongRef> callbacks)
+	public DataCommunicatorClient initialize(StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
 	{
 		if(client != null)
 			throw new IllegalStateException("Client already initialized");

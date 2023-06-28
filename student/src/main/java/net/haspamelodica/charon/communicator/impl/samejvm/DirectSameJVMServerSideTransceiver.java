@@ -10,7 +10,7 @@ import net.haspamelodica.charon.marshaling.SerDes;
 
 public class DirectSameJVMServerSideTransceiver extends DirectSameJVMTransceiverImpl implements ServerSideTransceiver<Object>
 {
-	public DirectSameJVMServerSideTransceiver(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
+	public DirectSameJVMServerSideTransceiver(StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks)
 	{
 		super(callbacks);
 	}

@@ -10,13 +10,14 @@ import net.haspamelodica.charon.marshaling.Serializer;
 
 public class RefTranslatorClientSideTransceiverImpl<
 		REF_TO,
-		REF_FROM,
-		TYPEREF_FROM extends REF_FROM,
+		REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+		CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM,
 		TC_FROM extends ClientSideTransceiver<REF_FROM>>
 		extends RefTranslatorTransceiverImpl<REF_TO, REF_FROM, TC_FROM>
 		implements ClientSideTransceiver<REF_TO>
 {
-	public RefTranslatorClientSideTransceiverImpl(StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
+	public RefTranslatorClientSideTransceiverImpl(StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+			CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM,
 			? extends InternalCallbackManager<REF_FROM>> communicator, RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		super(communicator, translator);
@@ -33,8 +34,10 @@ public class RefTranslatorClientSideTransceiverImpl<
 		return communicator.getTransceiver().receive(translator.translateFrom(serdesRef), deserializer, translator.translateFrom(objRef));
 	}
 
-	public static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
-			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+	public static <REF_TO, REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM>
+			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
 					? extends ClientSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>>,
 					RefTranslator<REF_TO, REF_FROM>, ClientSideTransceiver<REF_TO>>
 			supplier()
@@ -42,9 +45,9 @@ public class RefTranslatorClientSideTransceiverImpl<
 		return RefTranslatorClientSideTransceiverImpl::create;
 	}
 
-	public static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
+	public static <REF_TO, REF_FROM>
 			ClientSideTransceiver<REF_TO>
-			create(StudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+			create(StudentSideCommunicator<REF_FROM, ?, ?, ?, ?, ?,
 					? extends ClientSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>> communicator,
 					RefTranslator<REF_TO, REF_FROM> translator)
 	{

@@ -10,11 +10,11 @@ import net.haspamelodica.charon.util.LazyValue;
 
 public class StudentSideTypeImpl<REF, TYPEREF extends REF> implements StudentSideType
 {
-	private final MarshalingCommunicator<REF, TYPEREF, ?>			communicator;
+	private final MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, ?>	communicator;
 	private final TYPEREF											typeref;
 	private final LazyValue<StudentSideTypeDescription<TYPEREF>>	description;
 
-	public StudentSideTypeImpl(MarshalingCommunicator<REF, TYPEREF, ?> communicator, TYPEREF typeref)
+	public StudentSideTypeImpl(MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, ?> communicator, TYPEREF typeref)
 	{
 		this.communicator = communicator;
 		this.typeref = typeref;

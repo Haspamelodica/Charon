@@ -32,7 +32,7 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 	// can't be final since the classloader references us
 	private ClassLoader classloader;
 	// can't be final since this references the classloader, which references us
-	private LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> communicator;
+	private LazyValue<MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, StudentSideException>> communicator;
 
 	private final Map<String, Constructor<?>> representationObjectConstructorsByClassname;
 
@@ -41,7 +41,8 @@ public class MockclassesMarshalingTransformer<REF, TYPEREF extends REF>
 		this.representationObjectConstructorsByClassname = new HashMap<>();
 	}
 
-	public void setClassloaderAndCommunicator(ClassLoader classloader, LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> communicator)
+	public void setClassloaderAndCommunicator(ClassLoader classloader,
+			LazyValue<MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, StudentSideException>> communicator)
 	{
 		this.classloader = classloader;
 		this.communicator = communicator;

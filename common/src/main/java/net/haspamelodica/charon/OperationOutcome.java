@@ -5,7 +5,7 @@ import static net.haspamelodica.charon.OperationOutcome.Kind.ARRAY_SIZE_NEGATIVE
 import static net.haspamelodica.charon.OperationOutcome.Kind.ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY;
 import static net.haspamelodica.charon.OperationOutcome.Kind.CLASS_NOT_FOUND;
 import static net.haspamelodica.charon.OperationOutcome.Kind.CONSTRUCTOR_NOT_FOUND;
-import static net.haspamelodica.charon.OperationOutcome.Kind.CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED;
+import static net.haspamelodica.charon.OperationOutcome.Kind.CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED;
 import static net.haspamelodica.charon.OperationOutcome.Kind.FIELD_NOT_FOUND;
 import static net.haspamelodica.charon.OperationOutcome.Kind.METHOD_NOT_FOUND;
 import static net.haspamelodica.charon.OperationOutcome.Kind.RESULT;
@@ -20,25 +20,24 @@ import net.haspamelodica.charon.OperationOutcome.ArraySizeNegative;
 import net.haspamelodica.charon.OperationOutcome.ArraySizeNegativeInMultiArray;
 import net.haspamelodica.charon.OperationOutcome.ClassNotFound;
 import net.haspamelodica.charon.OperationOutcome.ConstructorNotFound;
-import net.haspamelodica.charon.OperationOutcome.ConstructorOfAbstractClassCalled;
+import net.haspamelodica.charon.OperationOutcome.ConstructorOfAbstractClassCreated;
 import net.haspamelodica.charon.OperationOutcome.FieldNotFound;
 import net.haspamelodica.charon.OperationOutcome.MethodNotFound;
 import net.haspamelodica.charon.OperationOutcome.Result;
 import net.haspamelodica.charon.OperationOutcome.SuccessWithoutResult;
 import net.haspamelodica.charon.OperationOutcome.Thrown;
 
-// TODO three type arguments: RESULTREF, THROWABLEREF, TYPEREF
 @SuppressWarnings("rawtypes") // Bug in Eclipse compiler: The types named in permits cannot be parameterized. See https://github.com/eclipse-jdt/eclipse.jdt.core/issues/581
-public sealed interface OperationOutcome<REF, TYPEREF>
-		permits Result, SuccessWithoutResult, Thrown, ClassNotFound, FieldNotFound, MethodNotFound,
-		ConstructorNotFound, ConstructorOfAbstractClassCalled, ArrayIndexOutOfBounds, ArraySizeNegative, ArraySizeNegativeInMultiArray
+public sealed interface OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
+		permits Result, SuccessWithoutResult, Thrown, ClassNotFound, FieldNotFound, MethodNotFound, ConstructorNotFound,
+		ConstructorOfAbstractClassCreated, ArrayIndexOutOfBounds, ArraySizeNegative, ArraySizeNegativeInMultiArray
 {
 	public Kind kind();
 
 	public static enum Kind
 	{
 		RESULT, SUCCESS_WITHOUT_RESULT, THROWN, CLASS_NOT_FOUND, FIELD_NOT_FOUND, METHOD_NOT_FOUND,
-		CONSTRUCTOR_NOT_FOUND, CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED,
+		CONSTRUCTOR_NOT_FOUND, CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED,
 		ARRAY_INDEX_OUT_OF_BOUNDS, ARRAY_SIZE_NEGATIVE, ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY;
 
 		public byte encode()
@@ -51,8 +50,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 		}
 	}
 
-	public static record Result<REF, TYPEREF>(REF returnValue)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record Result<RESULTREF, THROWABLEREF, TYPEREF>(RESULTREF returnValue)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		@Override
 		public Kind kind()
@@ -60,8 +59,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return RESULT;
 		}
 	}
-	public static record SuccessWithoutResult<REF, TYPEREF>()
-			implements OperationOutcome<REF, TYPEREF>
+	public static record SuccessWithoutResult<RESULTREF, THROWABLEREF, TYPEREF>()
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		@Override
 		public Kind kind()
@@ -69,10 +68,10 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return SUCCESS_WITHOUT_RESULT;
 		}
 	}
-	public static record Thrown<REF, TYPEREF>(REF thrownThrowable)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record Thrown<RESULTREF, THROWABLEREF, TYPEREF>(THROWABLEREF thrownThrowable)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
-		public Thrown(REF thrownThrowable)
+		public Thrown(THROWABLEREF thrownThrowable)
 		{
 			this.thrownThrowable = Objects.requireNonNull(thrownThrowable);
 		}
@@ -83,8 +82,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return THROWN;
 		}
 	}
-	public static record ClassNotFound<REF, TYPEREF>(String classname)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ClassNotFound<RESULTREF, THROWABLEREF, TYPEREF>(String classname)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		public ClassNotFound(String classname)
 		{
@@ -97,8 +96,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return CLASS_NOT_FOUND;
 		}
 	}
-	public static record FieldNotFound<REF, TYPEREF>(TYPEREF type, String fieldName, TYPEREF fieldType, boolean isStatic)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record FieldNotFound<RESULTREF, THROWABLEREF, TYPEREF>(TYPEREF type, String fieldName, TYPEREF fieldType, boolean isStatic)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		public FieldNotFound(TYPEREF type, String fieldName, TYPEREF fieldType, boolean isStatic)
 		{
@@ -114,8 +113,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return FIELD_NOT_FOUND;
 		}
 	}
-	public static record MethodNotFound<REF, TYPEREF>(TYPEREF type, String methodName,
-			TYPEREF returnType, List<TYPEREF> parameters, boolean isStatic) implements OperationOutcome<REF, TYPEREF>
+	public static record MethodNotFound<RESULTREF, THROWABLEREF, TYPEREF>(TYPEREF type, String methodName,
+			TYPEREF returnType, List<TYPEREF> parameters, boolean isStatic) implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		public MethodNotFound(TYPEREF type, String methodName, TYPEREF returnType, List<TYPEREF> parameters, boolean isStatic)
 		{
@@ -132,8 +131,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return METHOD_NOT_FOUND;
 		}
 	}
-	public static record ConstructorNotFound<REF, TYPEREF>(TYPEREF type, List<TYPEREF> parameters)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ConstructorNotFound<RESULTREF, THROWABLEREF, TYPEREF>(TYPEREF type, List<TYPEREF> parameters)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		public ConstructorNotFound(TYPEREF type, List<TYPEREF> parameters)
 		{
@@ -147,10 +146,10 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return CONSTRUCTOR_NOT_FOUND;
 		}
 	}
-	public static record ConstructorOfAbstractClassCalled<REF, TYPEREF>(TYPEREF type, List<TYPEREF> parameters)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ConstructorOfAbstractClassCreated<RESULTREF, THROWABLEREF, TYPEREF>(TYPEREF type, List<TYPEREF> parameters)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
-		public ConstructorOfAbstractClassCalled(TYPEREF type, List<TYPEREF> parameters)
+		public ConstructorOfAbstractClassCreated(TYPEREF type, List<TYPEREF> parameters)
 		{
 			this.type = Objects.requireNonNull(type);
 			this.parameters = List.copyOf(parameters);
@@ -159,11 +158,11 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 		@Override
 		public Kind kind()
 		{
-			return CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED;
+			return CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED;
 		}
 	}
-	public static record ArrayIndexOutOfBounds<REF, TYPEREF>(int index, int length)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ArrayIndexOutOfBounds<RESULTREF, THROWABLEREF, TYPEREF>(int index, int length)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		@Override
 		public Kind kind()
@@ -171,8 +170,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return ARRAY_INDEX_OUT_OF_BOUNDS;
 		}
 	}
-	public static record ArraySizeNegative<REF, TYPEREF>(int size)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ArraySizeNegative<RESULTREF, THROWABLEREF, TYPEREF>(int size)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		@Override
 		public Kind kind()
@@ -180,8 +179,8 @@ public sealed interface OperationOutcome<REF, TYPEREF>
 			return ARRAY_SIZE_NEGATIVE;
 		}
 	}
-	public static record ArraySizeNegativeInMultiArray<REF, TYPEREF>(List<Integer> dimensions)
-			implements OperationOutcome<REF, TYPEREF>
+	public static record ArraySizeNegativeInMultiArray<RESULTREF, THROWABLEREF, TYPEREF>(List<Integer> dimensions)
+			implements OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF>
 	{
 		public ArraySizeNegativeInMultiArray(List<Integer> dimensions)
 		{

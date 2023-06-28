@@ -11,13 +11,14 @@ import net.haspamelodica.charon.mockclasses.StudentSideException;
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInvocationHandler;
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
-public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
+public class MockclassesInvocationHandler<REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
 		implements DynamicInvocationHandler<TypeDefinition, MethodDescription, MethodDescription, MethodDescription, REF>
 {
-	private final MarshalingCommunicator<REF, TYPEREF, StudentSideException>	marshalingCommunicator;
-	private final MockclassesMarshalingTransformer<REF, TYPEREF>				transformer;
+	private final MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException>	marshalingCommunicator;
+	private final MockclassesMarshalingTransformer<REF, TYPEREF>													transformer;
 
-	public MockclassesInvocationHandler(MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	public MockclassesInvocationHandler(
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			MockclassesMarshalingTransformer<REF, TYPEREF> transformer)
 	{
 		this.marshalingCommunicator = marshalingCommunicator;
@@ -56,32 +57,30 @@ public class MockclassesInvocationHandler<REF, TYPEREF extends REF>
 	@Override
 	public Object invokeStaticMethod(TypeDefinition classContext, MethodDescription methodContext, Object[] args) throws StudentSideException
 	{
-		return marshalingCommunicator.callStaticMethod(
-				toClass(classContext),
-				methodContext.getActualName(),
-				toClass(methodContext.getReturnType().asErasure()),
-				toClasses(methodContext.getParameters().asTypeList()),
-				Arrays.asList(args));
+		Class<?> returnType = toClass(methodContext.getReturnType().asErasure());
+		List<Class<?>> params = toClasses(methodContext.getParameters().asTypeList());
+		//TODO cache methodref
+		METHODREF methodref = marshalingCommunicator.lookupMethod(
+				toClass(classContext), methodContext.getActualName(), returnType, params, true);
+		return marshalingCommunicator.callStaticMethod(methodref, returnType, params, Arrays.asList(args));
 	}
 	@Override
 	public REF invokeConstructor(TypeDefinition classContext, MethodDescription constructorContext, Object receiver, Object[] args) throws StudentSideException
 	{
-		return marshalingCommunicator.callConstructorExistingRepresentationObject(
-				toClass(classContext),
-				toClasses(constructorContext.getParameters().asTypeList()),
-				Arrays.asList(args),
-				receiver);
+		List<Class<?>> params = toClasses(constructorContext.getParameters().asTypeList());
+		//TODO cache constructorref
+		CONSTRUCTORREF constructorref = marshalingCommunicator.lookupConstructor(toClass(classContext), params);
+		return marshalingCommunicator.callConstructorExistingRepresentationObject(constructorref, params, Arrays.asList(args), receiver);
 	}
 	@Override
 	public Object invokeInstanceMethod(TypeDefinition classContext, MethodDescription methodContext, Object receiver, REF receiverContext,
 			Object[] args) throws StudentSideException
 	{
-		return marshalingCommunicator.callInstanceMethodRawReceiver(
-				toClass(classContext),
-				methodContext.getActualName(),
-				toClass(methodContext.getReturnType()),
-				toClasses(methodContext.getParameters().asTypeList()),
-				receiverContext, Arrays.asList(args));
+		Class<?> returnType = toClass(methodContext.getReturnType());
+		List<Class<?>> params = toClasses(methodContext.getParameters().asTypeList());
+		//TODO cache methodref
+		METHODREF methodref = marshalingCommunicator.lookupMethod(toClass(classContext), methodContext.getActualName(), returnType, params, false);
+		return marshalingCommunicator.callInstanceMethodRawReceiver(methodref, returnType, params, receiverContext, Arrays.asList(args));
 	}
 
 	private List<Class<?>> toClasses(List<? extends TypeDefinition> typeDefinitions)

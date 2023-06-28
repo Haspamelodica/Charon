@@ -20,4 +20,10 @@ public class StudentSideCausedException extends CharonException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public StudentSideCausedException withContext(String message)
+	{
+		return new StudentSideCausedException(message, this);
+	}
 }

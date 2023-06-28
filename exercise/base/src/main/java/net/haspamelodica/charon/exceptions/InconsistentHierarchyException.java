@@ -20,4 +20,10 @@ public class InconsistentHierarchyException extends ExerciseCausedException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public InconsistentHierarchyException withContext(String message)
+	{
+		return new InconsistentHierarchyException(message, this);
+	}
 }

@@ -8,46 +8,47 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
-
 public class DataCommunicatorUtils
 {
-	public static void writeArgs(DataOutput out, List<LongRef> params, List<LongRef> argRefs,
-			Function<String, RuntimeException> createArgumentCountException, IOBiConsumer<DataOutput, LongRef> writeRef) throws IOException
+	public static <E> int writeList(DataOutput out, List<E> list, IOBiConsumer<DataOutput, E> writeE) throws IOException
 	{
-		int paramCount = params.size();
-		if(paramCount != argRefs.size())
-			throw createArgumentCountException.apply("Parameter and argument count mismatched: " + paramCount + ", " + argRefs.size());
+		int count = list.size();
+		out.writeInt(count);
+		writeNUnchecked(out, list, count, writeE);
+		return count;
+	}
 
-		out.writeInt(paramCount);
+	public static <E> void writeN(DataOutput out, List<E> list, int n,
+			Function<String, RuntimeException> createArgumentCountException, IOBiConsumer<DataOutput, E> writeE) throws IOException
+	{
+		int count = list.size();
+		if(count != n)
+			throw createArgumentCountException.apply("Unexpected list size: expected " + n + ", but was " + count);
+
+		writeNUnchecked(out, list, n, writeE);
+	}
+
+	public static <E> void writeNUnchecked(DataOutput out, List<E> list, int n, IOBiConsumer<DataOutput, E> writeE) throws IOException
+	{
 		// index-based iteration to defend against botched List implementations
-		for(int i = 0; i < paramCount; i ++)
-			writeRef.accept(out, params.get(i));
-		for(int i = 0; i < paramCount; i ++)
-			writeRef.accept(out, argRefs.get(i));
+		for(int i = 0; i < n; i ++)
+			writeE.accept(out, list.get(i));
 	}
 
-	public static Args readArgs(DataInput in, IOFunction<DataInput, LongRef> readRef) throws IOException
+	public static <E> List<E> readList(DataInput in, IOFunction<DataInput, E> readE) throws IOException
 	{
-		int paramCount = in.readInt();
-
-		LongRef[] params = new LongRef[paramCount];
-		for(int i = 0; i < paramCount; i ++)
-			params[i] = readRef.apply(in);
-
-		List<LongRef> argRefs = new ArrayList<>();
-		for(int i = 0; i < paramCount; i ++)
-			argRefs.add(readRef.apply(in));
-
-		// Can't use List.of for args since some args might be null
-		return new Args(List.of(params), Collections.unmodifiableList(new ArrayList<>(argRefs)));
+		return readN(in, in.readInt(), readE);
 	}
 
-	private DataCommunicatorUtils()
-	{}
+	public static <E> List<E> readN(DataInput in, int n, IOFunction<DataInput, E> readE) throws IOException
+	{
+		List<E> list = new ArrayList<>(n);
+		for(int i = 0; i < n; i ++)
+			list.add(readE.apply(in));
 
-	public static record Args(List<LongRef> params, List<LongRef> argRefs)
-	{}
+		// Can't use List.of or List.copyOf because some elements might be null
+		return Collections.unmodifiableList(list);
+	}
 
 	@FunctionalInterface
 	public static interface IOFunction<P, R>
@@ -59,4 +60,7 @@ public class DataCommunicatorUtils
 	{
 		public void accept(A a, B b) throws IOException;
 	}
+
+	private DataCommunicatorUtils()
+	{}
 }

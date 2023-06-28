@@ -7,7 +7,8 @@ public class LoggingRefTranslatorCommunicatorCallbacks<REF> implements RefTransl
 {
 	private final RefTranslatorCommunicatorCallbacks<REF> callbacks;
 
-	public LoggingRefTranslatorCommunicatorCallbacks(CommunicationLogger<REF, REF> logger, RefTranslatorCommunicatorCallbacks<REF> callbacks)
+	public LoggingRefTranslatorCommunicatorCallbacks(
+			CommunicationLogger<REF, REF, REF, REF, REF> logger, RefTranslatorCommunicatorCallbacks<REF> callbacks)
 	{
 		this.callbacks = callbacks;
 	}

@@ -20,4 +20,10 @@ public class CommunicationException extends CharonException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public CommunicationException withContext(String message)
+	{
+		return new CommunicationException(message, this);
+	}
 }

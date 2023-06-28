@@ -56,8 +56,10 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		communicator.close();
 	}
 
-	public static <REF, TYPEREF extends REF> ClassLoader createMockclassesClassloader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
+	public static <REF, TYPEREF extends REF> ClassLoader createMockclassesClassloader(ClassLoader parent,
+			DynamicInterfaceProvider interfaceProvider,
+			UninitializedStudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?,
+					ClientSideTransceiver<REF>, InternalCallbackManager<REF>> communicator,
 			Class<?>... forceDelegationClasses)
 	{
 		MockclassesMarshalingTransformer<REF, TYPEREF> transformer = new MockclassesMarshalingTransformer<>();
@@ -76,8 +78,9 @@ public class WrappedMockclassesClassLoader implements AutoCloseable
 		// which use bootstrap methods, which call some standard library function, which calls getSystemClassLoader, which is not allowed
 		// since we are creating the system class loader here.
 		//TODO make Serdeses configurable
-		LazyValue<MarshalingCommunicator<REF, TYPEREF, StudentSideException>> marshalingCommunicatorLazy = new LazyValue<>(() -> new MarshalingCommunicator<>(
-				communicator, transformer, PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class)));
+		LazyValue<MarshalingCommunicator<REF, TYPEREF, ?, ?, ?, StudentSideException>> marshalingCommunicatorLazy =
+				new LazyValue<>(() -> new MarshalingCommunicator<>(
+						communicator, transformer, PrimitiveSerDes.PRIMITIVE_SERDESES).withAdditionalSerDeses(List.of(StringSerDes.class)));
 		ClassLoader dynamicClassloader = new DynamicClassLoader<>(constantClassSetClassloader, interfaceProvider, transformer,
 				new LazyDynamicInvocationHandler<>(() -> new MockclassesInvocationHandler<>(marshalingCommunicatorLazy.get(), transformer)));
 		ClassLoader userClassLoader = new RedefiningClassLoader(dynamicClassloader, parent);

@@ -20,4 +20,10 @@ public class HierarchyMismatchException extends StudentSideCausedException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public HierarchyMismatchException withContext(String message)
+	{
+		return new HierarchyMismatchException(message, this);
+	}
 }

@@ -54,9 +54,11 @@ public interface ThrowableSSI extends StudentSideInstance
 		public ThrowableSSI new_();
 
 		@StudentSidePrototypeMethodKind(CONSTRUCTOR)
+		@UseSerDes(StringSerDes.class)
 		public ThrowableSSI new_(String message);
 
 		@StudentSidePrototypeMethodKind(CONSTRUCTOR)
+		@UseSerDes(StringSerDes.class)
 		public ThrowableSSI new_(String message, ThrowableSSI cause);
 
 		@StudentSidePrototypeMethodKind(CONSTRUCTOR)

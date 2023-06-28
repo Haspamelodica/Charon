@@ -10,10 +10,10 @@ public abstract class RefTranslatorTransceiverImpl<
 		TC_FROM extends Transceiver>
 		implements Transceiver
 {
-	protected final StudentSideCommunicator<REF_FROM, ?, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
-	protected final RefTranslator<REF_TO, REF_FROM>																			translator;
+	protected final StudentSideCommunicator<REF_FROM, ?, ?, ?, ?, ?, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
+	protected final RefTranslator<REF_TO, REF_FROM>																						translator;
 
-	protected RefTranslatorTransceiverImpl(StudentSideCommunicator<REF_FROM, ?, ? extends TC_FROM,
+	protected RefTranslatorTransceiverImpl(StudentSideCommunicator<REF_FROM, ?, ?, ?, ?, ?, ? extends TC_FROM,
 			? extends InternalCallbackManager<REF_FROM>> communicator, RefTranslator<REF_TO, REF_FROM> translator)
 	{
 		this.communicator = communicator;

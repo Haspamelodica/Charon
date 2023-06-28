@@ -7,6 +7,9 @@ import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapReftra
 import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapReftransExt;
 import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapReftransInt;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 
@@ -21,42 +24,45 @@ import net.haspamelodica.charon.communicator.impl.samejvm.DirectSameJVMServerSid
 
 public class ServerSideCommunicatorUtils
 {
-	public static StudentSideCommunicator<Object, Class<?>, ? extends ServerSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
-			createDirectCommServer(StudentSideCommunicatorCallbacks<Object, Class<?>> callbacks)
+	public static StudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
+			? extends ServerSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
+			createDirectCommServer(StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks)
 	{
 		return new DirectSameJVMCommunicator<>(callbacks, directTcServer());
 	}
 
-	public static UninitializedStudentSideCommunicator<Object, Class<?>, ServerSideTransceiver<Object>, InternalCallbackManager<Object>>
+	public static UninitializedStudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
+			ServerSideTransceiver<Object>, InternalCallbackManager<Object>>
 			createDirectCommServer()
 	{
 		return DirectSameJVMCommunicator.createUninitializedCommunicator(directTcServer());
 	}
 
-	private static Function<StudentSideCommunicatorCallbacks<Object, Class<?>>, ServerSideTransceiver<Object>> directTcServer()
+	private static Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, ServerSideTransceiver<Object>> directTcServer()
 	{
 		return DirectSameJVMServerSideTransceiver::new;
 	}
 
 	public static <
 			REF_TO,
-			REF_FROM,
-			TYPEREF_FROM extends REF_FROM>
+			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM>
 			RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, InternalCallbackManager<REF_TO>>
-			wrapReftransIntServer(
-					UninitializedStudentSideCommunicator<REF_FROM, TYPEREF_FROM,
-							ServerSideTransceiver<REF_FROM>, InternalCallbackManager<REF_FROM>> communicator)
+			wrapReftransIntServer(UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					ServerSideTransceiver<REF_FROM>, InternalCallbackManager<REF_FROM>> communicator)
 	{
 		return wrapReftransInt(communicator, reftransTcServer());
 	}
 
 	public static <
 			REF_TO,
-			REF_FROM,
-			TYPEREF_FROM extends REF_FROM>
+			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM>
 			RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, ExternalCallbackManager<REF_TO>>
 			wrapReftransExtServer(
-					UninitializedStudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+					UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
 							ServerSideTransceiver<REF_FROM>, InternalCallbackManager<REF_FROM>> communicator)
 	{
 		return wrapReftransExt(communicator, reftransTcServer());
@@ -65,20 +71,24 @@ public class ServerSideCommunicatorUtils
 	public static <
 			REF_TO,
 			CM_TO extends CallbackManager,
-			REF_FROM,
-			TYPEREF_FROM extends REF_FROM>
+			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM>
 			RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, CM_TO>
 			wrapReftransServer(
-					UninitializedStudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+					UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
 							ServerSideTransceiver<REF_FROM>, InternalCallbackManager<REF_FROM>> communicator,
-					BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends ServerSideTransceiver<REF_FROM>,
+					BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends ServerSideTransceiver<REF_FROM>,
 							? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
 	{
 		return wrapReftrans(communicator, reftransTcServer(), createCallbackManager);
 	}
 
-	private static <REF_TO, REF_FROM, TYPEREF_FROM extends REF_FROM>
-			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM,
+	private static <REF_TO, REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM>
+			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
 					? extends ServerSideTransceiver<REF_FROM>, ? extends InternalCallbackManager<REF_FROM>>,
 					RefTranslator<REF_TO, REF_FROM>, ServerSideTransceiver<REF_TO>>
 			reftransTcServer()
@@ -86,20 +96,24 @@ public class ServerSideCommunicatorUtils
 		return RefTranslatorServerSideTransceiverImpl.supplier();
 	}
 
-	public static <REF, TYPEREF extends REF>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>
 			maybeWrapLoggingIntServer(boolean logging, CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator)
 	{
 		if(!logging)
 			return communicator;
 		return wrapLoggingIntServer(loggerParams, communicator);
 	}
 
-	public static <REF, TYPEREF extends REF>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, InternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, InternalCallbackManager<REF>>
 			maybeWrapLoggingIntServer(boolean logging, CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
 		if(!logging)
 			return communicator;
@@ -116,20 +130,24 @@ public class ServerSideCommunicatorUtils
 		return wrapLoggingIntServer(loggerParams, communicatorSupplier);
 	}
 
-	public static <REF, TYPEREF extends REF>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>>
 			maybeWrapLoggingExtServer(boolean logging, CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>> communicator)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>> communicator)
 	{
 		if(!logging)
 			return communicator;
 		return wrapLoggingExtServer(loggerParams, communicator);
 	}
 
-	public static <REF, TYPEREF extends REF>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, ExternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, ExternalCallbackManager<REF>>
 			maybeWrapLoggingExtServer(boolean logging, CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, ExternalCallbackManager<REF>> communicator)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, ExternalCallbackManager<REF>> communicator)
 	{
 		if(!logging)
 			return communicator;
@@ -146,22 +164,28 @@ public class ServerSideCommunicatorUtils
 		return wrapLoggingExtServer(loggerParams, communicatorSupplier);
 	}
 
-	public static <REF, TYPEREF extends REF, CM extends CallbackManager>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends CM>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+			CM extends CallbackManager>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends CM>
 			maybeWrapLoggingServer(boolean logging, CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends CM> communicator,
-					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends CM> communicator,
+					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicator;
 		return wrapLoggingServer(loggerParams, communicator, wrapCallbackManagerLogging);
 	}
 
-	public static <REF, TYPEREF extends REF, CM extends CallbackManager>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, CM>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+			CM extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, CM>
 			maybeWrapLoggingServer(boolean logging, CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, CM> communicator,
-					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, CM> communicator,
+					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicator;
@@ -172,25 +196,29 @@ public class ServerSideCommunicatorUtils
 			RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, CM_TO>
 			maybeWrapLoggingServer(boolean logging, CommunicationLoggerParams loggerParams,
 					RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, CM_TO> communicatorSupplier,
-					BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
 	{
 		if(!logging)
 			return communicatorSupplier;
 		return wrapLoggingServer(loggerParams, communicatorSupplier, wrapCallbackManagerLogging);
 	}
 
-	public static <REF, TYPEREF extends REF>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>>
 			wrapLoggingIntServer(CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends InternalCallbackManager<REF>> communicator)
 	{
 		return wrapLoggingInt(loggerParams, communicator, loggingTcServer());
 	}
 
-	public static <REF, TYPEREF extends REF>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, InternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, InternalCallbackManager<REF>>
 			wrapLoggingIntServer(CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, InternalCallbackManager<REF>> communicator)
 	{
 		return wrapLoggingInt(loggerParams, communicator, loggingTcServer());
 	}
@@ -203,18 +231,22 @@ public class ServerSideCommunicatorUtils
 		return wrapLoggingInt(loggerParams, communicatorSupplier, loggingTcServer());
 	}
 
-	public static <REF, TYPEREF extends REF>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>>
 			wrapLoggingExtServer(CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>> communicator)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends ExternalCallbackManager<REF>> communicator)
 	{
 		return wrapLoggingExt(loggerParams, communicator, loggingTcServer());
 	}
 
-	public static <REF, TYPEREF extends REF>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, ExternalCallbackManager<REF>>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, ExternalCallbackManager<REF>>
 			wrapLoggingExtServer(CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, ExternalCallbackManager<REF>> communicator)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, ExternalCallbackManager<REF>> communicator)
 	{
 		return wrapLoggingExt(loggerParams, communicator, loggingTcServer());
 	}
@@ -227,20 +259,26 @@ public class ServerSideCommunicatorUtils
 		return wrapLoggingExt(loggerParams, communicatorSupplier, loggingTcServer());
 	}
 
-	public static <REF, TYPEREF extends REF, CM extends CallbackManager>
-			StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends CM>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+			CM extends CallbackManager>
+			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					? extends ServerSideTransceiver<REF>, ? extends CM>
 			wrapLoggingServer(CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, TYPEREF, ? extends ServerSideTransceiver<REF>, ? extends CM> communicator,
-					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends ServerSideTransceiver<REF>, ? extends CM> communicator,
+					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicator, loggingTcServer(), wrapCallbackManagerLogging);
 	}
 
-	public static <REF, TYPEREF extends REF, CM extends CallbackManager>
-			UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, CM>
+	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+			CM extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+					ServerSideTransceiver<REF>, CM>
 			wrapLoggingServer(CommunicationLoggerParams loggerParams,
-					UninitializedStudentSideCommunicator<REF, TYPEREF, ServerSideTransceiver<REF>, CM> communicator,
-					BiFunction<CommunicationLogger<REF, TYPEREF>, CM, CM> wrapCallbackManagerLogging)
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							ServerSideTransceiver<REF>, CM> communicator,
+					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, CM, CM> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicator, loggingTcServer(), wrapCallbackManagerLogging);
 	}
@@ -249,13 +287,15 @@ public class ServerSideCommunicatorUtils
 			RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, CM_TO>
 			wrapLoggingServer(CommunicationLoggerParams loggerParams,
 					RefTranslatorCommunicatorSupplier<REF_TO, ServerSideTransceiver<REF_TO>, CM_TO> communicatorSupplier,
-					BiFunction<CommunicationLogger<REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
 	{
 		return wrapLogging(loggerParams, communicatorSupplier, loggingTcServer(), wrapCallbackManagerLogging);
 	}
 
-	private static <REF, TYPEREF extends REF>
-			BiFunction<CommunicationLogger<REF, TYPEREF>, ServerSideTransceiver<REF>, ServerSideTransceiver<REF>> loggingTcServer()
+	private static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>
+			BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>,
+					ServerSideTransceiver<REF>, ServerSideTransceiver<REF>>
+			loggingTcServer()
 	{
 		return LoggingServerSideTransceiver::new;
 	}

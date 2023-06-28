@@ -20,4 +20,10 @@ public class IllegalBehaviourException extends StudentSideCausedException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public IllegalBehaviourException withContext(String message)
+	{
+		return new IllegalBehaviourException(message, this);
+	}
 }

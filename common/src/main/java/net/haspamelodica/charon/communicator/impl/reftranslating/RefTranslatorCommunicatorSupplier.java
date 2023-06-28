@@ -11,8 +11,8 @@ public interface RefTranslatorCommunicatorSupplier<
 		TC_TO extends Transceiver,
 		CM_TO extends CallbackManager>
 {
-	public StudentSideCommunicator<REF_TO, REF_TO, ? extends TC_TO, ? extends CM_TO> createCommunicator(
+	public StudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, ? extends TC_TO, ? extends CM_TO> createCommunicator(
 			boolean storeRefsIdentityBased,
-			StudentSideCommunicatorCallbacks<REF_TO, REF_TO> callbacks,
+			StudentSideCommunicatorCallbacks<REF_TO, REF_TO, REF_TO> callbacks,
 			RefTranslatorCommunicatorCallbacks<REF_TO> refTranslatorCommunicatorCallbacks);
 }

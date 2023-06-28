@@ -12,6 +12,7 @@ import java.util.function.Function;
 import net.haspamelodica.charon.annotations.OverrideStudentSideName;
 import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
 import net.haspamelodica.charon.annotations.UseSerDes;
+import net.haspamelodica.charon.exceptions.CharonException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.SerDes;
@@ -44,7 +45,13 @@ public class StudentSideImplUtils
 				throw new InconsistentHierarchyException("Method is abstract, but has no student-side meaning: " + method);
 
 			StudentSideName ssn = getStudentSideNameAndIsOverridden(method);
-			return generateStudentSideHandler.generate(kind, ssn.studentSideName(), ssn.isOverridden());
+			try
+			{
+				return generateStudentSideHandler.generate(kind, ssn.studentSideName(), ssn.isOverridden());
+			} catch(CharonException e)
+			{
+				throw e.withContext("Error while creating method handler for " + method);
+			}
 		} else
 		{
 			if(kind != null)

@@ -3,12 +3,13 @@ package net.haspamelodica.charon.communicator.impl.reftranslating;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 
+// TODO This class maybe doesn't need the REF type parameter
 public class UntranslatedTyperef<REF, TYPEREF extends REF> implements UntypedUntranslatedTyperef
 {
-	private final StudentSideCommunicator<REF, TYPEREF, ?, ?>	communicator;
-	private final TYPEREF										typeref;
+	private final StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?, ?, ?>	communicator;
+	private final TYPEREF													typeref;
 
-	public UntranslatedTyperef(StudentSideCommunicator<REF, TYPEREF, ?, ?> communicator, TYPEREF typeref)
+	public UntranslatedTyperef(StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?, ?, ?> communicator, TYPEREF typeref)
 	{
 		this.communicator = communicator;
 		this.typeref = typeref;

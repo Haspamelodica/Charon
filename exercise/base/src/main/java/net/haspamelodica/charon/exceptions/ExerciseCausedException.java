@@ -20,4 +20,10 @@ public class ExerciseCausedException extends CharonException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public ExerciseCausedException withContext(String message)
+	{
+		return new ExerciseCausedException(message, this);
+	}
 }

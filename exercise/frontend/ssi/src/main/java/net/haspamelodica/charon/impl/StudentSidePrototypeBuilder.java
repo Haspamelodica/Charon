@@ -34,29 +34,31 @@ import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.exceptions.StudentSideException;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
+import net.haspamelodica.charon.util.LazyValue;
 
-public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
+public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+		SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>>
 {
 	public final Class<SP>	prototypeClass;
 	public final Class<SI>	instanceClass;
 
-	public final MarshalingCommunicator<REF, TYPEREF, StudentSideException> prototypeWideMarshalingCommunicator;
+	public final MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+			StudentSideException> prototypeWideMarshalingCommunicator;
 
-	public final StudentSideInstanceBuilder<REF, TYPEREF, SI> instanceBuilder;
+	public final StudentSideInstanceBuilder<REF, TYPEREF, METHODREF, FIELDREF, SI> instanceBuilder;
 
-	private final Map<Method, MethodHandler> methodHandlers;
+	public final LazyValue<SP> prototype;
 
-	public final SP prototype;
-
-	public StudentSidePrototypeBuilder(MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator, Class<SP> prototypeClass)
+	public StudentSidePrototypeBuilder(
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> globalMarshalingCommunicator,
+			Class<SP> prototypeClass)
 	{
 		// The order of the following operations is important: each step depends on the last
 		this.prototypeClass = prototypeClass;
 		this.instanceClass = checkPrototypeClassAndGetInstanceClass();
 		this.prototypeWideMarshalingCommunicator = createPrototypeWideMarshalingCommunicator(globalMarshalingCommunicator);
 		this.instanceBuilder = new StudentSideInstanceBuilder<>(this);
-		this.methodHandlers = createMethodHandlers();
-		this.prototype = createPrototype();
+		this.prototype = new LazyValue<>(this::createPrototype);
 	}
 
 	private Class<SI> checkPrototypeClassAndGetInstanceClass()
@@ -121,8 +123,9 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				+ " directly: " + prototypeClass);
 	}
 
-	private MarshalingCommunicator<REF, TYPEREF, StudentSideException> createPrototypeWideMarshalingCommunicator(
-			MarshalingCommunicator<REF, TYPEREF, StudentSideException> globalMarshalingCommunicator)
+	private MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException>
+			createPrototypeWideMarshalingCommunicator(
+					MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> globalMarshalingCommunicator)
 	{
 		return globalMarshalingCommunicator
 				.withAdditionalSerDeses(getSerDeses(prototypeClass))
@@ -131,6 +134,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 
 	private SP createPrototype()
 	{
+		Map<Method, MethodHandler> methodHandlers = createMethodHandlers();
 		return createProxyInstance(prototypeClass, (proxy, method, args) -> methodHandlers.get(method).invoke(proxy, args));
 	}
 
@@ -171,7 +175,7 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		checkNotAnnotatedWith(method, StudentSideInstanceKind.class);
 		checkNotAnnotatedWith(method, StudentSideInstanceMethodKind.class);
 		checkNotAnnotatedWith(method, PrototypeClass.class);
-		MarshalingCommunicator<REF, TYPEREF, StudentSideException> methodWideMarshalingCommunicator =
+		MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> methodWideMarshalingCommunicator =
 				prototypeWideMarshalingCommunicator.withAdditionalSerDeses(getSerDeses(method));
 
 		return handlerFor(method, StudentSidePrototypeMethodKind.class,
@@ -194,7 +198,8 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 				});
 	}
 
-	private MethodHandler constructorHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler constructorHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
 		if(nameOverridden)
@@ -205,19 +210,23 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 					"expected " + instanceClass + ", but was " + method.getReturnType() + ": " + method);
 
 		List<Class<?>> params = Arrays.asList(method.getParameterTypes());
-		return (proxy, args) -> marshalingCommunicator.callConstructor(instanceClass, params, argsToList(args));
+		CONSTRUCTORREF constructorref = marshalingCommunicator.lookupConstructor(instanceClass, params);
+		return (proxy, args) -> marshalingCommunicator.callConstructor(constructorref, instanceClass, params, argsToList(args));
 	}
 
-	private MethodHandler staticMethodHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler staticMethodHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			String name)
 	{
 		Class<?> returnType = method.getReturnType();
 		List<Class<?>> params = Arrays.asList(method.getParameterTypes());
 
-		return (proxy, args) -> marshalingCommunicator.callStaticMethod(instanceClass, name, returnType, params, argsToList(args));
+		METHODREF methodref = marshalingCommunicator.lookupMethod(instanceClass, name, returnType, params, true);
+		return (proxy, args) -> marshalingCommunicator.callStaticMethod(methodref, returnType, params, argsToList(args));
 	}
 
-	private MethodHandler staticFieldGetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler staticFieldGetterHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			String name)
 	{
 		Class<?> returnType = method.getReturnType();
@@ -227,10 +236,12 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		if(method.getParameterTypes().length != 0)
 			throw new InconsistentHierarchyException("Student-side static field getter had parameters: " + method);
 
-		return (proxy, args) -> marshalingCommunicator.getStaticField(instanceClass, name, returnType);
+		FIELDREF fieldref = marshalingCommunicator.lookupField(instanceClass, name, returnType, true);
+		return (proxy, args) -> marshalingCommunicator.getStaticField(fieldref, returnType);
 	}
 
-	private MethodHandler staticFieldSetterHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler staticFieldSetterHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			String name)
 	{
 		if(!method.getReturnType().equals(void.class))
@@ -240,23 +251,27 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		if(paramTypes.length != 1)
 			throw new InconsistentHierarchyException("Student-side static field setter had not exactly one parameter: " + method);
 
-		return staticFieldSetterHandlerChecked(marshalingCommunicator, name, paramTypes[0]);
+		Class<?> fieldType = paramTypes[0];
+		FIELDREF fieldref = marshalingCommunicator.lookupField(instanceClass, name, fieldType, true);
+		return staticFieldSetterHandlerChecked(marshalingCommunicator, fieldref, fieldType);
 	}
 
 	// extracted to own method so casting to field type is expressible in Java
-	private <F> MethodHandler staticFieldSetterHandlerChecked(MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
-			String name, Class<F> fieldType)
+	private <F> MethodHandler staticFieldSetterHandlerChecked(
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
+			FIELDREF fieldref, Class<F> fieldType)
 	{
 		return (proxy, args) ->
 		{
 			@SuppressWarnings("unchecked")
 			F argCasted = (F) args[0];
-			marshalingCommunicator.setStaticField(instanceClass, name, fieldType, argCasted);
+			marshalingCommunicator.setStaticField(fieldref, fieldType, argCasted);
 			return null;
 		};
 	}
 
-	private MethodHandler arrayCreatorHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler arrayCreatorHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
 		if(!method.getReturnType().equals(instanceClass))
@@ -295,7 +310,8 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		throw new InconsistentHierarchyException("Array creator's parameter had unexpected type " + parameterTypeErasure + ": " + method);
 	}
 
-	private MethodHandler arrayInitializerHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler arrayInitializerHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
 		if(!method.getReturnType().equals(instanceClass))
@@ -346,7 +362,8 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 		throw new InconsistentHierarchyException("Array initializer's parameter had unexpected type " + parameterTypeErasure + ": " + method);
 	}
 
-	private MethodHandler serializationSenderHandler(Method method, MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator,
+	private MethodHandler serializationSenderHandler(Method method,
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
 			boolean nameOverridden)
 	{
 		if(nameOverridden)
@@ -371,7 +388,8 @@ public final class StudentSidePrototypeBuilder<REF, TYPEREF extends REF, SI exte
 	}
 
 	private Class<?> maybeUnboxAndCheckInitialValuesType(Class<?> initialValuesTypeOrBox,
-			MarshalingCommunicator<REF, TYPEREF, StudentSideException> marshalingCommunicator, Method method)
+			MarshalingCommunicator<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, StudentSideException> marshalingCommunicator,
+			Method method)
 	{
 		if(isBoxedPrimitive(initialValuesTypeOrBox))
 		{

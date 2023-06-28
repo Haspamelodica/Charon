@@ -11,22 +11,28 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.Transceiver;
 
-public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceiver, CM extends CallbackManager>
-		implements StudentSideCommunicator<REF, TYPEREF, TC, CM>
+public class LoggingCommunicator<REF,
+		THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+		TC extends Transceiver, CM extends CallbackManager>
+		implements StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, TC, CM>
 {
-	private final CommunicationLogger<REF, TYPEREF> logger;
+	private final CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF> logger;
 
-	private final StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM> communicator;
+	private final StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+			? extends TC, ? extends CM> communicator;
 
 	private final TC	loggingTransceiver;
 	private final CM	loggingCallbackManager;
 
 	public LoggingCommunicator(CommunicationLoggerParams loggerParams,
-			Function<CommunicationLogger<REF, TYPEREF>,
-					StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM>> createCommunicator,
-			BiFunction<CommunicationLogger<REF, TYPEREF>, StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM>,
+			Function<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>,
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends TC, ? extends CM>> createCommunicator,
+			BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, StudentSideCommunicator<REF,
+					THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, ? extends TC, ? extends CM>,
 					TC> createLoggingTransceiver,
-			BiFunction<CommunicationLogger<REF, TYPEREF>, StudentSideCommunicator<REF, TYPEREF, ? extends TC, ? extends CM>,
+			BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, StudentSideCommunicator<REF,
+					THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, ? extends TC, ? extends CM>,
 					CM> createLoggingCallbackManager)
 	{
 		this.logger = new CommunicationLogger<>(loggerParams, this::typerefToTypeName);
@@ -42,10 +48,10 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> getTypeByName(String typeName)
+	public OperationOutcome<TYPEREF, Void, TYPEREF> getTypeByName(String typeName)
 	{
 		logger.logEnter("type by name " + typeName);
-		OperationOutcome<REF, TYPEREF> result = communicator.getTypeByName(typeName);
+		OperationOutcome<TYPEREF, Void, TYPEREF> result = communicator.getTypeByName(typeName);
 		logger.logExit(o(result));
 		return result;
 	}
@@ -88,28 +94,28 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> newArray(TYPEREF arrayType, int length)
+	public OperationOutcome<REF, Void, TYPEREF> createArray(TYPEREF arrayType, int length)
 	{
 		logger.logEnter("newarray " + t(arrayType) + ": [" + length + "]");
-		OperationOutcome<REF, TYPEREF> result = communicator.newArray(arrayType, length);
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.createArray(arrayType, length);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> newMultiArray(TYPEREF arrayType, List<Integer> dimensions)
+	public OperationOutcome<REF, Void, TYPEREF> createMultiArray(TYPEREF arrayType, List<Integer> dimensions)
 	{
 		logger.logEnter("newarray " + t(arrayType) + ": " + dimensions.stream().map(i -> i.toString()).collect(Collectors.joining("][", "[", "]")));
-		OperationOutcome<REF, TYPEREF> result = communicator.newMultiArray(arrayType, dimensions);
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.createMultiArray(arrayType, dimensions);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> newArrayWithInitialValues(TYPEREF arrayType, List<REF> initialValues)
+	public OperationOutcome<REF, Void, TYPEREF> initializeArray(TYPEREF arrayType, List<REF> initialValues)
 	{
 		logger.logEnter("newarray " + t(arrayType) + " initial " + initialValues.stream().map(i -> i.toString()).collect(Collectors.joining(", ")));
-		OperationOutcome<REF, TYPEREF> result = communicator.newArrayWithInitialValues(arrayType, initialValues);
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.initializeArray(arrayType, initialValues);
 		logger.logExit(o(result));
 		return result;
 	}
@@ -124,84 +130,114 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> getArrayElement(REF arrayRef, int index)
+	public OperationOutcome<REF, Void, TYPEREF> getArrayElement(REF arrayRef, int index)
 	{
 		logger.logEnter("get array " + arrayRef + "[" + index + "]");
-		OperationOutcome<REF, TYPEREF> result = communicator.getArrayElement(arrayRef, index);
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.getArrayElement(arrayRef, index);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<Void, TYPEREF> setArrayElement(REF arrayRef, int index, REF valueRef)
+	public OperationOutcome<Void, Void, TYPEREF> setArrayElement(REF arrayRef, int index, REF valueRef)
 	{
 		logger.logEnter("set array " + arrayRef + "[" + index + "] = " + valueRef);
-		OperationOutcome<Void, TYPEREF> result = communicator.setArrayElement(arrayRef, index, valueRef);
+		OperationOutcome<Void, Void, TYPEREF> result = communicator.setArrayElement(arrayRef, index, valueRef);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> callConstructor(TYPEREF type, List<TYPEREF> params, List<REF> argRefs)
+	public OperationOutcome<CONSTRUCTORREF, Void, TYPEREF> lookupConstructor(TYPEREF type, List<TYPEREF> params)
 	{
-		logger.logEnter("new " + t(type) + t(params) + ": " + argRefs);
-		OperationOutcome<REF, TYPEREF> result = communicator.callConstructor(type, params, argRefs);
+		String constructorString = "new " + t(type) + t(params);
+		logger.logEnter("lookup " + constructorString);
+		OperationOutcome<CONSTRUCTORREF, Void, TYPEREF> result = communicator.lookupConstructor(type, params);
+		logger.registerConstructor(result, constructorString);
+		logger.logExit(o(result));
+		return result;
+	}
+	@Override
+	public OperationOutcome<METHODREF, Void, TYPEREF> lookupMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, boolean isStatic)
+	{
+		String methodString = (isStatic ? "static " : "") + t(returnType) + " " + t(type) + "." + name + t(params);
+		logger.logEnter("lookup " + methodString);
+		OperationOutcome<METHODREF, Void, TYPEREF> result = communicator.lookupMethod(type, name, returnType, params, isStatic);
+		logger.registerMethod(result, methodString);
+		logger.logEnter(o(result));
+		return result;
+	}
+	@Override
+	public OperationOutcome<FIELDREF, Void, TYPEREF> lookupField(TYPEREF type, String name, TYPEREF fieldType, boolean isStatic)
+	{
+		String fieldString = (isStatic ? "static " : "") + t(fieldType) + " " + t(type) + "." + name;
+		logger.logEnter("lookup " + fieldString);
+		OperationOutcome<FIELDREF, Void, TYPEREF> result = communicator.lookupField(type, name, fieldType, isStatic);
+		logger.registerField(result, fieldString);
+		logger.logEnter(o(result));
+		return result;
+	}
+
+	@Override
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callConstructor(CONSTRUCTORREF constructor, List<REF> argRefs)
+	{
+		logger.logEnter(c(constructor) + ": " + argRefs);
+		OperationOutcome<REF, THROWABLEREF, TYPEREF> result = communicator.callConstructor(constructor, argRefs);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> callStaticMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, List<REF> argRefs)
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callStaticMethod(METHODREF method, List<REF> argRefs)
 	{
-		logger.logEnter(t(returnType) + " " + t(type) + "." + name + t(params) + ": " + argRefs);
-		OperationOutcome<REF, TYPEREF> result = communicator.callStaticMethod(type, name, returnType, params, argRefs);
+		logger.logEnter(m(method) + ": " + argRefs);
+		OperationOutcome<REF, THROWABLEREF, TYPEREF> result = communicator.callStaticMethod(method, argRefs);
 		logger.logExit(o(result));
 		return result;
 	}
 	@Override
-	public OperationOutcome<REF, TYPEREF> getStaticField(TYPEREF type, String name, TYPEREF fieldType)
+	public OperationOutcome<REF, Void, TYPEREF> getStaticField(FIELDREF field)
 	{
-		logger.logEnter(t(fieldType) + " " + t(type) + "." + name);
-		OperationOutcome<REF, TYPEREF> result = communicator.getStaticField(type, name, fieldType);
+		logger.logEnter(f(field));
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.getStaticField(field);
 		logger.logExit(o(result));
 		return result;
 	}
 	@Override
-	public OperationOutcome<Void, TYPEREF> setStaticField(TYPEREF type, String name, TYPEREF fieldType, REF valueRef)
+	public OperationOutcome<Void, Void, TYPEREF> setStaticField(FIELDREF field, REF valueRef)
 	{
-		logger.logEnter(t(fieldType) + " " + t(type) + "." + name + " = " + valueRef);
-		OperationOutcome<Void, TYPEREF> result = communicator.setStaticField(type, name, fieldType, valueRef);
+		logger.logEnter(f(field) + " = " + valueRef);
+		OperationOutcome<Void, Void, TYPEREF> result = communicator.setStaticField(field, valueRef);
 		logger.logExit(o(result));
 		return result;
 	}
 
 	@Override
-	public OperationOutcome<REF, TYPEREF> callInstanceMethod(TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params,
-			REF receiverRef, List<REF> argRefs)
+	public OperationOutcome<REF, THROWABLEREF, TYPEREF> callInstanceMethod(METHODREF method, REF receiverRef, List<REF> argRefs)
 	{
-		logger.logEnter(t(returnType) + " " + t(type) + "." + name + t(params) + ": " + receiverRef + ", " + argRefs);
-		OperationOutcome<REF, TYPEREF> result = communicator.callInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
+		logger.logEnter(m(method) + ": " + receiverRef + ", " + argRefs);
+		OperationOutcome<REF, THROWABLEREF, TYPEREF> result = communicator.callInstanceMethod(method, receiverRef, argRefs);
 		logger.logExit(o(result));
 		return result;
 	}
 	@Override
-	public OperationOutcome<REF, TYPEREF> getInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef)
+	public OperationOutcome<REF, Void, TYPEREF> getInstanceField(FIELDREF field, REF receiverRef)
 	{
-		logger.logEnter(t(fieldType) + " " + t(type) + "." + name + ": " + receiverRef);
-		OperationOutcome<REF, TYPEREF> result = communicator.getInstanceField(type, name, fieldType, receiverRef);
+		logger.logEnter(f(field) + ": " + receiverRef);
+		OperationOutcome<REF, Void, TYPEREF> result = communicator.getInstanceField(field, receiverRef);
 		logger.logExit(o(result));
 		return result;
 	}
 	@Override
-	public OperationOutcome<Void, TYPEREF> setInstanceField(TYPEREF type, String name, TYPEREF fieldType, REF receiverRef, REF valueRef)
+	public OperationOutcome<Void, Void, TYPEREF> setInstanceField(FIELDREF field, REF receiverRef, REF valueRef)
 	{
-		logger.logEnter(t(fieldType) + " " + t(type) + "." + name + ": " + receiverRef + " = " + valueRef);
-		OperationOutcome<Void, TYPEREF> result = communicator.setInstanceField(type, name, fieldType, receiverRef, valueRef);
+		logger.logEnter(f(field) + ": " + receiverRef + " = " + valueRef);
+		OperationOutcome<Void, Void, TYPEREF> result = communicator.setInstanceField(field, receiverRef, valueRef);
 		logger.logExit(o(result));
 		return result;
 	}
 
-	private String o(OperationOutcome<?, TYPEREF> outcome)
+	private String o(OperationOutcome<?, ?, TYPEREF> outcome)
 	{
 		return logger.outcomeToString(outcome);
 	}
@@ -214,6 +250,21 @@ public class LoggingCommunicator<REF, TYPEREF extends REF, TC extends Transceive
 	private String t(TYPEREF typeref)
 	{
 		return logger.typerefToString(typeref);
+	}
+
+	private String c(CONSTRUCTORREF constructor)
+	{
+		return logger.constructorToString(constructor);
+	}
+
+	private String m(METHODREF method)
+	{
+		return logger.methodToString(method);
+	}
+
+	private String f(FIELDREF field)
+	{
+		return logger.fieldToString(field);
 	}
 
 	private String typerefToTypeName(TYPEREF typeref)

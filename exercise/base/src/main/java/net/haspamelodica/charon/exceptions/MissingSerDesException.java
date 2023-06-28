@@ -20,4 +20,10 @@ public class MissingSerDesException extends ExerciseCausedException
 	{
 		super(message, cause, enableSuppression, writableStackTrace);
 	}
+
+	@Override
+	public MissingSerDesException withContext(String message)
+	{
+		return new MissingSerDesException(message, this);
+	}
 }

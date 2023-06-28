@@ -18,13 +18,16 @@ public class RefTranslatorCommunicator<
 		REF_TO,
 		TC_TO extends Transceiver,
 		CM_TO extends CallbackManager,
-		REF_FROM,
-		TYPEREF_FROM extends REF_FROM,
+		REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
+		CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM,
 		TC_FROM extends Transceiver>
-		implements StudentSideCommunicator<REF_TO, REF_TO, TC_TO, CM_TO>
+		implements StudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, TC_TO, CM_TO>
 {
-	private final StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>	communicator;
-	private final RefTranslator<REF_TO, REF_FROM>																					translator;
+	private final StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+			CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+			? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>> communicator;
+
+	private final RefTranslator<REF_TO, REF_FROM> translator;
 
 	private final boolean storeRefsIdentityBased;
 
@@ -32,19 +35,25 @@ public class RefTranslatorCommunicator<
 	private final CM_TO	callbackManager;
 
 	public RefTranslatorCommunicator(
-			UninitializedStudentSideCommunicator<REF_FROM, TYPEREF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
+			UninitializedStudentSideCommunicator<REF_FROM,
+					THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
 			boolean storeRefsIdentityBased,
-			StudentSideCommunicatorCallbacks<REF_TO, REF_TO> callbacks,
+			StudentSideCommunicatorCallbacks<REF_TO, REF_TO, REF_TO> callbacks,
 			RefTranslatorCommunicatorCallbacks<REF_TO> refTranslatorCommunicatorCallbacks,
-			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
-					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver,
-			BiFunction<StudentSideCommunicator<REF_FROM, TYPEREF_FROM, ? extends TC_FROM,
-					? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
+			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
+					RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver,
+			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
+					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
+					RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
 	{
 		this.communicator = communicator.initialize(new StudentSideCommunicatorCallbacks<>()
 		{
 			@Override
-			public CallbackOperationOutcome<REF_FROM, REF_FROM> callCallbackInstanceMethod(TYPEREF_FROM type, String name,
+			public CallbackOperationOutcome<REF_FROM, THROWABLEREF_FROM> callCallbackInstanceMethod(TYPEREF_FROM type, String name,
 					TYPEREF_FROM returnType, List<TYPEREF_FROM> params, REF_FROM receiverRef, List<REF_FROM> argRefs)
 			{
 				return translateFrom(callbacks.callCallbackInstanceMethod(
@@ -89,9 +98,9 @@ public class RefTranslatorCommunicator<
 	}
 
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> getTypeByName(String typeName)
+	public OperationOutcome<REF_TO, Void, REF_TO> getTypeByName(String typeName)
 	{
-		return translateTo(communicator.getTypeByName(typeName));
+		return translateToVoid(communicator.getTypeByName(typeName));
 	}
 	@Override
 	public REF_TO getArrayType(REF_TO componentType)
@@ -120,19 +129,19 @@ public class RefTranslatorCommunicator<
 		return translator.translateTo(communicator.getTypeHandledBySerdes(translator.translateFrom(serdesRef)));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> newArray(REF_TO arrayType, int length)
+	public OperationOutcome<REF_TO, Void, REF_TO> createArray(REF_TO arrayType, int length)
 	{
-		return translateTo(communicator.newArray(translateTypeFrom(arrayType), length));
+		return translateToVoid(communicator.createArray(translateTypeFrom(arrayType), length));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> newMultiArray(REF_TO arrayType, List<Integer> dimensions)
+	public OperationOutcome<REF_TO, Void, REF_TO> createMultiArray(REF_TO arrayType, List<Integer> dimensions)
 	{
-		return translateTo(communicator.newMultiArray(translateTypeFrom(arrayType), dimensions));
+		return translateToVoid(communicator.createMultiArray(translateTypeFrom(arrayType), dimensions));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> newArrayWithInitialValues(REF_TO arrayType, List<REF_TO> initialValues)
+	public OperationOutcome<REF_TO, Void, REF_TO> initializeArray(REF_TO arrayType, List<REF_TO> initialValues)
 	{
-		return translateTo(communicator.newArrayWithInitialValues(
+		return translateToVoid(communicator.initializeArray(
 				translateTypeFrom(arrayType), translator.translateFrom(initialValues)));
 	}
 	@Override
@@ -141,54 +150,66 @@ public class RefTranslatorCommunicator<
 		return communicator.getArrayLength(translator.translateFrom(arrayRef));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> getArrayElement(REF_TO arrayRef, int index)
+	public OperationOutcome<REF_TO, Void, REF_TO> getArrayElement(REF_TO arrayRef, int index)
 	{
-		return translateTo(communicator.getArrayElement(translator.translateFrom(arrayRef), index));
+		return translateToVoid(communicator.getArrayElement(translator.translateFrom(arrayRef), index));
 	}
 	@Override
-	public OperationOutcome<Void, REF_TO> setArrayElement(REF_TO arrayRef, int index, REF_TO valueRef)
+	public OperationOutcome<Void, Void, REF_TO> setArrayElement(REF_TO arrayRef, int index, REF_TO valueRef)
 	{
-		return translateToVoid(communicator.setArrayElement(translator.translateFrom(arrayRef), index, translator.translateFrom(valueRef)));
+		return translateToVoidRes(communicator.setArrayElement(translator.translateFrom(arrayRef), index, translator.translateFrom(valueRef)));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> callConstructor(REF_TO type, List<REF_TO> params, List<REF_TO> argRefs)
+	public OperationOutcome<REF_TO, Void, REF_TO> lookupConstructor(REF_TO type, List<REF_TO> params)
 	{
-		return translateTo(communicator.callConstructor(translateTypeFrom(type), translateTypeFrom(params),
-				translator.translateFrom(argRefs)));
+		return translateToVoid(communicator.lookupConstructor(translateTypeFrom(type), translateTypeFrom(params)));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> callStaticMethod(REF_TO type, String name, REF_TO returnType, List<REF_TO> params, List<REF_TO> argRefs)
+	public OperationOutcome<REF_TO, Void, REF_TO> lookupMethod(REF_TO type, String name, REF_TO returnType, List<REF_TO> params, boolean isStatic)
 	{
-		return translateTo(communicator.callStaticMethod(translateTypeFrom(type), name, translateTypeFrom(returnType),
-				translateTypeFrom(params), translator.translateFrom(argRefs)));
+		return translateToVoid(communicator.lookupMethod(translateTypeFrom(type), name, translateTypeFrom(returnType),
+				translateTypeFrom(params), isStatic));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> getStaticField(REF_TO type, String name, REF_TO fieldType)
+	public OperationOutcome<REF_TO, Void, REF_TO> lookupField(REF_TO type, String name, REF_TO fieldType, boolean isStatic)
 	{
-		return translateTo(communicator.getStaticField(translateTypeFrom(type), name, translateTypeFrom(fieldType)));
+		return translateToVoid(communicator.lookupField(translateTypeFrom(type), name, translateTypeFrom(fieldType), isStatic));
 	}
 	@Override
-	public OperationOutcome<Void, REF_TO> setStaticField(REF_TO type, String name, REF_TO fieldType, REF_TO valueRef)
+	public OperationOutcome<REF_TO, REF_TO, REF_TO> callConstructor(REF_TO constructor, List<REF_TO> argRefs)
 	{
-		return translateToVoid(communicator.setStaticField(translateTypeFrom(type), name, translateTypeFrom(fieldType), translator.translateFrom(valueRef)));
+		return translateTo(communicator.callConstructor(translateConstructorFrom(constructor), translator.translateFrom(argRefs)));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> callInstanceMethod(REF_TO type, String name, REF_TO returnType,
-			List<REF_TO> params, REF_TO receiverRef, List<REF_TO> argRefs)
+	public OperationOutcome<REF_TO, REF_TO, REF_TO> callStaticMethod(REF_TO method, List<REF_TO> argRefs)
 	{
-		return translateTo(communicator.callInstanceMethod(translateTypeFrom(type), name, translateTypeFrom(returnType),
-				translateTypeFrom(params), translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));
+		return translateTo(communicator.callStaticMethod(translateMethodFrom(method), translator.translateFrom(argRefs)));
 	}
 	@Override
-	public OperationOutcome<REF_TO, REF_TO> getInstanceField(REF_TO type, String name, REF_TO fieldType, REF_TO receiverRef)
+	public OperationOutcome<REF_TO, Void, REF_TO> getStaticField(REF_TO field)
 	{
-		return translateTo(communicator.getInstanceField(translateTypeFrom(type), name, translateTypeFrom(fieldType),
-				translator.translateFrom(receiverRef)));
+		return translateToVoid(communicator.getStaticField(translateFieldFrom(field)));
 	}
 	@Override
-	public OperationOutcome<Void, REF_TO> setInstanceField(REF_TO type, String name, REF_TO fieldType, REF_TO receiverRef, REF_TO valueRef)
+	public OperationOutcome<Void, Void, REF_TO> setStaticField(REF_TO field, REF_TO valueRef)
 	{
-		return translateToVoid(communicator.setInstanceField(translateTypeFrom(type), name, translateTypeFrom(fieldType),
+		return translateToVoidRes(communicator.setStaticField(translateFieldFrom(field), translator.translateFrom(valueRef)));
+	}
+	@Override
+	public OperationOutcome<REF_TO, REF_TO, REF_TO> callInstanceMethod(REF_TO method, REF_TO receiverRef, List<REF_TO> argRefs)
+	{
+		return translateTo(communicator.callInstanceMethod(translateMethodFrom(method),
+				translator.translateFrom(receiverRef), translator.translateFrom(argRefs)));
+	}
+	@Override
+	public OperationOutcome<REF_TO, Void, REF_TO> getInstanceField(REF_TO field, REF_TO receiverRef)
+	{
+		return translateToVoid(communicator.getInstanceField(translateFieldFrom(field), translator.translateFrom(receiverRef)));
+	}
+	@Override
+	public OperationOutcome<Void, Void, REF_TO> setInstanceField(REF_TO field, REF_TO receiverRef, REF_TO valueRef)
+	{
+		return translateToVoidRes(communicator.setInstanceField(translateFieldFrom(field),
 				translator.translateFrom(receiverRef), translator.translateFrom(valueRef)));
 	}
 
@@ -204,26 +225,19 @@ public class RefTranslatorCommunicator<
 		return callbackManager;
 	}
 
-	private OperationOutcome<REF_TO, REF_TO> translateTo(OperationOutcome<REF_FROM, TYPEREF_FROM> outcome)
+	private OperationOutcome<REF_TO, REF_TO, REF_TO> translateTo(OperationOutcome<? extends REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> outcome)
 	{
-		return translateRefleciveOperationOutcome(outcome, translator::translateTo, translator::translateTo);
+		return translateRefleciveOperationOutcome(outcome, translator::translateTo, translator::translateTo, translator::translateTo);
 	}
-	private OperationOutcome<Void, REF_TO> translateToVoid(OperationOutcome<Void, TYPEREF_FROM> outcome)
+	private OperationOutcome<REF_TO, Void, REF_TO> translateToVoid(OperationOutcome<? extends REF_FROM, Void, TYPEREF_FROM> outcome)
 	{
-		return translateRefleciveOperationOutcome(outcome, Function.identity(), translator::translateTo);
+		return translateRefleciveOperationOutcome(outcome, translator::translateTo, Function.identity(), translator::translateTo);
 	}
-	private List<TYPEREF_FROM> translateTypeFrom(List<REF_TO> types)
+	private OperationOutcome<Void, Void, REF_TO> translateToVoidRes(OperationOutcome<Void, Void, TYPEREF_FROM> outcome)
 	{
-		return types.stream().map(this::translateTypeFrom).toList();
+		return translateRefleciveOperationOutcome(outcome, Function.identity(), Function.identity(), translator::translateTo);
 	}
-
-	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
-	private TYPEREF_FROM translateTypeFrom(REF_TO type)
-	{
-		return (TYPEREF_FROM) translator.translateFrom(type);
-	}
-
-	private CallbackOperationOutcome<REF_FROM, REF_FROM> translateFrom(CallbackOperationOutcome<REF_TO, REF_TO> outcome)
+	private CallbackOperationOutcome<REF_FROM, THROWABLEREF_FROM> translateFrom(CallbackOperationOutcome<REF_TO, REF_TO> outcome)
 	{
 		//TODO replace with pattern matching swich once those exist in Java
 		return switch(outcome.kind())
@@ -231,65 +245,98 @@ public class RefTranslatorCommunicator<
 			case CALLBACK_RESULT -> new CallbackOperationOutcome.Result<>(
 					translator.translateFrom(((CallbackOperationOutcome.Result<REF_TO, REF_TO>) outcome).returnValue()));
 			case CALLBACK_THROWN -> new CallbackOperationOutcome.Thrown<>(
-					translator.translateFrom(((CallbackOperationOutcome.Thrown<REF_TO, REF_TO>) outcome).thrownThrowable()));
+					translateThrowableFrom(((CallbackOperationOutcome.Thrown<REF_TO, REF_TO>) outcome).thrownThrowable()));
 			case CALLBACK_HIDDEN_ERROR -> new CallbackOperationOutcome.HiddenError<>();
 		};
 	}
 
-	private static <REF_TO, TYPEREF_TO, REF_FROM, TYPEREF_FROM> OperationOutcome<REF_TO, TYPEREF_TO>
-			translateRefleciveOperationOutcome(OperationOutcome<REF_FROM, TYPEREF_FROM> outcome,
-					Function<REF_FROM, REF_TO> translateRef, Function<TYPEREF_FROM, TYPEREF_TO> translateTyperef)
+	private List<TYPEREF_FROM> translateTypeFrom(List<REF_TO> types)
+	{
+		return types.stream().map(this::translateTypeFrom).toList();
+	}
+
+	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
+	private THROWABLEREF_FROM translateThrowableFrom(REF_TO type)
+	{
+		return (THROWABLEREF_FROM) translator.translateFrom(type);
+	}
+	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
+	private TYPEREF_FROM translateTypeFrom(REF_TO type)
+	{
+		return (TYPEREF_FROM) translator.translateFrom(type);
+	}
+	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
+	private CONSTRUCTORREF_FROM translateConstructorFrom(REF_TO type)
+	{
+		return (CONSTRUCTORREF_FROM) translator.translateFrom(type);
+	}
+	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
+	private METHODREF_FROM translateMethodFrom(REF_TO type)
+	{
+		return (METHODREF_FROM) translator.translateFrom(type);
+	}
+	@SuppressWarnings("unchecked") // Ensured by caller. Also, since this cast only happens in the student side, it is definitely not a vulnerability.
+	private FIELDREF_FROM translateFieldFrom(REF_TO type)
+	{
+		return (FIELDREF_FROM) translator.translateFrom(type);
+	}
+
+	private static <REF_TO, THROWABLEREF_TO, TYPEREF_TO, REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>
+			OperationOutcome<REF_TO, THROWABLEREF_TO, TYPEREF_TO>
+			translateRefleciveOperationOutcome(OperationOutcome<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> outcome,
+					Function<REF_FROM, REF_TO> translateRef,
+					Function<THROWABLEREF_FROM, THROWABLEREF_TO> translateThrowableref, Function<TYPEREF_FROM, TYPEREF_TO> translateTyperef)
 	{
 		Function<List<TYPEREF_FROM>, List<TYPEREF_TO>> translateTyperefs = l -> l.stream().map(translateTyperef).toList();
 		//TODO replace with pattern matching swich once those exist in Java
 		return switch(outcome.kind())
 		{
 			case RESULT -> new OperationOutcome.Result<>(
-					translateRef.apply(((OperationOutcome.Result<REF_FROM, TYPEREF_FROM>) outcome).returnValue()));
+					translateRef.apply(((OperationOutcome.Result<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome).returnValue()));
 			case SUCCESS_WITHOUT_RESULT -> new OperationOutcome.SuccessWithoutResult<>();
 			case THROWN -> new OperationOutcome.Thrown<>(
-					translateRef.apply(((OperationOutcome.Thrown<REF_FROM, TYPEREF_FROM>) outcome).thrownThrowable()));
+					translateThrowableref.apply(((OperationOutcome.Thrown<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome).thrownThrowable()));
 			case CLASS_NOT_FOUND -> new OperationOutcome.ClassNotFound<>(
-					((OperationOutcome.ClassNotFound<REF_FROM, TYPEREF_FROM>) outcome).classname());
+					((OperationOutcome.ClassNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome).classname());
 			case FIELD_NOT_FOUND ->
 			{
-				OperationOutcome.FieldNotFound<REF_FROM, TYPEREF_FROM> fieldNotFound =
-						(OperationOutcome.FieldNotFound<REF_FROM, TYPEREF_FROM>) outcome;
+				OperationOutcome.FieldNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> fieldNotFound =
+						(OperationOutcome.FieldNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome;
 				yield new OperationOutcome.FieldNotFound<>(translateTyperef.apply(fieldNotFound.type()), fieldNotFound.fieldName(),
 						translateTyperef.apply(fieldNotFound.fieldType()), fieldNotFound.isStatic());
 			}
 			case METHOD_NOT_FOUND ->
 			{
-				OperationOutcome.MethodNotFound<REF_FROM, TYPEREF_FROM> methodNotFound =
-						(OperationOutcome.MethodNotFound<REF_FROM, TYPEREF_FROM>) outcome;
+				OperationOutcome.MethodNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> methodNotFound =
+						(OperationOutcome.MethodNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome;
 				yield new OperationOutcome.MethodNotFound<>(translateTyperef.apply(methodNotFound.type()), methodNotFound.methodName(),
 						translateTyperef.apply(methodNotFound.returnType()), translateTyperefs.apply(methodNotFound.parameters()),
 						methodNotFound.isStatic());
 			}
 			case CONSTRUCTOR_NOT_FOUND ->
 			{
-				OperationOutcome.ConstructorNotFound<REF_FROM, TYPEREF_FROM> constructorNotFound =
-						(OperationOutcome.ConstructorNotFound<REF_FROM, TYPEREF_FROM>) outcome;
+				OperationOutcome.ConstructorNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> constructorNotFound =
+						(OperationOutcome.ConstructorNotFound<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome;
 				yield new OperationOutcome.ConstructorNotFound<>(translateTyperef.apply(constructorNotFound.type()),
 						translateTyperefs.apply(constructorNotFound.parameters()));
 			}
-			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED ->
+			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED ->
 			{
-				OperationOutcome.ConstructorOfAbstractClassCalled<REF_FROM, TYPEREF_FROM> constructorOfAbstractClassCalled =
-						(OperationOutcome.ConstructorOfAbstractClassCalled<REF_FROM, TYPEREF_FROM>) outcome;
-				yield new OperationOutcome.ConstructorOfAbstractClassCalled<>(translateTyperef.apply(constructorOfAbstractClassCalled.type()),
+				OperationOutcome.ConstructorOfAbstractClassCreated<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> constructorOfAbstractClassCalled =
+						(OperationOutcome.ConstructorOfAbstractClassCreated<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome;
+				yield new OperationOutcome.ConstructorOfAbstractClassCreated<>(translateTyperef.apply(constructorOfAbstractClassCalled.type()),
 						translateTyperefs.apply(constructorOfAbstractClassCalled.parameters()));
 			}
 			case ARRAY_INDEX_OUT_OF_BOUNDS ->
 			{
-				OperationOutcome.ArrayIndexOutOfBounds<REF_FROM, TYPEREF_FROM> arrayIndexOutOfBounds =
-						(OperationOutcome.ArrayIndexOutOfBounds<REF_FROM, TYPEREF_FROM>) outcome;
+				OperationOutcome.ArrayIndexOutOfBounds<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM> arrayIndexOutOfBounds =
+						(OperationOutcome.ArrayIndexOutOfBounds<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome;
 				yield new OperationOutcome.ArrayIndexOutOfBounds<>(arrayIndexOutOfBounds.index(), arrayIndexOutOfBounds.length());
 			}
 			case ARRAY_SIZE_NEGATIVE -> new OperationOutcome.ArraySizeNegative<>(
-					((OperationOutcome.ArraySizeNegative<REF_FROM, TYPEREF_FROM>) outcome).size());
+					((OperationOutcome.ArraySizeNegative<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome).size());
 			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY -> new OperationOutcome.ArraySizeNegativeInMultiArray<>(
-					((OperationOutcome.ArraySizeNegativeInMultiArray<REF_FROM, TYPEREF_FROM>) outcome).dimensions());
+					((OperationOutcome.ArraySizeNegativeInMultiArray<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM>) outcome).dimensions());
 		};
 	}
 }

@@ -19,6 +19,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.OperationOutcome;
 import net.haspamelodica.charon.OperationOutcome.ArraySizeNegativeInMultiArray;
+import net.haspamelodica.charon.OperationOutcome.Kind;
 import net.haspamelodica.charon.communicator.ExternalCallbackManager;
 import net.haspamelodica.charon.communicator.ServerSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
@@ -26,7 +27,6 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
-import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.Args;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.IOBiConsumer;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
@@ -37,6 +37,7 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
+import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
 import net.haspamelodica.streammultiplexer.ClosedException;
 import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
@@ -45,16 +46,15 @@ import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
 
 public class DataCommunicatorServer
 {
-	protected final DataStreamMultiplexer multiplexer;
-
-	private final StudentSideCommunicator<LongRef, LongRef, ? extends ServerSideTransceiver<LongRef>,
+	private final StudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef, ? extends ServerSideTransceiver<LongRef>,
 			? extends ExternalCallbackManager<LongRef>> communicator;
 
-	private final LongRefManager<LongRef> refManager;
-
-	private final ThreadLocal<ExerciseSideThread> threads;
-
-	private final AtomicBoolean running;
+	protected final DataStreamMultiplexer				multiplexer;
+	private final LongRefManager<LongRef>				refManager;
+	private final UnidirectionalMap<LongRef, Integer>	constructorParamCounts;
+	private final UnidirectionalMap<LongRef, Integer>	methodParamCounts;
+	private final ThreadLocal<ExerciseSideThread>		threads;
+	private final AtomicBoolean							running;
 
 	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorSupplier<LongRef,
 			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>> communicatorSupplier)
@@ -109,6 +109,8 @@ public class DataCommunicatorServer
 						return refManager.createManagedRef();
 					}
 				});
+		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().identityMap().weakKeys().build();
+		this.methodParamCounts = UnidirectionalMap.builder().concurrent().identityMap().weakKeys().build();
 		this.threads = new ThreadLocal<>();
 		this.running = new AtomicBoolean();
 	}
@@ -163,12 +165,17 @@ public class DataCommunicatorServer
 					case GET_TYPE_OF -> respondGetTypeOf(in, out);
 					case DESCRIBE_TYPE -> respondDescribeType(in, out);
 					case GET_TYPE_HANDLED_BY_SERDES -> respondGetTypeHandledBySerdes(in, out);
-					case NEW_ARRAY -> respondNewArray(in, out);
-					case NEW_MULTI_ARRAY -> respondNewMultiArray(in, out);
-					case NEW_ARRAY_WITH_INITIAL_VALUES -> respondNewArrayWithInitialValues(in, out);
+					case CREATE_ARRAY -> respondNewArray(in, out);
+					case CREATE_MULTI_ARRAY -> respondNewMultiArray(in, out);
+					case INITIALIZE_ARRAY -> respondNewArrayWithInitialValues(in, out);
 					case GET_ARRAY_LENGTH -> respondGetArrayLength(in, out);
 					case GET_ARRAY_ELEMENT -> respondGetArrayElement(in, out);
 					case SET_ARRAY_ELEMENT -> respondSetArrayElement(in, out);
+					case LOOKUP_CONSTRUCTOR -> respondLookupConstructor(in, out);
+					case LOOKUP_STATIC_METHOD -> respondLookupMethod(in, out, true);
+					case LOOKUP_STATIC_FIELD -> respondLookupField(in, out, true);
+					case LOOKUP_INSTANCE_METHOD -> respondLookupMethod(in, out, false);
+					case LOOKUP_INSTANCE_FIELD -> respondLookupField(in, out, false);
 					case CALL_CONSTRUCTOR -> respondCallConstructor(in, out);
 					case CALL_STATIC_METHOD -> respondCallStaticMethod(in, out);
 					case GET_STATIC_FIELD -> respondGetStaticField(in, out);
@@ -207,10 +214,10 @@ public class DataCommunicatorServer
 	{
 		String typeName = in.readUTF();
 
-		OperationOutcome<LongRef, LongRef> result = communicator.getTypeByName(typeName);
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.getTypeByName(typeName);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
+		writeVoidOperationOutcome(out, result);
 	}
 
 	private void respondGetArrayType(DataInput in, DataOutput out) throws IOException
@@ -236,22 +243,12 @@ public class DataCommunicatorServer
 	private void respondDescribeType(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef type = readRef(in);
-
 		StudentSideTypeDescription<LongRef> result = communicator.describeType(type);
-
 		writeThreadResponse(out, STUDENT_FINISHED);
-
 		out.writeByte(result.kind().encode());
-
 		out.writeUTF(result.name());
-
 		writeRef(out, result.superclass().orElse(null));
-
-		int superinterfacesCount = result.superinterfaces().size();
-		out.writeInt(superinterfacesCount);
-		// index-based iteration to defend against botched List implementations
-		for(int i = 0; i < superinterfacesCount; i ++)
-			writeRef(out, result.superinterfaces().get(i));
+		writeRefs(out, result.superinterfaces());
 
 		writeRef(out, result.componentTypeIfArray().orElse(null));
 	}
@@ -271,40 +268,34 @@ public class DataCommunicatorServer
 		LongRef arrayType = readRef(in);
 		int length = in.readInt();
 
-		OperationOutcome<LongRef, LongRef> result = communicator.newArray(arrayType, length);
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.createArray(arrayType, length);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
+		writeVoidOperationOutcome(out, result);
 	}
 
 	private void respondNewMultiArray(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef arrayType = readRef(in);
 
-		int dimensionsSize = in.readInt();
-		Integer[] dimensions = new Integer[dimensionsSize];
-		for(int i = 0; i < dimensionsSize; i ++)
-			dimensions[i] = in.readInt();
+		List<Integer> dimensions = DataCommunicatorUtils.readList(in, DataInput::readInt);
 
-		OperationOutcome<LongRef, LongRef> result = communicator.newMultiArray(arrayType, List.of(dimensions));
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.createMultiArray(arrayType, dimensions);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
+		writeVoidOperationOutcome(out, result);
 	}
 
 	private void respondNewArrayWithInitialValues(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef arrayType = readRef(in);
 
-		int length = in.readInt();
-		LongRef[] initialValues = new LongRef[length];
-		for(int i = 0; i < length; i ++)
-			initialValues[i] = readRef(in);
+		List<LongRef> initialValues = readRefs(in);
 
-		OperationOutcome<LongRef, LongRef> result = communicator.newArrayWithInitialValues(arrayType, List.of(initialValues));
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.initializeArray(arrayType, initialValues);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
+		writeVoidOperationOutcome(out, result);
 	}
 
 	private void respondGetArrayLength(DataInput in, DataOutput out) throws IOException
@@ -322,10 +313,10 @@ public class DataCommunicatorServer
 		LongRef arrayRef = readRef(in);
 		int index = in.readInt();
 
-		OperationOutcome<LongRef, LongRef> result = communicator.getArrayElement(arrayRef, index);
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.getArrayElement(arrayRef, index);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
+		writeVoidOperationOutcome(out, result);
 	}
 
 	private void respondSetArrayElement(DataInput in, DataOutput out) throws IOException
@@ -334,7 +325,49 @@ public class DataCommunicatorServer
 		int index = in.readInt();
 		LongRef valueRef = readRef(in);
 
-		OperationOutcome<Void, LongRef> result = communicator.setArrayElement(arrayRef, index, valueRef);
+		OperationOutcome<Void, Void, LongRef> result = communicator.setArrayElement(arrayRef, index, valueRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeVoidResOperationOutcome(out, result);
+	}
+
+	private void respondLookupConstructor(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef type = readRef(in);
+		List<LongRef> params = readRefs(in);
+
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.lookupConstructor(type, params);
+
+		if(result.kind() == Kind.RESULT)
+			constructorParamCounts.put(((OperationOutcome.Result<LongRef, Void, LongRef>) result).returnValue(), params.size());
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeVoidOperationOutcome(out, result);
+	}
+
+	private void respondLookupMethod(DataInput in, DataOutput out, boolean isStatic) throws IOException
+	{
+		LongRef type = readRef(in);
+		String name = in.readUTF();
+		LongRef returnType = readRef(in);
+		List<LongRef> params = readRefs(in);
+
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.lookupMethod(type, name, returnType, params, isStatic);
+
+		if(result.kind() == Kind.RESULT)
+			methodParamCounts.put(((OperationOutcome.Result<LongRef, Void, LongRef>) result).returnValue(), params.size());
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeVoidOperationOutcome(out, result);
+	}
+
+	private void respondLookupField(DataInput in, DataOutput out, boolean isStatic) throws IOException
+	{
+		LongRef type = readRef(in);
+		String name = in.readUTF();
+		LongRef fieldType = readRef(in);
+
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.lookupField(type, name, fieldType, isStatic);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeVoidOperationOutcome(out, result);
@@ -342,10 +375,10 @@ public class DataCommunicatorServer
 
 	private void respondCallConstructor(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef type = readRef(in);
-		Args args = readArgs(in);
+		LongRef constructor = readRef(in);
+		List<LongRef> args = readNRefs(in, constructorParamCounts.get(constructor));
 
-		OperationOutcome<LongRef, LongRef> result = communicator.callConstructor(type, args.params(), args.argRefs());
+		OperationOutcome<LongRef, LongRef, LongRef> result = communicator.callConstructor(constructor, args);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeOperationOutcome(out, result);
@@ -353,77 +386,65 @@ public class DataCommunicatorServer
 
 	private void respondCallStaticMethod(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef returnType = readRef(in);
-		Args args = readArgs(in);
+		LongRef method = readRef(in);
+		List<LongRef> args = readNRefs(in, methodParamCounts.get(method));
 
-		OperationOutcome<LongRef, LongRef> result = communicator.callStaticMethod(type, name, returnType, args.params(), args.argRefs());
+		OperationOutcome<LongRef, LongRef, LongRef> result = communicator.callStaticMethod(method, args);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeOperationOutcome(out, result);
 	}
 	private void respondGetStaticField(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef fieldType = readRef(in);
+		LongRef field = readRef(in);
 
-		OperationOutcome<LongRef, LongRef> result = communicator.getStaticField(type, name, fieldType);
-
-		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
-	}
-	private void respondSetStaticField(DataInput in, DataOutput out) throws IOException
-	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef fieldType = readRef(in);
-		LongRef valueRef = readRef(in);
-
-		OperationOutcome<Void, LongRef> result = communicator.setStaticField(type, name, fieldType, valueRef);
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.getStaticField(field);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeVoidOperationOutcome(out, result);
 	}
+	private void respondSetStaticField(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef field = readRef(in);
+		LongRef valueRef = readRef(in);
+
+		OperationOutcome<Void, Void, LongRef> result = communicator.setStaticField(field, valueRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeVoidResOperationOutcome(out, result);
+	}
 
 	private void respondCallInstanceMethod(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef returnType = readRef(in);
-		Args args = readArgs(in);
+		LongRef method = readRef(in);
 		LongRef receiverRef = readRef(in);
+		List<LongRef> args = readNRefs(in, methodParamCounts.get(method));
 
-		OperationOutcome<LongRef, LongRef> result = communicator.callInstanceMethod(type, name, returnType, args.params(), receiverRef, args.argRefs());
+		OperationOutcome<LongRef, LongRef, LongRef> result = communicator.callInstanceMethod(method, receiverRef, args);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeOperationOutcome(out, result);
 	}
 	private void respondGetInstanceField(DataInput in, DataOutput out) throws IOException
 	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef fieldType = readRef(in);
+		LongRef field = readRef(in);
 		LongRef receiverRef = readRef(in);
 
-		OperationOutcome<LongRef, LongRef> result = communicator.getInstanceField(type, name, fieldType, receiverRef);
-
-		writeThreadResponse(out, STUDENT_FINISHED);
-		writeOperationOutcome(out, result);
-	}
-	private void respondSetInstanceField(DataInput in, DataOutput out) throws IOException
-	{
-		LongRef type = readRef(in);
-		String name = in.readUTF();
-		LongRef fieldType = readRef(in);
-		LongRef receiverRef = readRef(in);
-		LongRef valueRef = readRef(in);
-
-		OperationOutcome<Void, LongRef> result = communicator.setInstanceField(type, name, fieldType, receiverRef, valueRef);
+		OperationOutcome<LongRef, Void, LongRef> result = communicator.getInstanceField(field, receiverRef);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeVoidOperationOutcome(out, result);
+	}
+	private void respondSetInstanceField(DataInput in, DataOutput out) throws IOException
+	{
+		LongRef field = readRef(in);
+		LongRef receiverRef = readRef(in);
+		LongRef valueRef = readRef(in);
+
+		OperationOutcome<Void, Void, LongRef> result = communicator.setInstanceField(field, receiverRef, valueRef);
+
+		writeThreadResponse(out, STUDENT_FINISHED);
+		writeVoidResOperationOutcome(out, result);
 	}
 
 	private void respondSend(DataInput in, DataOutput out) throws IOException
@@ -504,8 +525,9 @@ public class DataCommunicatorServer
 		writeRef(out, type);
 		out.writeUTF(name);
 		writeRef(out, returnType);
-		writeArgs(out, params, argRefs);
+		int paramCount = writeRefs(out, params);
 		writeRef(out, receiverRef);
+		writeNRefs(out, argRefs, paramCount);
 
 		out.flush();
 
@@ -529,45 +551,59 @@ public class DataCommunicatorServer
 		out.writeByte(threadResponse.encode());
 	}
 
-	private Args readArgs(DataInput in) throws IOException
+	private List<LongRef> readRefs(DataInput in) throws IOException
 	{
-		return DataCommunicatorUtils.readArgs(in, this::readRef);
+		return DataCommunicatorUtils.readList(in, this::readRef);
 	}
-	private void writeArgs(DataOutput out, List<LongRef> params, List<LongRef> argRefs) throws IOException
+	private List<LongRef> readNRefs(DataInput in, int n) throws IOException
 	{
-		DataCommunicatorUtils.writeArgs(out, params, argRefs, IllegalArgumentException::new, this::writeRef);
+		return DataCommunicatorUtils.readN(in, n, this::readRef);
+	}
+	private int writeRefs(DataOutput out, List<LongRef> refs) throws IOException
+	{
+		return DataCommunicatorUtils.writeList(out, refs, this::writeRef);
+	}
+	private void writeNRefs(DataOutput out, List<LongRef> refs, int n) throws IOException
+	{
+		DataCommunicatorUtils.writeN(out, refs, n, IllegalArgumentException::new, this::writeRef);
 	}
 
 	protected final LongRef readRef(DataInput in) throws IOException
 	{
 		return refManager.unmarshalReceivedId(in.readLong());
 	}
-	protected final void writeVoidOperationOutcome(DataOutput out, OperationOutcome<Void, LongRef> outcome) throws IOException
+	protected final void writeVoidResOperationOutcome(DataOutput out, OperationOutcome<Void, Void, LongRef> outcome) throws IOException
 	{
 		writeOperationOutcome(out, outcome, (o, v) ->
+		{}, (o, r) ->
 		{});
 	}
-	protected final void writeOperationOutcome(DataOutput out, OperationOutcome<LongRef, LongRef> outcome) throws IOException
+	protected final void writeVoidOperationOutcome(DataOutput out, OperationOutcome<LongRef, Void, LongRef> outcome) throws IOException
 	{
-		writeOperationOutcome(out, outcome, this::writeRef);
+		writeOperationOutcome(out, outcome, this::writeRef, (o, r) ->
+		{});
 	}
-	private final <R> void writeOperationOutcome(DataOutput out, OperationOutcome<R, LongRef> outcome,
-			IOBiConsumer<DataOutput, R> writeRef) throws IOException
+	protected final void writeOperationOutcome(DataOutput out, OperationOutcome<LongRef, LongRef, LongRef> outcome) throws IOException
+	{
+		writeOperationOutcome(out, outcome, this::writeRef, this::writeRef);
+	}
+	private final <R, T> void writeOperationOutcome(DataOutput out, OperationOutcome<R, T, LongRef> outcome,
+			IOBiConsumer<DataOutput, R> writeRef, IOBiConsumer<DataOutput, T> writeThrowable) throws IOException
 	{
 		out.writeByte(outcome.kind().encode());
 		switch(outcome.kind())
 		{
-			case RESULT -> writeRef.accept(out, ((OperationOutcome.Result<R, LongRef>) outcome).returnValue());
+			case RESULT -> writeRef.accept(out, ((OperationOutcome.Result<R, T, LongRef>) outcome).returnValue());
 			case SUCCESS_WITHOUT_RESULT ->
 			{
 				// nothing to do
 			}
-			case THROWN -> writeRef.accept(out, ((OperationOutcome.Thrown<R, LongRef>) outcome).thrownThrowable());
-			case CLASS_NOT_FOUND -> out.writeUTF(((OperationOutcome.ClassNotFound<R, LongRef>) outcome).classname());
+			case THROWN -> writeThrowable.accept(out, ((OperationOutcome.Thrown<R, T, LongRef>) outcome).thrownThrowable());
+			case CLASS_NOT_FOUND -> out.writeUTF(((OperationOutcome.ClassNotFound<R, T, LongRef>) outcome).classname());
 			case FIELD_NOT_FOUND ->
 			{
-				OperationOutcome.FieldNotFound<R, LongRef> fieldNotFound =
-						(OperationOutcome.FieldNotFound<R, LongRef>) outcome;
+				OperationOutcome.FieldNotFound<R, T, LongRef> fieldNotFound =
+						(OperationOutcome.FieldNotFound<R, T, LongRef>) outcome;
 				writeRef(out, fieldNotFound.type());
 				out.writeUTF(fieldNotFound.fieldName());
 				writeRef(out, fieldNotFound.fieldType());
@@ -575,57 +611,41 @@ public class DataCommunicatorServer
 			}
 			case METHOD_NOT_FOUND ->
 			{
-				OperationOutcome.MethodNotFound<R, LongRef> methodNotFound =
-						(OperationOutcome.MethodNotFound<R, LongRef>) outcome;
+				OperationOutcome.MethodNotFound<R, T, LongRef> methodNotFound =
+						(OperationOutcome.MethodNotFound<R, T, LongRef>) outcome;
 				writeRef(out, methodNotFound.type());
 				out.writeUTF(methodNotFound.methodName());
 				writeRef(out, methodNotFound.returnType());
-				List<LongRef> parameters = methodNotFound.parameters();
-				int parametersSize = parameters.size();
-				out.writeInt(parametersSize);
-				for(int i = 0; i < parametersSize; i ++)
-					writeRef(out, parameters.get(i));
+				writeRefs(out, methodNotFound.parameters());
 				out.writeBoolean(methodNotFound.isStatic());
 			}
 			case CONSTRUCTOR_NOT_FOUND ->
 			{
-				OperationOutcome.ConstructorNotFound<R, LongRef> constructorNotFound =
-						(OperationOutcome.ConstructorNotFound<R, LongRef>) outcome;
+				OperationOutcome.ConstructorNotFound<R, T, LongRef> constructorNotFound =
+						(OperationOutcome.ConstructorNotFound<R, T, LongRef>) outcome;
 				writeRef(out, constructorNotFound.type());
-				List<LongRef> parameters = constructorNotFound.parameters();
-				int parametersSize = parameters.size();
-				out.writeInt(parametersSize);
-				for(int i = 0; i < parametersSize; i ++)
-					writeRef(out, parameters.get(i));
+				writeRefs(out, constructorNotFound.parameters());
 			}
-			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CALLED ->
+			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED ->
 			{
-				OperationOutcome.ConstructorOfAbstractClassCalled<R, LongRef> constructorOfAbstractClassCalled =
-						(OperationOutcome.ConstructorOfAbstractClassCalled<R, LongRef>) outcome;
+				OperationOutcome.ConstructorOfAbstractClassCreated<R, T, LongRef> constructorOfAbstractClassCalled =
+						(OperationOutcome.ConstructorOfAbstractClassCreated<R, T, LongRef>) outcome;
 				writeRef(out, constructorOfAbstractClassCalled.type());
-				List<LongRef> parameters = constructorOfAbstractClassCalled.parameters();
-				int parametersSize = parameters.size();
-				out.writeInt(parametersSize);
-				for(int i = 0; i < parametersSize; i ++)
-					writeRef(out, parameters.get(i));
+				writeRefs(out, constructorOfAbstractClassCalled.parameters());
 			}
 			case ARRAY_INDEX_OUT_OF_BOUNDS ->
 			{
-				OperationOutcome.ArrayIndexOutOfBounds<R, LongRef> arrayIndexOutOfBounds =
-						(OperationOutcome.ArrayIndexOutOfBounds<R, LongRef>) outcome;
+				OperationOutcome.ArrayIndexOutOfBounds<R, T, LongRef> arrayIndexOutOfBounds =
+						(OperationOutcome.ArrayIndexOutOfBounds<R, T, LongRef>) outcome;
 				out.writeInt(arrayIndexOutOfBounds.index());
 				out.writeInt(arrayIndexOutOfBounds.length());
 			}
-			case ARRAY_SIZE_NEGATIVE -> out.writeInt(((OperationOutcome.ArraySizeNegative<R, LongRef>) outcome).size());
+			case ARRAY_SIZE_NEGATIVE -> out.writeInt(((OperationOutcome.ArraySizeNegative<R, T, LongRef>) outcome).size());
 			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY ->
 			{
-				ArraySizeNegativeInMultiArray<R, LongRef> arraySizeNegativeInMultiArray =
-						(OperationOutcome.ArraySizeNegativeInMultiArray<R, LongRef>) outcome;
-				List<Integer> dimensions = arraySizeNegativeInMultiArray.dimensions();
-				int dimensionsSize = dimensions.size();
-				out.writeInt(dimensionsSize);
-				for(int i = 0; i < dimensionsSize; i ++)
-					out.writeInt(dimensions.get(i));
+				ArraySizeNegativeInMultiArray<R, T, LongRef> arraySizeNegativeInMultiArray =
+						(OperationOutcome.ArraySizeNegativeInMultiArray<R, T, LongRef>) outcome;
+				DataCommunicatorUtils.writeList(out, arraySizeNegativeInMultiArray.dimensions(), DataOutput::writeInt);
 			}
 		};
 	}

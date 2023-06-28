@@ -18,7 +18,7 @@ import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
-// In a real exercise, it wouldn't be neccessary to use a different name for student-side instance and implementation
+// In a real exercise, it wouldn't be necessary to use a different name for student-side instance and implementation
 // because both classes never get loaded in the same JVM anyway.
 @OverrideStudentSideName("net.haspamelodica.charon.MyClassImpl")
 @UseSerDes(StringSerDes.class)

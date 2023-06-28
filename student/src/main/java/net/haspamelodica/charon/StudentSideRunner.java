@@ -21,7 +21,8 @@ public class StudentSideRunner
 	{
 		try(Communication communication = Communication.open(CommunicationArgsParser.parse(args)))
 		{
-			run(communication);
+			//TODO maybe make classloader configurable?
+			run(communication, null);
 		} catch(IncorrectUsageException e)
 		{
 			e.printStackTrace();
@@ -29,18 +30,20 @@ public class StudentSideRunner
 		}
 	}
 
-	public static void run(Communication communication) throws IOException
+	public static void run(Communication communication, ClassLoader studentClassesClassloader) throws IOException
 	{
-		run(communication.getIn(), communication.getOut(), communication.getLogging());
+		run(communication.getIn(), communication.getOut(), communication.getLogging(), studentClassesClassloader);
 	}
 
-	public static void run(InputStream in, OutputStream out, boolean logging) throws IOException
+	public static void run(InputStream in, OutputStream out, boolean logging, ClassLoader studentClassesClassloader) throws IOException
 	{
 		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
 				wrapTypeCaching(
-						maybeWrapLoggingExtServer(logging, CommunicationLoggerParams.DEFAULT,
+						// We don't need ALL_TO_STRING, because we are on the server side:
+						// The only situation where an object is logged is in ClientSideTransceiver.
+						maybeWrapLoggingExtServer(logging, CommunicationLoggerParams.DEFAULT_REF_TO_STRING,
 								wrapReftransExtServer(
-										createDirectCommServer()))));
+										createDirectCommServer(studentClassesClassloader)))));
 		server.run();
 	}
 }

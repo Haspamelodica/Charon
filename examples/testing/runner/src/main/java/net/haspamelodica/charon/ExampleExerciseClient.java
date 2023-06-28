@@ -54,7 +54,7 @@ public class ExampleExerciseClient
 		run(new StudentSideImpl<>(
 				wrapTypeCaching(
 						maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
-								createDirectCommClient()))));
+								createDirectCommClient(null)))));
 	}
 
 	private static void runDataSameJVM() throws InterruptedException, IOException
@@ -69,9 +69,9 @@ public class ExampleExerciseClient
 					serverConnected.release();
 					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
 							wrapTypeCaching(
-									maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: "),
+									maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: ", true, true),
 											wrapReftransExtServer(
-													createDirectCommServer()))));
+													createDirectCommServer(null)))));
 					server.run();
 				} catch(IOException e)
 				{
@@ -87,7 +87,7 @@ public class ExampleExerciseClient
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
 			run(new StudentSideImpl<>(
 					wrapTypeCaching(
-							maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: "),
+							maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: ", true, true),
 									client))));
 			client.shutdown();
 		}
@@ -103,7 +103,7 @@ public class ExampleExerciseClient
 			{
 				run(new StudentSideImpl<>(
 						wrapTypeCaching(
-								maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT,
+								maybeWrapLoggingIntClient(LOGGING, CommunicationLoggerParams.DEFAULT_ALL_TO_STRING,
 										client))));
 			} finally
 			{

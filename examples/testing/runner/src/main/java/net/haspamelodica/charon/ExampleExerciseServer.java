@@ -41,9 +41,9 @@ public class ExampleExerciseServer
 		{
 			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
 					wrapTypeCaching(
-							maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT,
+							maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT_ALL_TO_STRING,
 									wrapReftransExtServer(
-											createDirectCommServer()))));
+											createDirectCommServer(null)))));
 			server.run();
 		}
 

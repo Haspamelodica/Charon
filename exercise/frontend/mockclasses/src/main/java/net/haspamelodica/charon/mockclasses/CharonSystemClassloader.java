@@ -15,7 +15,7 @@ import java.util.stream.Collectors;
 
 import net.haspamelodica.charon.mockclasses.classloaders.DynamicInterfaceProvider;
 import net.haspamelodica.charon.mockclasses.impl.ClasspathBasedDynamicInterfaceProvider;
-import net.haspamelodica.charon.mockclasses.impl.WrappedMockclassesClassLoader;
+import net.haspamelodica.charon.mockclasses.impl.CloseableMockclassesClassLoader;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
@@ -98,10 +98,10 @@ public class CharonSystemClassloader extends URLClassLoader
 
 		DynamicInterfaceProvider interfaceProvider = new ClasspathBasedDynamicInterfaceProvider(dynamicInterfaceClasspath.toArray(URL[]::new));
 
-		WrappedMockclassesClassLoader wrappedMockclassesClassLoader;
+		CloseableMockclassesClassLoader closeableMockclassesClassLoader;
 		try
 		{
-			wrappedMockclassesClassLoader = new WrappedMockclassesClassLoader(parent, interfaceProvider, communicatorArgs);
+			closeableMockclassesClassLoader = new CloseableMockclassesClassLoader(parent, interfaceProvider, communicatorArgs);
 		} catch(IncorrectUsageException e)
 		{
 			System.err.println("Incorrect syntax of \"" + COMMUNICATIONARGS_PARAM_NAME + "\": " + e.getMessage());
@@ -114,14 +114,14 @@ public class CharonSystemClassloader extends URLClassLoader
 		{
 			try
 			{
-				wrappedMockclassesClassLoader.close();
+				closeableMockclassesClassLoader.close();
 			} catch(IOException e)
 			{
 				throw new UncheckedIOException(e);
 			}
 		}));
 
-		return wrappedMockclassesClassLoader.getClassloader();
+		return closeableMockclassesClassLoader.getClassloader();
 	}
 
 	/**

@@ -57,7 +57,8 @@ public class DataCommunicatorServer
 	private final AtomicBoolean							running;
 
 	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorSupplier<LongRef,
-			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>> communicatorSupplier)
+			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>,
+			RefTranslatorCommunicatorCallbacks<LongRef>> communicatorSupplier)
 	{
 		// write magic number for "no compilation error"
 		try

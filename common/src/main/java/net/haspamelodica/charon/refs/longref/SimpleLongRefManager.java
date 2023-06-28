@@ -6,7 +6,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 
-// TODO reintroduce keping alive only neccessary refs
+// TODO reintroduce keeping alive only necessary refs
 public class SimpleLongRefManager implements LongRefManager<LongRef>
 {
 	private final boolean				managedRefsHaveNegativeIds;

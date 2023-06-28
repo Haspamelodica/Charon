@@ -8,6 +8,7 @@ import static net.haspamelodica.charon.impl.StudentSideImplUtils.handlerFor;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.argsToList;
 import static net.haspamelodica.charon.reflection.ReflectionUtils.createProxyInstance;
 
+import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.lang.reflect.Parameter;
@@ -56,9 +57,22 @@ public final class StudentSideInstanceBuilder<REF, TYPEREF extends REF, METHODRE
 		this.methodHandlers = new LazyValue<>(this::createMethodHandlers);
 	}
 
-	public SI createInstance()
+	public SI createInstance(REF ref)
 	{
-		return createProxyInstance(instanceClass, (proxy, method, args) -> methodHandlers.get().get(method).invoke(proxy, args));
+		return createProxyInstance(instanceClass, new InvocationHandler()
+		{
+			// This field is needed to avoid GC throwing away the ref until the SSI is unreachable.
+			//TODO if we store the ref either way, optimize away RefTranslator's backwardRefs map.
+			// The same goes for callbacks in the student side
+			@SuppressWarnings("unused")
+			private final Object refField = ref;
+
+			@Override
+			public Object invoke(Object proxy, Method method, Object[] args) throws Throwable
+			{
+				return methodHandlers.get().get(method).invoke(proxy, args);
+			}
+		});
 	}
 
 	private StudentSideInstanceKind.Kind checkInstanceClassAndGetInstanceKind()

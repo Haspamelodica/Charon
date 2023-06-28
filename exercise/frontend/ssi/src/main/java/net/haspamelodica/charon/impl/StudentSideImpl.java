@@ -23,8 +23,7 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedRef;
-import net.haspamelodica.charon.communicator.impl.reftranslating.UntypedUntranslatedTyperef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedTyperef;
 import net.haspamelodica.charon.exceptions.ExerciseCausedException;
 import net.haspamelodica.charon.exceptions.ForStudentException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
@@ -141,7 +140,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	{
 		// computeIfAbsent would be nicer algorithmically, but results in very ugly generic casts
 
-		// fast path. Not neccessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
+		// fast path. Not necessary to be synchronized (Map might be in an invalid state during put) since we use ConcurrentMap.
 		@SuppressWarnings("unchecked") // we only put corresponding pairs of classes and prototypes into the map
 		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP> prototypeBuilderGeneric =
 				(StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, SI, SP>) prototypeBuildersByPrototypeClass.get(prototypeClass);
@@ -256,12 +255,12 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return getOrCreatePrototypeBuilder(prototypeClassCasted);
 	}
 
-	private StudentSideInstance createRepresentationObject(UntypedUntranslatedRef untranslatedRef)
+	private StudentSideInstance createRepresentationObject(UntranslatedRef<REF, TYPEREF> untranslatedRef)
 	{
-		return lookupPrototypeBuilder(untranslatedRef.getType()).instanceBuilder.createInstance();
+		return lookupPrototypeBuilder(untranslatedRef.getType()).instanceBuilder.createInstance(untranslatedRef.ref());
 	}
 
-	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> lookupPrototypeBuilder(UntypedUntranslatedTyperef untranslatedTyperef)
+	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> lookupPrototypeBuilder(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
 	{
 		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
 		if(prototypeBuilders.stream().distinct().count() != 1)
@@ -274,9 +273,9 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		return prototypeBuilder;
 	}
 
-	private Stream<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> streamPrototypeBuilders(UntypedUntranslatedTyperef untranslatedTyperef)
+	private Stream<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> streamPrototypeBuilders(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
 	{
-		StudentSideTypeDescription<? extends UntypedUntranslatedTyperef> description = untranslatedTyperef.describe();
+		StudentSideTypeDescription<? extends UntranslatedTyperef<REF, TYPEREF>> description = untranslatedTyperef.describe();
 
 		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder = prototypeBuildersByStudentSideClassname.get(description.name());
 		if(prototypeBuilder != null)

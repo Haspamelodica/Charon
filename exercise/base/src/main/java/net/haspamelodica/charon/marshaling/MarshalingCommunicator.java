@@ -259,13 +259,14 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 		return marshaler.receiveOrThrow(CALL_CONSTRUCTOR, type, resultRef);
 	}
-	// Neccessary for the Mockclasses frontend
+	// Necessary for the Mockclasses frontend
 	public REF callConstructorExistingRepresentationObject(CONSTRUCTORREF constructor, List<Class<?>> params,
 			List<?> args, Object representationObject) throws SSX
 	{
 		REF resultRef = marshaler.handleOperationOutcome(CALL_CONSTRUCTOR, callConstructorRawRef(constructor, params, args));
 
-		marshaler.setRepresentationObjectRefPair(resultRef, representationObject);
+		//TODO is this forward or backward?
+		marshaler.setRepresentationObjectRefPairForward(resultRef, representationObject);
 		return resultRef;
 	}
 	private OperationOutcome<REF, ? extends REF, TYPEREF> callConstructorRawRef(CONSTRUCTORREF constructor, List<Class<?>> params, List<?> args)
@@ -307,7 +308,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 		return callInstanceMethodRawReceiver(method, returnType, params, receiverRef, args);
 	}
-	// Neccessary for the Mockclasses frontend
+	// Necessary for the Mockclasses frontend
 	public <T> T callInstanceMethodRawReceiver(METHODREF method, Class<T> returnType,
 			List<Class<?>> params, REF receiverRef, List<?> args) throws SSX
 	{

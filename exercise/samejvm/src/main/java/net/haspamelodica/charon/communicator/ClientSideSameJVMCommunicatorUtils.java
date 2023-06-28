@@ -20,9 +20,10 @@ public class ClientSideSameJVMCommunicatorUtils
 	 */
 	public static StudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
 			? extends ClientSideTransceiver<Object>, ? extends InternalCallbackManager<Object>>
-			createDirectCommClient(StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks)
+			createDirectCommClient(ClassLoader studentClassesClassloader,
+					StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks)
 	{
-		return new DirectSameJVMCommunicator<>(callbacks, directTcClient());
+		return new DirectSameJVMCommunicator<>(studentClassesClassloader, callbacks, directTcClient());
 	}
 
 	/**
@@ -34,9 +35,9 @@ public class ClientSideSameJVMCommunicatorUtils
 	 */
 	public static UninitializedStudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
 			ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
-			createDirectCommClient()
+			createDirectCommClient(ClassLoader studentClassesClassloader)
 	{
-		return DirectSameJVMCommunicator.createUninitializedCommunicator(directTcClient());
+		return DirectSameJVMCommunicator.createUninitializedCommunicator(studentClassesClassloader, directTcClient());
 	}
 
 	private static Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, ClientSideTransceiver<Object>> directTcClient()

@@ -1,19 +1,25 @@
 package net.haspamelodica.charon.communicator;
 
 import java.util.function.BiFunction;
+import java.util.function.Function;
 
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLogger;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.communicator.impl.logging.LoggingCommunicator;
 import net.haspamelodica.charon.communicator.impl.logging.LoggingExternalCallbackManager;
 import net.haspamelodica.charon.communicator.impl.logging.LoggingInternalCallbackManager;
+import net.haspamelodica.charon.communicator.impl.logging.LoggingRefTranslatorCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.impl.logging.LoggingRefTranslatorCommunicatorCallbacksWithCreateBackwardRef;
 import net.haspamelodica.charon.communicator.impl.logging.LoggingRefTranslatorCommunicatorSupplier;
 import net.haspamelodica.charon.communicator.impl.logging.LoggingUninitializedStudentSideCommunicator;
-import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslator;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacks;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorCallbacksWithCreateBackwardRef;
+import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorPartSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplier;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorCommunicatorSupplierImpl;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorExternalCallbackManagerImpl;
 import net.haspamelodica.charon.communicator.impl.reftranslating.RefTranslatorInternalCallbackManagerImpl;
+import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.communicator.impl.typecaching.TypeCachingCommunicator;
 
 public class CommunicatorUtils
@@ -24,9 +30,10 @@ public class CommunicatorUtils
 			REF_FROM,
 			TYPEREF_FROM extends REF_FROM,
 			TC_FROM extends Transceiver,
-			CM_TO extends CallbackManager>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
-			wrapTypeCaching(RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO> supplier)
+			CM_TO extends CallbackManager,
+			CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS>
+			wrapTypeCaching(RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS> supplier)
 	{
 		return (storeRefsIdentityBased, callbacks, refTranslatorCommunicatorCallbacks) -> new TypeCachingCommunicator<>(
 				supplier.createCommunicator(storeRefsIdentityBased, callbacks, refTranslatorCommunicatorCallbacks));
@@ -50,19 +57,57 @@ public class CommunicatorUtils
 		return new TypeCachingCommunicator<>(communicator);
 	}
 
+	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, TC_TO, CM_TO>
+			withReftransParamsFunctional(
+					boolean storeRefsIdentityBased,
+					Function<UntranslatedRef<?, ?>, REF_TO> createForwardRef,
+					Function<UntranslatedRef<?, ?>, REF_TO> createBackwardRef,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO,
+							RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>> supplier)
+	{
+		return withReftransParams(storeRefsIdentityBased,
+				RefTranslatorCommunicatorCallbacksWithCreateBackwardRef.fromFunctional(
+						createForwardRef, createBackwardRef),
+				supplier);
+	}
+
+	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, TC_TO, CM_TO>
+			withReftransParamsFunctional(
+					boolean storeRefsIdentityBased,
+					Function<UntranslatedRef<?, ?>, REF_TO> createForwardRef,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO,
+							RefTranslatorCommunicatorCallbacks<REF_TO>> supplier)
+	{
+		return withReftransParams(storeRefsIdentityBased,
+				RefTranslatorCommunicatorCallbacks.fromFunctional(createForwardRef), supplier);
+	}
+
+	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager,
+			CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>>
+			UninitializedStudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, TC_TO, CM_TO>
+			withReftransParams(
+					boolean storeRefsIdentityBased,
+					CALLBACKS refTranslatorCommunicatorCallbacks,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS> supplier)
+	{
+		return supplier.withReftransParameters(storeRefsIdentityBased, refTranslatorCommunicatorCallbacks);
+	}
+
 	public static <
 			REF_TO,
 			TC_TO extends Transceiver,
 			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
 			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM,
-			TC_FROM extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>>
+			TC_FROM extends Transceiver, CALLBACKS extends RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>, CALLBACKS>
 			wrapReftransInt(
 					UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
 							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
-					BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM,
-							? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver)
+					RefTranslatorCommunicatorPartSupplier<REF_TO,
+							REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+							TC_FROM, ? super CALLBACKS, TC_TO> createTransceiver)
 	{
 		return wrapReftrans(communicator, createTransceiver, reftransCmInt());
 	}
@@ -72,14 +117,14 @@ public class CommunicatorUtils
 			TC_TO extends Transceiver,
 			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
 			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM,
-			TC_FROM extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>>
+			TC_FROM extends Transceiver, CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>, CALLBACKS>
 			wrapReftransExt(
 					UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
 							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
-					BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM,
-							? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver)
+					RefTranslatorCommunicatorPartSupplier<REF_TO,
+							REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+							TC_FROM, ? super CALLBACKS, TC_TO> createTransceiver)
 	{
 		return wrapReftrans(communicator, createTransceiver, reftransCmExt());
 	}
@@ -87,38 +132,38 @@ public class CommunicatorUtils
 	public static <
 			REF_TO,
 			TC_TO extends Transceiver,
-			CM_TO extends CallbackManager,
+			CM_TO extends CallbackManager, CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>,
 			REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
 			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM,
 			TC_FROM extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS>
 			wrapReftrans(
 					UninitializedStudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
 							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, TC_FROM, InternalCallbackManager<REF_FROM>> communicator,
-					BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM,
-							? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, TC_TO> createTransceiver,
-					BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-							CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM,
-							? extends InternalCallbackManager<REF_FROM>>, RefTranslator<REF_TO, REF_FROM>, CM_TO> createCallbackManager)
+					RefTranslatorCommunicatorPartSupplier<REF_TO,
+							REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+							TC_FROM, ? super CALLBACKS, TC_TO> createTransceiver,
+					RefTranslatorCommunicatorPartSupplier<REF_TO,
+							REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+							TC_FROM, ? super CALLBACKS, CM_TO> createCallbackManager)
 	{
 		return new RefTranslatorCommunicatorSupplierImpl<>(communicator, createTransceiver, createCallbackManager);
 	}
 
 	private static <REF_TO, REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
 			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM, TC_FROM extends Transceiver>
-			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
-					RefTranslator<REF_TO, REF_FROM>, ExternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorPartSupplier<REF_TO,
+					REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					TC_FROM, RefTranslatorCommunicatorCallbacks<REF_TO>, ExternalCallbackManager<REF_TO>>
 			reftransCmExt()
 	{
 		return RefTranslatorExternalCallbackManagerImpl.supplier();
 	}
 	private static <REF_TO, REF_FROM, THROWABLEREF_FROM extends REF_FROM, TYPEREF_FROM extends REF_FROM,
 			CONSTRUCTORREF_FROM extends REF_FROM, METHODREF_FROM extends REF_FROM, FIELDREF_FROM extends REF_FROM, TC_FROM extends Transceiver>
-			BiFunction<StudentSideCommunicator<REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM,
-					CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM, ? extends TC_FROM, ? extends InternalCallbackManager<REF_FROM>>,
-					RefTranslator<REF_TO, REF_FROM>, InternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorPartSupplier<REF_TO,
+					REF_FROM, THROWABLEREF_FROM, TYPEREF_FROM, CONSTRUCTORREF_FROM, METHODREF_FROM, FIELDREF_FROM,
+					TC_FROM, RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>, InternalCallbackManager<REF_TO>>
 			reftransCmInt()
 	{
 		return RefTranslatorInternalCallbackManagerImpl.supplier();
@@ -153,9 +198,11 @@ public class CommunicatorUtils
 	}
 
 	public static <REF_TO, TC_TO extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>,
+					RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>>
 			maybeWrapLoggingInt(boolean logging, CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>> communicatorSupplier,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>,
+							RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>> communicatorSupplier,
 					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging)
 	{
 		if(!logging)
@@ -192,9 +239,10 @@ public class CommunicatorUtils
 	}
 
 	public static <REF_TO, TC_TO extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>, RefTranslatorCommunicatorCallbacks<REF_TO>>
 			maybeWrapLoggingExt(boolean logging, CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>> communicatorSupplier,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>,
+							RefTranslatorCommunicatorCallbacks<REF_TO>> communicatorSupplier,
 					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging)
 	{
 		if(!logging)
@@ -229,16 +277,18 @@ public class CommunicatorUtils
 		return wrapLogging(loggerParams, communicator, wrapTransceiverLogging, wrapCallbackManagerLogging);
 	}
 
-	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
+	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager,
+			CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS>
 			maybeWrapLogging(boolean logging, CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO> communicatorSupplier,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS> communicatorSupplier,
 					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging,
-					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging,
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CALLBACKS, CALLBACKS> wrapCallbacksLogging)
 	{
 		if(!logging)
 			return communicatorSupplier;
-		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, wrapCallbackManagerLogging);
+		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, wrapCallbackManagerLogging, wrapCallbacksLogging);
 	}
 
 	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
@@ -266,12 +316,14 @@ public class CommunicatorUtils
 	}
 
 	public static <REF_TO, TC_TO extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>,
+					RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>>
 			wrapLoggingInt(CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>> communicatorSupplier,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, InternalCallbackManager<REF_TO>,
+							RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>> communicatorSupplier,
 					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging)
 	{
-		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, loggingCmInt());
+		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, loggingCmInt(), loggingRefCbInt());
 	}
 
 	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
@@ -299,19 +351,21 @@ public class CommunicatorUtils
 	}
 
 	public static <REF_TO, TC_TO extends Transceiver>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>, RefTranslatorCommunicatorCallbacks<REF_TO>>
 			wrapLoggingExt(CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>> communicatorSupplier,
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, ExternalCallbackManager<REF_TO>,
+							RefTranslatorCommunicatorCallbacks<REF_TO>> communicatorSupplier,
 					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging)
 	{
-		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, loggingCmExt());
+		return wrapLogging(loggerParams, communicatorSupplier, wrapTransceiverLogging, loggingCmExt(), loggingRefCbExt());
 	}
 
 	public static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
 			TC extends Transceiver, CM extends CallbackManager>
 			StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, ? extends TC, ? extends CM>
 			wrapLogging(CommunicationLoggerParams loggerParams,
-					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, ? extends TC, ? extends CM> communicator,
+					StudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							? extends TC, ? extends CM> communicator,
 					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, TC, TC> wrapTransceiverLogging,
 					BiFunction<CommunicationLogger<REF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF>, CM, CM> wrapCallbackManagerLogging)
 	{
@@ -332,14 +386,36 @@ public class CommunicatorUtils
 		return new LoggingUninitializedStudentSideCommunicator<>(loggerParams, communicator, wrapTransceiverLogging, wrapCallbackManagerLogging);
 	}
 
-	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager>
-			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO>
+	public static <REF_TO, TC_TO extends Transceiver, CM_TO extends CallbackManager,
+			CALLBACKS extends RefTranslatorCommunicatorCallbacks<REF_TO>>
+			RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS>
 			wrapLogging(CommunicationLoggerParams loggerParams,
-					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO> communicatorSupplier,
-					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, TC_TO, TC_TO> wrapTransceiverLogging,
-					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>, CM_TO, CM_TO> wrapCallbackManagerLogging)
+					RefTranslatorCommunicatorSupplier<REF_TO, TC_TO, CM_TO, CALLBACKS> communicatorSupplier,
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>,
+							TC_TO, TC_TO> wrapTransceiverLogging,
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>,
+							CM_TO, CM_TO> wrapCallbackManagerLogging,
+					BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>,
+							CALLBACKS, CALLBACKS> wrapCallbacksLogging)
 	{
-		return new LoggingRefTranslatorCommunicatorSupplier<>(loggerParams, communicatorSupplier, wrapTransceiverLogging, wrapCallbackManagerLogging);
+		return new LoggingRefTranslatorCommunicatorSupplier<>(loggerParams, communicatorSupplier,
+				wrapTransceiverLogging, wrapCallbackManagerLogging, wrapCallbacksLogging);
+	}
+
+	private static <REF_TO> BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>,
+			RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>,
+			RefTranslatorCommunicatorCallbacksWithCreateBackwardRef<REF_TO>>
+			loggingRefCbInt()
+	{
+		return LoggingRefTranslatorCommunicatorCallbacksWithCreateBackwardRef::new;
+	}
+
+	private static <REF_TO> BiFunction<CommunicationLogger<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO>,
+			RefTranslatorCommunicatorCallbacks<REF_TO>,
+			RefTranslatorCommunicatorCallbacks<REF_TO>>
+			loggingRefCbExt()
+	{
+		return LoggingRefTranslatorCommunicatorCallbacks::new;
 	}
 
 	private static <REF, THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF>

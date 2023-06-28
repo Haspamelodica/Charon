@@ -2,7 +2,7 @@ package net.haspamelodica.charon.communicator.impl.reftranslating;
 
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 
-public class UntranslatedRef<REF, TYPEREF extends REF> implements UntypedUntranslatedRef
+public class UntranslatedRef<REF, TYPEREF extends REF>
 {
 	private final StudentSideCommunicator<REF, ?, TYPEREF, ?, ?, ?, ?, ?>	communicator;
 	private final REF														ref;

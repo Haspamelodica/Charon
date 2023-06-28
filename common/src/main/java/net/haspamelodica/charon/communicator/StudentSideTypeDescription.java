@@ -8,6 +8,8 @@ import static net.haspamelodica.charon.communicator.StudentSideTypeDescription.K
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import net.haspamelodica.charon.reflection.ReflectionUtils;
 
@@ -37,6 +39,27 @@ public record StudentSideTypeDescription<TYPEREF>(StudentSideTypeDescription.Kin
 			throw new IllegalArgumentException("Only classes, interfaces and arrays can have superinterfaces");
 		if(kind != ARRAY && componentTypeIfArray().isPresent())
 			throw new IllegalArgumentException("Only arrays can have a component type");
+	}
+
+	public String toString(Function<TYPEREF, String> typerefToString)
+	{
+		return switch(kind)
+		{
+			case PRIMITIVE -> name;
+			case CLASS -> "class " + name
+					+ superclass.map(typerefToString).map(s -> " extends " + s).orElse("")
+					+ superinterfacesToString("implements", typerefToString);
+			case INTERFACE -> "interface " + name
+					+ superinterfacesToString("extends", typerefToString);
+			case ARRAY -> "array " + name + "[" + typerefToString.apply(componentTypeIfArray.get()) + "]";
+		};
+	}
+
+	private String superinterfacesToString(String implementsMarker, Function<TYPEREF, String> typerefToString)
+	{
+		return superinterfaces.size() != 0
+				? " " + implementsMarker + " " + superinterfaces.stream().map(typerefToString).collect(Collectors.joining(", "))
+				: "";
 	}
 
 	public static enum Kind

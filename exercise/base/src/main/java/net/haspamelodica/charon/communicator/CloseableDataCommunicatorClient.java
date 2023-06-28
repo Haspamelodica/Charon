@@ -8,17 +8,17 @@ import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
-public class WrappedDataCommunicatorClient implements AutoCloseable
+public class CloseableDataCommunicatorClient implements AutoCloseable
 {
 	private final Communication							communication;
 	private final UninitializedDataCommunicatorClient	client;
 
-	public WrappedDataCommunicatorClient(String... args) throws IOException, InterruptedException, IncorrectUsageException
+	public CloseableDataCommunicatorClient(String... args) throws IOException, InterruptedException, IncorrectUsageException
 	{
 		this(Communication.open(CommunicationArgsParser.parse(args)));
 	}
 
-	public WrappedDataCommunicatorClient(Communication communication)
+	public CloseableDataCommunicatorClient(Communication communication)
 	{
 		this.communication = communication;
 		this.client = new UninitializedDataCommunicatorClient(communication.getIn(), communication.getOut());

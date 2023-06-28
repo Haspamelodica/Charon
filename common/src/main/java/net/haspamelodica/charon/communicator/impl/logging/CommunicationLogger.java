@@ -83,54 +83,69 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 		};
 	}
 
-	public String outcomeToString(OperationOutcome<?, ?, TYPEREF> outcome)
+	public String outcomeToStringVoidRes(OperationOutcome<Void, Void, TYPEREF> outcome)
+	{
+		return outcomeToString(outcome, o -> "", e -> "");
+	}
+	public String outcomeToStringVoid(OperationOutcome<? extends REF, Void, TYPEREF> outcome)
+	{
+		return outcomeToString(outcome, this::refToString, e -> "");
+	}
+	public String outcomeToString(OperationOutcome<? extends REF, ? extends REF, TYPEREF> outcome)
+	{
+		return outcomeToString(outcome, this::refToString, this::refToString);
+	}
+
+	public <RESULTREF, THROWABLEREF> String outcomeToString(OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF> outcome,
+			Function<RESULTREF, String> resultrefToString, Function<THROWABLEREF, String> throwablerefToString)
 	{
 		//TODO replace with pattern matching swich once those exist in Java
 		return switch(outcome.kind())
 		{
-			case RESULT -> String.valueOf(((OperationOutcome.Result<?, ?, TYPEREF>) outcome).returnValue());
+			case RESULT -> resultrefToString.apply(((OperationOutcome.Result<RESULTREF, THROWABLEREF, TYPEREF>) outcome).returnValue());
 			case SUCCESS_WITHOUT_RESULT -> "";
-			case THROWN -> "threw " + ((OperationOutcome.Thrown<?, ?, TYPEREF>) outcome).thrownThrowable().toString();
-			case CLASS_NOT_FOUND -> "not found: " + ((OperationOutcome.ClassNotFound<?, ?, TYPEREF>) outcome).classname();
+			case THROWN -> "threw " + ((OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>) outcome).thrownThrowable().toString();
+			case CLASS_NOT_FOUND -> "not found: " + ((OperationOutcome.ClassNotFound<RESULTREF, THROWABLEREF, TYPEREF>) outcome).classname();
 			case FIELD_NOT_FOUND ->
 			{
-				OperationOutcome.FieldNotFound<?, ?, TYPEREF> fieldNotFound =
-						(OperationOutcome.FieldNotFound<?, ?, TYPEREF>) outcome;
+				OperationOutcome.FieldNotFound<RESULTREF, THROWABLEREF, TYPEREF> fieldNotFound =
+						(OperationOutcome.FieldNotFound<RESULTREF, THROWABLEREF, TYPEREF>) outcome;
 				yield "not found: "
 						+ (fieldNotFound.isStatic() ? "static " : "") + typerefToString(fieldNotFound.fieldType()) + " "
 						+ typerefToString(fieldNotFound.type()) + "." + fieldNotFound.fieldName();
 			}
 			case METHOD_NOT_FOUND ->
 			{
-				OperationOutcome.MethodNotFound<?, ?, TYPEREF> methodNotFound =
-						(OperationOutcome.MethodNotFound<?, ?, TYPEREF>) outcome;
+				OperationOutcome.MethodNotFound<RESULTREF, THROWABLEREF, TYPEREF> methodNotFound =
+						(OperationOutcome.MethodNotFound<RESULTREF, THROWABLEREF, TYPEREF>) outcome;
 				yield "not found: "
 						+ (methodNotFound.isStatic() ? "static " : "") + typerefToString(methodNotFound.returnType()) + " "
 						+ typerefToString(methodNotFound.type()) + "." + methodNotFound.methodName() + typerefsToString(methodNotFound.parameters());
 			}
 			case CONSTRUCTOR_NOT_FOUND ->
 			{
-				OperationOutcome.ConstructorNotFound<?, ?, TYPEREF> constructorNotFound =
-						(OperationOutcome.ConstructorNotFound<?, ?, TYPEREF>) outcome;
+				OperationOutcome.ConstructorNotFound<RESULTREF, THROWABLEREF, TYPEREF> constructorNotFound =
+						(OperationOutcome.ConstructorNotFound<RESULTREF, THROWABLEREF, TYPEREF>) outcome;
 				yield "not found: "
 						+ "" + typerefToString(constructorNotFound.type()) + typerefsToString(constructorNotFound.parameters());
 			}
 			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED ->
 			{
-				OperationOutcome.ConstructorOfAbstractClassCreated<?, ?, TYPEREF> constructorOfAbstractClassCalled =
-						(OperationOutcome.ConstructorOfAbstractClassCreated<?, ?, TYPEREF>) outcome;
+				OperationOutcome.ConstructorOfAbstractClassCreated<RESULTREF, THROWABLEREF, TYPEREF> constructorOfAbstractClassCalled =
+						(OperationOutcome.ConstructorOfAbstractClassCreated<RESULTREF, THROWABLEREF, TYPEREF>) outcome;
 				yield "abstract constructor: "
 						+ typerefToString(constructorOfAbstractClassCalled.type()) + typerefsToString(constructorOfAbstractClassCalled.parameters());
 			}
 			case ARRAY_INDEX_OUT_OF_BOUNDS ->
 			{
-				OperationOutcome.ArrayIndexOutOfBounds<?, ?, TYPEREF> arrayIndexOutOfBounds =
-						(OperationOutcome.ArrayIndexOutOfBounds<?, ?, TYPEREF>) outcome;
+				OperationOutcome.ArrayIndexOutOfBounds<RESULTREF, THROWABLEREF, TYPEREF> arrayIndexOutOfBounds =
+						(OperationOutcome.ArrayIndexOutOfBounds<RESULTREF, THROWABLEREF, TYPEREF>) outcome;
 				yield "array index out of bounds: index " + arrayIndexOutOfBounds.index() + ", length " + arrayIndexOutOfBounds.length();
 			}
-			case ARRAY_SIZE_NEGATIVE -> "array size negative: " + ((OperationOutcome.ArraySizeNegative<?, ?, TYPEREF>) outcome).size();
+			case ARRAY_SIZE_NEGATIVE -> "array size negative: "
+					+ ((OperationOutcome.ArraySizeNegative<RESULTREF, THROWABLEREF, TYPEREF>) outcome).size();
 			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY -> "array size negative in multi array: "
-					+ ((OperationOutcome.ArraySizeNegativeInMultiArray<?, ?, TYPEREF>) outcome).dimensions();
+					+ ((OperationOutcome.ArraySizeNegativeInMultiArray<RESULTREF, THROWABLEREF, TYPEREF>) outcome).dimensions();
 		};
 	}
 
@@ -141,7 +156,7 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 
 	public String typerefToString(TYPEREF typeref)
 	{
-		return typeref != null ? "<T" + typeref + " " + typerefToTypeName(typeref) + ">" : "<null type>";
+		return typeref != null ? "<T" + refToString(typeref) + " " + typerefToTypeName(typeref) + ">" : "<null type>";
 	}
 
 	private String typerefToTypeName(TYPEREF typeref)
@@ -154,7 +169,7 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 		if(result.kind() == Kind.RESULT)
 		{
 			CONSTRUCTORREF constructorref = ((OperationOutcome.Result<CONSTRUCTORREF, ?, TYPEREF>) result).returnValue();
-			constructorsToString.put(constructorref, "<C" + constructorref + " " + constructorString + ">");
+			constructorsToString.put(constructorref, "<C" + refToString(constructorref) + " " + constructorString + ">");
 		}
 	}
 
@@ -163,7 +178,7 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 		if(result.kind() == Kind.RESULT)
 		{
 			METHODREF methodref = ((OperationOutcome.Result<METHODREF, ?, TYPEREF>) result).returnValue();
-			methodsToString.put(methodref, "<M" + methodref + " " + methodString + ">");
+			methodsToString.put(methodref, "<M" + refToString(methodref) + " " + methodString + ">");
 		}
 	}
 
@@ -172,7 +187,7 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 		if(result.kind() == Kind.RESULT)
 		{
 			FIELDREF fieldref = ((OperationOutcome.Result<FIELDREF, ?, TYPEREF>) result).returnValue();
-			fieldsToString.put(fieldref, "<F" + fieldref + " " + fieldString + ">");
+			fieldsToString.put(fieldref, "<F" + refToString(fieldref) + " " + fieldString + ">");
 		}
 	}
 
@@ -189,5 +204,20 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 	public String fieldToString(FIELDREF field)
 	{
 		return field != null ? fieldsToString.get(field) : "<null field>";
+	}
+
+	public String refsToString(List<REF> refs)
+	{
+		return refs.stream().map(this::refToString).collect(Collectors.joining(", ", "(", ")"));
+	}
+
+	public String refToString(REF ref)
+	{
+		return !params.useRefToString() ? "<ref>" : String.valueOf(ref);
+	}
+
+	public String objectToString(Object object)
+	{
+		return !params.useObjectToString() ? "<object>" : String.valueOf(object);
 	}
 }

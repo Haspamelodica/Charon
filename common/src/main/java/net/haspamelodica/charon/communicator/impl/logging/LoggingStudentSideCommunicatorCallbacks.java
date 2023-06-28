@@ -22,7 +22,7 @@ public class LoggingStudentSideCommunicatorCallbacks<REF, THROWABLEREF extends R
 	@Override
 	public String getCallbackInterfaceCn(REF ref)
 	{
-		logger.logEnterCallback("callback interface " + ref);
+		logger.logEnterCallback("callback interface " + r(ref));
 		String result = callbacks.getCallbackInterfaceCn(ref);
 		logger.logExitCallback(result);
 		return result;
@@ -32,7 +32,7 @@ public class LoggingStudentSideCommunicatorCallbacks<REF, THROWABLEREF extends R
 	public CallbackOperationOutcome<REF, THROWABLEREF> callCallbackInstanceMethod(
 			TYPEREF type, String name, TYPEREF returnType, List<TYPEREF> params, REF receiverRef, List<REF> argRefs)
 	{
-		logger.logEnterCallback("callback " + t(returnType) + " " + t(type) + "." + name + t(params) + ": " + receiverRef + ", " + argRefs);
+		logger.logEnterCallback("callback " + t(returnType) + " " + t(type) + "." + name + t(params) + ": " + r(receiverRef) + ", " + r(argRefs));
 		CallbackOperationOutcome<REF, THROWABLEREF> result = callbacks.callCallbackInstanceMethod(type, name, returnType, params, receiverRef, argRefs);
 		logger.logExitCallback(c(result));
 		return result;
@@ -51,5 +51,15 @@ public class LoggingStudentSideCommunicatorCallbacks<REF, THROWABLEREF extends R
 	protected String t(TYPEREF typeref)
 	{
 		return logger.typerefToString(typeref);
+	}
+
+	private String r(List<REF> refs)
+	{
+		return logger.refsToString(refs);
+	}
+
+	private String r(REF ref)
+	{
+		return logger.refToString(ref);
 	}
 }

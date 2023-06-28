@@ -229,7 +229,7 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		return getSerDesForStaticObjectClass(clazz) != null;
 	}
 
-	public void setRepresentationObjectRefPair(REF ref, Object representationObject)
+	public void setRepresentationObjectRefPairForward(REF ref, Object representationObject)
 	{
 		translator.setForwardRefTranslation(ref, representationObject);
 	}

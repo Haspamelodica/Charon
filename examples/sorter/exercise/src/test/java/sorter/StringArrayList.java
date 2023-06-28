@@ -19,7 +19,7 @@ public interface StringArrayList extends StudentSideInstance
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	// SerDeses (short for Serializer/Deserializer) allow transmitting entire objects safely to and from the student JVM.
 	// SerDeses to use have to be explicitly mentioned using UseSerDes. This can be done for an entire SSI or just for a specific method.
-	// No SerDeses are neccessary for SSIs.
+	// No SerDeses are necessary for SSIs.
 	@UseSerDes(StringSerDes.class)
 	public void add(String string);
 

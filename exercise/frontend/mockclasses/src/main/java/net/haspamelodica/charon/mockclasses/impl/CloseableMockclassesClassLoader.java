@@ -11,7 +11,7 @@ import net.bytebuddy.description.type.TypeDefinition;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
-import net.haspamelodica.charon.communicator.WrappedDataCommunicatorClient;
+import net.haspamelodica.charon.communicator.CloseableDataCommunicatorClient;
 import net.haspamelodica.charon.marshaling.MarshalingCommunicator;
 import net.haspamelodica.charon.marshaling.PrimitiveSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
@@ -27,19 +27,19 @@ import net.haspamelodica.charon.mockclasses.classloaders.RedefiningClassLoader;
 import net.haspamelodica.charon.util.LazyValue;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 
-public class WrappedMockclassesClassLoader implements AutoCloseable
+public class CloseableMockclassesClassLoader implements AutoCloseable
 {
-	private final WrappedDataCommunicatorClient	communicator;
+	private final CloseableDataCommunicatorClient	communicator;
 	private final ClassLoader					classloader;
 
-	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
+	public CloseableMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
 			Class<?>... forceDelegationClasses)
 			throws IOException, InterruptedException, IncorrectUsageException
 	{
-		this(parent, interfaceProvider, new WrappedDataCommunicatorClient(communicatorArgs), forceDelegationClasses);
+		this(parent, interfaceProvider, new CloseableDataCommunicatorClient(communicatorArgs), forceDelegationClasses);
 	}
-	public WrappedMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
-			WrappedDataCommunicatorClient communicator, Class<?>... forceDelegationClasses)
+	public CloseableMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider,
+			CloseableDataCommunicatorClient communicator, Class<?>... forceDelegationClasses)
 	{
 		this.communicator = communicator;
 		this.classloader = createMockclassesClassloader(parent, interfaceProvider, communicator.getClient(), forceDelegationClasses);

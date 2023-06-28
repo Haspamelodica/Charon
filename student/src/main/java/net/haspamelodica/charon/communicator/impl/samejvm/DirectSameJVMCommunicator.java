@@ -32,15 +32,19 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 				TC, InternalCallbackManager<Object>>,
 		InternalCallbackManager<Object>
 {
+	private final ClassLoader studentClassesClassloader;
+
 	private final StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks;
 
 	private final UnidirectionalMap<Object, Object> primitivesCache;
 
 	private final TC transceiver;
 
-	public DirectSameJVMCommunicator(StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks,
+	public DirectSameJVMCommunicator(ClassLoader studentClassesClassloader,
+			StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>> callbacks,
 			Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, TC> createTransceiver)
 	{
+		this.studentClassesClassloader = studentClassesClassloader;
 		this.callbacks = callbacks;
 		this.primitivesCache = UnidirectionalMap.builder().concurrent().build();
 		this.transceiver = createTransceiver.apply(this.callbacks);
@@ -55,7 +59,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	@Override
 	public OperationOutcome<Class<?>, Void, Class<?>> getTypeByName(String typeName)
 	{
-		return nameToClassWrapReflectiveAction(typeName);
+		return nameToClassWrapReflectiveAction(typeName, studentClassesClassloader);
 	}
 
 	@Override
@@ -196,7 +200,8 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	@Override
 	public Object createCallbackInstance(String interfaceCn)
 	{
-		OperationOutcome<Class<?>, Void, Class<?>> interfaceTypeReflectiveOperationOutcome = nameToClassWrapReflectiveAction(interfaceCn);
+		OperationOutcome<Class<?>, Void, Class<?>> interfaceTypeReflectiveOperationOutcome =
+				nameToClassWrapReflectiveAction(interfaceCn, studentClassesClassloader);
 		if(!(interfaceTypeReflectiveOperationOutcome instanceof OperationOutcome.Result<
 				Class<?>, Void, Class<?>> interfaceTypeReflectiveOperationOutcomeResult))
 			// Semantically, this can only be CLASS_NOT_FOUND.
@@ -229,7 +234,7 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 	private List<Object> argsToListAndLookupCachedPrimitives(List<Class<?>> params, Object[] args)
 	{
 		return IntStream
-				.range(0, args.length)
+				.range(0, params.size())
 				.mapToObj(i -> lookupCachedPrimitiveIfPrimitive(params.get(i), args[i]))
 				.toList();
 	}
@@ -260,10 +265,13 @@ public class DirectSameJVMCommunicator<TC extends Transceiver>
 		return primitivesCache.computeIfAbsent(primitive, Function.identity());
 	}
 
-	public static <TC extends Transceiver> UninitializedStudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
-			TC, InternalCallbackManager<Object>>
-			createUninitializedCommunicator(Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, TC> createTransceiver)
+	public static <TC extends Transceiver>
+			UninitializedStudentSideCommunicator<Object, Throwable, Class<?>, Constructor<?>, Method, Field,
+					TC, InternalCallbackManager<Object>>
+			createUninitializedCommunicator(
+					ClassLoader studentClassesClassloader,
+					Function<StudentSideCommunicatorCallbacks<Object, Throwable, Class<?>>, TC> createTransceiver)
 	{
-		return callbacks -> new DirectSameJVMCommunicator<>(callbacks, createTransceiver);
+		return callbacks -> new DirectSameJVMCommunicator<>(studentClassesClassloader, callbacks, createTransceiver);
 	}
 }

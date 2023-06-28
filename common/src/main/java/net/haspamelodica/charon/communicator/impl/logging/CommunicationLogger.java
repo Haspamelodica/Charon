@@ -152,22 +152,28 @@ public class CommunicationLogger<REF, TYPEREF extends REF, CONSTRUCTORREF extend
 	public void registerConstructor(OperationOutcome<CONSTRUCTORREF, ?, TYPEREF> result, String constructorString)
 	{
 		if(result.kind() == Kind.RESULT)
-			constructorsToString.put(((OperationOutcome.Result<CONSTRUCTORREF, ?, TYPEREF>) result).returnValue(),
-					constructorString);
+		{
+			CONSTRUCTORREF constructorref = ((OperationOutcome.Result<CONSTRUCTORREF, ?, TYPEREF>) result).returnValue();
+			constructorsToString.put(constructorref, "<C" + constructorref + " " + constructorString + ">");
+		}
 	}
 
 	public void registerMethod(OperationOutcome<METHODREF, ?, TYPEREF> result, String methodString)
 	{
 		if(result.kind() == Kind.RESULT)
-			methodsToString.put(((OperationOutcome.Result<METHODREF, ?, TYPEREF>) result).returnValue(),
-					methodString);
+		{
+			METHODREF methodref = ((OperationOutcome.Result<METHODREF, ?, TYPEREF>) result).returnValue();
+			methodsToString.put(methodref, "<M" + methodref + " " + methodString + ">");
+		}
 	}
 
 	public void registerField(OperationOutcome<FIELDREF, ?, TYPEREF> result, String fieldString)
 	{
 		if(result.kind() == Kind.RESULT)
-			fieldsToString.put(((OperationOutcome.Result<FIELDREF, ?, TYPEREF>) result).returnValue(),
-					fieldString);
+		{
+			FIELDREF fieldref = ((OperationOutcome.Result<FIELDREF, ?, TYPEREF>) result).returnValue();
+			fieldsToString.put(fieldref, "<F" + fieldref + " " + fieldString + ">");
+		}
 	}
 
 	public String constructorToString(CONSTRUCTORREF constructor)

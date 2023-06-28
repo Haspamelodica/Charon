@@ -99,7 +99,10 @@ public class DataCommunicatorClient
 	private final Queue<MultiplexedDataInputStream>		freeStreamsForReceiving;
 	private final Queue<MultiplexedDataOutputStream>	freeStreamsForSending;
 
-	private final LongRefManager<LongRef>				refManager;
+	private final LongRefManager<LongRef> refManager;
+
+	// Caching these param counts saves 4 bytes per method / constructor call, but needs to look up in these maps.
+	// Experimentally, this doesn't seem to make much of a difference.
 	private final UnidirectionalMap<LongRef, Integer>	constructorParamCounts;
 	private final UnidirectionalMap<LongRef, Integer>	methodParamCounts;
 
@@ -136,8 +139,8 @@ public class DataCommunicatorClient
 		this.freeStreamsForSending = new ConcurrentLinkedQueue<>();
 
 		this.refManager = new SimpleLongRefManager(true);
-		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().identityMap().weakKeys().build();
-		this.methodParamCounts = UnidirectionalMap.builder().concurrent().identityMap().weakKeys().build();
+		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
+		this.methodParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
 
 		this.threads = new ThreadLocal<>();
 		this.commandStreamLock = new Object();

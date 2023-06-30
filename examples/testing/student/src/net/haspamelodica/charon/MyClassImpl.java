@@ -19,6 +19,10 @@ public class MyClassImpl
 
 	private String myField;
 
+	public MyClassImpl()
+	{
+		this.myField = "set by student-side constructor";
+	}
 	public MyClassImpl(String myField)
 	{
 		this.myField = myField + " with changes by student-side constructor";

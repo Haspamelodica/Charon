@@ -47,7 +47,7 @@ See [Charon-CI-Images](https://github.com/Haspamelodica/Charon-CI-Images) for Do
 
 Charon consists of multiple Maven plugins, so Maven can be used to compile Charon.
 Charon also depends on
-[streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer),
+[exchanges](https://github.com/Haspamelodica/net.haspamelodica.exchanges),
 which unfortunately is not available from the Maven Central Hub,
 so you will have to build that project from source as well to build Charon.
 
@@ -59,7 +59,7 @@ For the Rationals example, follow these steps.
 The Maze and Sorter examples work analogously.
 
 1. Clone this repository and
-   [streammultiplexer](https://github.com/Haspamelodica/net.haspamelodica.streammultiplexer).
+   [exchanges](https://github.com/Haspamelodica/net.haspamelodica.exchanges).
 
 2. In Eclipse, import all pom.xml files from both repositories as "Existing Maven projects":
 

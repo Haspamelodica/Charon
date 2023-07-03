@@ -205,7 +205,7 @@ public class DataCommunicatorServer
 				return;
 
 			//TODO do we need to do something with this exception?
-			// I don't think so because once StreamMultiplexer or one of its streams throws any exception,
+			// I don't think so because once the exchange pool or one of its streams throws any exception,
 			// it will continue to throw that exception forever
 			throw new UncheckedIOException(e);
 		}

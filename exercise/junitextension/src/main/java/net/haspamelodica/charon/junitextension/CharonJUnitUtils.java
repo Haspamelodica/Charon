@@ -15,6 +15,8 @@ import net.haspamelodica.charon.studentsideinstances.ThrowableSSI;
 
 public class CharonJUnitUtils
 {
+	//TODO create simplified versions which only check student-side classname
+
 	/**
 	 * Like {@link #assertStudentThrows(StudentSide, Class, Runnable)},
 	 * but with a Class argument instead of a {@link StudentSidePrototype}.

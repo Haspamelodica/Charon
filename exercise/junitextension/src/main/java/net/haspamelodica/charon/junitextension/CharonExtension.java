@@ -27,11 +27,12 @@ import org.junit.jupiter.api.extension.InvocationInterceptor;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
-import org.junit.jupiter.api.extension.support.TypeBasedParameterResolver;
 
 import net.haspamelodica.charon.CloseableDataCommStudentSide;
 import net.haspamelodica.charon.CloseableStudentSide;
 import net.haspamelodica.charon.StudentSide;
+import net.haspamelodica.charon.StudentSideInstance;
+import net.haspamelodica.charon.StudentSidePrototype;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
@@ -48,10 +49,10 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
  * making an instance of {@link StudentSide} accessible to test code.
  * The extension connects with the student side according to the JUnit5 configuration parameter {@value #COMMUNICATIONARGS_PARAM_NAME}.
  */
-public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
+public class CharonExtension implements ParameterResolver
 {
 	//TODO let user choose these
-	private static final boolean	TYPECACHING	= false;
+	private static final boolean	TYPECACHING	= true;
 	private static final boolean	LOGGING		= false;
 	private static final boolean	REFTRANS	= false;
 
@@ -68,9 +69,32 @@ public class CharonExtension extends TypeBasedParameterResolver<StudentSide>
 	private static StudentSide	studentSide		= null;
 
 	@Override
-	public StudentSide resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+	public boolean supportsParameter(ParameterContext parameterContext, ExtensionContext extensionContext) throws ParameterResolutionException
 	{
-		return getStudentSide(extensionContext);
+		Class<?> parameterType = parameterContext.getParameter().getType();
+		return parameterType.equals(StudentSide.class) || StudentSidePrototype.class.isAssignableFrom(parameterType);
+	}
+
+	@Override
+	public Object resolveParameter(ParameterContext parameterContext, ExtensionContext extensionContext)
+	{
+		Class<?> parameterType = parameterContext.getParameter().getType();
+		if(parameterType.equals(StudentSide.class))
+			return getStudentSide(extensionContext);
+
+		if(StudentSidePrototype.class.isAssignableFrom(parameterType))
+			return createPrototype(getStudentSide(extensionContext), parameterType);
+
+		throw new ParameterResolutionException("Unresolvable parameter type: " + parameterType);
+	}
+
+	// extracted to method so cast is expressible in Java
+	private static <SI extends StudentSideInstance, SP extends StudentSidePrototype<SI>> SP
+			createPrototype(StudentSide studentSide, Class<?> parameterType)
+	{
+		@SuppressWarnings("unchecked")
+		Class<SP> parameterTypeCasted = (Class<SP>) parameterType;
+		return studentSide.createPrototype(parameterTypeCasted);
 	}
 
 	private StudentSide getStudentSide(ExtensionContext extensionContext)

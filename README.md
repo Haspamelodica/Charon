@@ -159,7 +159,7 @@ in both the student-side and exercise-side launch configurations accordingly; fo
 [CommunicationArgsParser](https://github.com/Haspamelodica/Charon/blob/master/common/src/main/java/net/haspamelodica/charon/utils/communication/CommunicationArgsParser.java#L119-L122),
 and take inspiration from how Charon-CI invokes tests:
 [exercise side](https://github.com/Haspamelodica/Charon-CI/blob/main/exercise/run_in_docker.sh#L3),
-[student side](https://github.com/Haspamelodica/Charon-CI/blob/main/student/pom.xml#L43).
+[student side](https://github.com/Haspamelodica/Charon-CI/blob/main/student/run_in_docker.sh#L8).
 
 If both the student side and exercise freeze without doing anything,
 make sure the pipes are specified in the same order for both the student and exercise side, like in Charon-CI,

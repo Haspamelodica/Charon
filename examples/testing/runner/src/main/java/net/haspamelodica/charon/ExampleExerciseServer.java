@@ -14,6 +14,7 @@ import java.net.Socket;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
+import net.haspamelodica.exchanges.Exchange;
 
 // TODO this sometimes crashes
 public class ExampleExerciseServer
@@ -39,7 +40,7 @@ public class ExampleExerciseServer
 
 		try(ServerSocket serverSocket = new ServerSocket(PORT); Socket sock = serverSocket.accept())
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(sock.getInputStream(), sock.getOutputStream(),
+			DataCommunicatorServer server = new DataCommunicatorServer(new Exchange(sock.getInputStream(), sock.getOutputStream()),
 					wrapTypeCaching(
 							maybeWrapLoggingExtServer(LOGGING, CommunicationLoggerParams.DEFAULT_ALL_TO_STRING,
 									wrapReftransExtServer(

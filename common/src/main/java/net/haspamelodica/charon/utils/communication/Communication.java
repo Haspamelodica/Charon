@@ -1,14 +1,13 @@
 package net.haspamelodica.charon.utils.communication;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
+
+import net.haspamelodica.exchanges.Exchange;
 
 public interface Communication extends AutoCloseable
 {
 	public boolean getLogging();
-	public InputStream getIn();
-	public OutputStream getOut();
+	public Exchange getExchange();
 
 	@Override
 	public void close() throws IOException;

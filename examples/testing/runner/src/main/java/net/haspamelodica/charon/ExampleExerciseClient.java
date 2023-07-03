@@ -9,17 +9,16 @@ import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
 import java.io.IOException;
-import java.io.PipedInputStream;
-import java.io.PipedOutputStream;
 import java.io.UncheckedIOException;
 import java.net.Socket;
 import java.net.UnknownHostException;
-import java.util.concurrent.Semaphore;
 
 import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.impl.StudentSideImpl;
+import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.util.AutoClosablePair;
 
 public class ExampleExerciseClient
 {
@@ -35,7 +34,7 @@ public class ExampleExerciseClient
 		DIRECT, DATA_SAME_JVM, DATA_OTHER_JVM;
 	}
 
-	public static void main(String[] args) throws IOException, InterruptedException
+	public static void main(String[] args) throws Exception
 	{
 		// An instance of StudentSide will at some point be provided by the framework, not created by the exercise.
 		// Also, Charon would not use a DirectSameJVMCommunicator (or DataCommunicatorServer) in the exercise JVM.
@@ -57,17 +56,15 @@ public class ExampleExerciseClient
 								createDirectCommClient(null)))));
 	}
 
-	private static void runDataSameJVM() throws InterruptedException, IOException
+	private static void runDataSameJVM() throws Exception
 	{
-		try(PipedInputStream clientIn = new PipedInputStream(); PipedOutputStream clientOut = new PipedOutputStream())
+		try(AutoClosablePair<Exchange, Exchange> exchangePair = Exchange.openPiped())
 		{
-			Semaphore serverConnected = new Semaphore(0);
 			new Thread(() ->
 			{
-				try(PipedInputStream serverIn = new PipedInputStream(clientOut); PipedOutputStream serverOut = new PipedOutputStream(clientIn))
+				try
 				{
-					serverConnected.release();
-					DataCommunicatorServer server = new DataCommunicatorServer(serverIn, serverOut,
+					DataCommunicatorServer server = new DataCommunicatorServer(exchangePair.a(),
 							wrapTypeCaching(
 									maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: ", true, true),
 											wrapReftransExtServer(
@@ -76,15 +73,9 @@ public class ExampleExerciseClient
 				} catch(IOException e)
 				{
 					throw new UncheckedIOException(e);
-				} finally
-				{
-					// Might release twice; doesn't matter
-					serverConnected.release();
 				}
 			}).start();
-			// wait for the server to create PipedOutputStreams
-			serverConnected.acquire();
-			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(clientIn, clientOut);
+			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(exchangePair.b());
 			run(new StudentSideImpl<>(
 					wrapTypeCaching(
 							maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: ", true, true),
@@ -98,7 +89,7 @@ public class ExampleExerciseClient
 		try(Socket sock = new Socket(HOST, PORT))
 		{
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(
-					sock.getInputStream(), sock.getOutputStream());
+					new Exchange(sock.getInputStream(), sock.getOutputStream()));
 			try
 			{
 				run(new StudentSideImpl<>(

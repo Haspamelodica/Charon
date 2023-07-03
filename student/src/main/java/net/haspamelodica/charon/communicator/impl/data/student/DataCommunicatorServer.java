@@ -7,11 +7,10 @@ import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.GET
 import static net.haspamelodica.charon.communicator.impl.data.ThreadResponse.STUDENT_FINISHED;
 
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -25,7 +24,6 @@ import net.haspamelodica.charon.communicator.ServerSideTransceiver;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
-import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.IOBiConsumer;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
@@ -38,39 +36,39 @@ import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
-import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
-import net.haspamelodica.streammultiplexer.ClosedException;
-import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
-import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
-import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
+import net.haspamelodica.exchanges.DataExchange;
+import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.ExchangePool;
+import net.haspamelodica.exchanges.multiplexed.ClosedException;
+import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class DataCommunicatorServer
 {
 	private final StudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef, ? extends ServerSideTransceiver<LongRef>,
 			? extends ExternalCallbackManager<LongRef>> communicator;
 
-	protected final DataStreamMultiplexer				multiplexer;
+	protected final ExchangePool						exchangePool;
 	private final LongRefManager<LongRef>				refManager;
 	private final UnidirectionalMap<LongRef, Integer>	constructorParamCounts;
 	private final UnidirectionalMap<LongRef, Integer>	methodParamCounts;
 	private final ThreadLocal<ExerciseSideThread>		threads;
 	private final AtomicBoolean							running;
 
-	public DataCommunicatorServer(InputStream rawIn, OutputStream rawOut, RefTranslatorCommunicatorSupplier<LongRef,
+	public DataCommunicatorServer(Exchange rawExchange, RefTranslatorCommunicatorSupplier<LongRef,
 			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>,
 			RefTranslatorCommunicatorCallbacks<LongRef>> communicatorSupplier)
 	{
 		// write magic number for "no compilation error"
 		try
 		{
-			rawOut.write((byte) 's');
-			rawOut.flush();
+			rawExchange.out().write((byte) 's');
+			rawExchange.out().flush();
 		} catch(IOException e)
 		{
 			throw new UncheckedIOException("Error while writing compilation error marker", e);
 		}
 
-		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
+		this.exchangePool = new MultiplexedExchangePool(rawExchange);
 		this.refManager = new SimpleLongRefManager(false);
 		this.communicator = communicatorSupplier.createCommunicator(false,
 				new StudentSideCommunicatorCallbacks<>()
@@ -121,7 +119,8 @@ public class DataCommunicatorServer
 	public void run() throws IOException
 	{
 		running.set(true);
-		MultiplexedDataInputStream commandIn = multiplexer.getIn(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
+		DataExchange threadIndependentCommandExchange = createDataExchange();
+		DataInputStream commandIn = threadIndependentCommandExchange.in();
 		try
 		{
 			loop: for(;;)
@@ -138,10 +137,9 @@ public class DataCommunicatorServer
 			}
 			running.set(false);
 			// notify exercise side we received the shutdown signal
-			MultiplexedDataOutputStream commandOut = multiplexer.getOut(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
-			commandOut.writeByte(SHUTDOWN_FINISHED.encode());
-			commandOut.flush();
-			multiplexer.close();
+			threadIndependentCommandExchange.out().writeByte(SHUTDOWN_FINISHED.encode());
+			threadIndependentCommandExchange.out().flush();
+			exchangePool.close();
 		} catch(RuntimeException e)
 		{
 			//TODO log to somewhere instead of rethrowing
@@ -149,8 +147,10 @@ public class DataCommunicatorServer
 		}
 	}
 
-	private void handleExerciseSideCommandsUntilFinished(DataInput in, DataOutputStream out)
+	private void handleExerciseSideCommandsUntilFinished(DataExchange control)
 	{
+		DataInputStream in = control.in();
+		DataOutputStream out = control.out();
 		try
 		{
 			for(;;)
@@ -451,9 +451,9 @@ public class DataCommunicatorServer
 	private void respondSend(DataInput in, DataOutput out) throws IOException
 	{
 		LongRef serdesRef = readRef(in);
-		int serdesInID = in.readInt();
+		DataInputStream serdesIn = getExerciseSideThread().data().in();
 
-		LongRef result = communicator.getTransceiver().send(serdesRef, multiplexer.getIn(serdesInID));
+		LongRef result = communicator.getTransceiver().send(serdesRef, serdesIn);
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		writeRef(out, result);
@@ -463,7 +463,7 @@ public class DataCommunicatorServer
 	{
 		LongRef serdesRef = readRef(in);
 		LongRef objRef = readRef(in);
-		MultiplexedDataOutputStream serdesOut = multiplexer.getOut(in.readInt());
+		DataOutputStream serdesOut = getExerciseSideThread().data().out();
 
 		writeThreadResponse(out, STUDENT_FINISHED);
 		out.flush();
@@ -481,15 +481,15 @@ public class DataCommunicatorServer
 		writeThreadResponse(out, STUDENT_FINISHED);
 	}
 
-	private void respondNewThread(MultiplexedDataInputStream commandIn) throws ClosedException, IOException
+	private void respondNewThread(DataInputStream commandIn) throws ClosedException, IOException
 	{
-		MultiplexedDataOutputStream out = multiplexer.getOut(commandIn.readInt());
-		MultiplexedDataInputStream in = multiplexer.getIn(commandIn.readInt());
+		DataExchange control = createDataExchange();
+		DataExchange data = createDataExchange();
 
 		new Thread(() ->
 		{
-			threads.set(new ExerciseSideThread(in, out));
-			handleExerciseSideCommandsUntilFinished(in, out);
+			threads.set(new ExerciseSideThread(control, data));
+			handleExerciseSideCommandsUntilFinished(control);
 		}).start();
 	}
 	private void respondRefDeleted(DataInput in) throws IOException
@@ -504,8 +504,8 @@ public class DataCommunicatorServer
 	private String getCallbackInterfaceCn(LongRef callbackRef) throws IOException
 	{
 		ExerciseSideThread exerciseSideThread = getExerciseSideThread();
-		DataInput in = exerciseSideThread.in();
-		DataOutputStream out = exerciseSideThread.out();
+		DataInput in = exerciseSideThread.control().in();
+		DataOutputStream out = exerciseSideThread.control().out();
 
 		writeThreadResponse(out, GET_CALLBACK_INTERFACE_CN);
 		writeRef(out, callbackRef);
@@ -519,8 +519,8 @@ public class DataCommunicatorServer
 			LongRef receiverRef, List<LongRef> argRefs) throws IOException
 	{
 		ExerciseSideThread exerciseSideThread = getExerciseSideThread();
-		DataInput in = exerciseSideThread.in();
-		DataOutputStream out = exerciseSideThread.out();
+		DataInput in = exerciseSideThread.control().in();
+		DataOutputStream out = exerciseSideThread.control().out();
 
 		writeThreadResponse(out, CALL_CALLBACK_INSTANCE_METHOD);
 		writeRef(out, type);
@@ -532,7 +532,7 @@ public class DataCommunicatorServer
 
 		out.flush();
 
-		handleExerciseSideCommandsUntilFinished(in, out);
+		handleExerciseSideCommandsUntilFinished(exerciseSideThread.control());
 		CallbackOperationOutcome.Kind kind = CallbackOperationOutcome.Kind.decode(in.readByte());
 		return switch(kind)
 		{
@@ -660,6 +660,12 @@ public class DataCommunicatorServer
 		return threads.get();
 	}
 
-	private static record ExerciseSideThread(MultiplexedDataInputStream in, MultiplexedDataOutputStream out)
+	private DataExchange createDataExchange() throws IOException
+	{
+		//TODO make wrapBuffered configurable
+		return exchangePool.createNewExchange().wrapBuffered().wrapData();
+	}
+
+	private static record ExerciseSideThread(DataExchange control, DataExchange data)
 	{}
 }

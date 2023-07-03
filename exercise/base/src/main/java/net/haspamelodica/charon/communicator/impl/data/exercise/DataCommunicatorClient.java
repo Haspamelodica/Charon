@@ -42,15 +42,10 @@ import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.EOFException;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Optional;
-import java.util.Queue;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.OperationOutcome;
@@ -60,7 +55,6 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
-import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorConstants;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
@@ -76,12 +70,12 @@ import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
-import net.haspamelodica.streammultiplexer.BufferedDataStreamMultiplexer;
-import net.haspamelodica.streammultiplexer.ClosedException;
-import net.haspamelodica.streammultiplexer.DataStreamMultiplexer;
-import net.haspamelodica.streammultiplexer.MultiplexedDataInputStream;
-import net.haspamelodica.streammultiplexer.MultiplexedDataOutputStream;
-import net.haspamelodica.streammultiplexer.UnexpectedResponseException;
+import net.haspamelodica.exchanges.DataExchange;
+import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.ExchangePool;
+import net.haspamelodica.exchanges.multiplexed.ClosedException;
+import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
+import net.haspamelodica.exchanges.multiplexed.UnexpectedResponseException;
 
 // TODO server, client or both crash on shutdown sometimes
 public class DataCommunicatorClient
@@ -92,12 +86,7 @@ public class DataCommunicatorClient
 {
 	private final StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks;
 
-	private final DataStreamMultiplexer	multiplexer;
-	private final AtomicInteger			nextInStreamID;
-	private final AtomicInteger			nextOutStreamID;
-
-	private final Queue<MultiplexedDataInputStream>		freeStreamsForReceiving;
-	private final Queue<MultiplexedDataOutputStream>	freeStreamsForSending;
+	private final ExchangePool exchangePool;
 
 	private final LongRefManager<LongRef> refManager;
 
@@ -106,15 +95,16 @@ public class DataCommunicatorClient
 	private final UnidirectionalMap<LongRef, Integer>	constructorParamCounts;
 	private final UnidirectionalMap<LongRef, Integer>	methodParamCounts;
 
-	private final Object							commandStreamLock;
+	private final Object							commandExchangeLock;
+	private final DataExchange						threadIndependentCommandExchange;
 	private final ThreadLocal<StudentSideThread>	threads;
 
-	public DataCommunicatorClient(InputStream rawIn, OutputStream rawOut, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
+	public DataCommunicatorClient(Exchange rawExchange, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
 	{
 		// read magic number
 		try
 		{
-			switch(rawIn.read())
+			switch(rawExchange.in().read())
 			{
 				// This will never be written by DataCommunicatorServer, but by CharonCI's run script if it detects a student-side compilation error.
 				case 'c' -> throw new CompilationErrorException("Student side reported a compilation error");
@@ -131,19 +121,21 @@ public class DataCommunicatorClient
 		}
 
 		this.callbacks = callbacks;
-		this.multiplexer = new BufferedDataStreamMultiplexer(rawIn, rawOut);
-		this.nextInStreamID = new AtomicInteger(DataCommunicatorConstants.FIRST_FREE_STREAM_ID);
-		this.nextOutStreamID = new AtomicInteger(DataCommunicatorConstants.FIRST_FREE_STREAM_ID);
-
-		this.freeStreamsForReceiving = new ConcurrentLinkedQueue<>();
-		this.freeStreamsForSending = new ConcurrentLinkedQueue<>();
+		this.exchangePool = new MultiplexedExchangePool(rawExchange);
 
 		this.refManager = new SimpleLongRefManager(true);
 		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
 		this.methodParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
 
 		this.threads = new ThreadLocal<>();
-		this.commandStreamLock = new Object();
+		this.commandExchangeLock = new Object();
+		try
+		{
+			this.threadIndependentCommandExchange = createDataExchange();
+		} catch(IOException e)
+		{
+			throw new UncheckedIOException("Error while creating thread-independent command exchange", e);
+		}
 	}
 
 	public void shutdown()
@@ -155,7 +147,13 @@ public class DataCommunicatorClient
 				throw new IllegalBehaviourException("Student side didn't respond with SHUTDOWN_FINISHED to SHUTDOWN");
 			return null;
 		});
-		multiplexer.close();
+		try
+		{
+			exchangePool.close();
+		} catch(IOException e)
+		{
+			throw new UncheckedIOException("Error while shutting down", e);
+		}
 	}
 
 	@Override
@@ -389,17 +387,10 @@ public class DataCommunicatorClient
 	{
 		return executeRefCommand(SEND, ALLOW_CALLBACKS, out ->
 		{
-			MultiplexedDataOutputStream serdesOut = freeStreamsForSending.poll();
-			if(serdesOut == null)
-				serdesOut = nextOutStream();
-
 			writeRef(out, serdesRef);
-			out.writeInt(serdesOut.getStreamID());
-			out.flush();
+			DataOutputStream serdesOut = getStudentSideThread().data().out();
 			serializer.serialize(serdesOut, obj);
 			serdesOut.flush();
-
-			freeStreamsForSending.add(serdesOut);
 		});
 	}
 
@@ -408,21 +399,9 @@ public class DataCommunicatorClient
 	{
 		return executeCommand(RECEIVE, ALLOW_CALLBACKS, out ->
 		{
-			MultiplexedDataInputStream serdesIn = freeStreamsForReceiving.poll();
-			if(serdesIn == null)
-				serdesIn = nextInStream();
-
 			writeRef(out, serdesRef);
 			writeRef(out, objRef);
-			out.writeInt(serdesIn.getStreamID());
-
-			return serdesIn;
-		}, (in, serdesIn) ->
-		{
-			T result = deserializer.deserialize(serdesIn);
-			freeStreamsForReceiving.add(serdesIn);
-			return result;
-		});
+		}, in -> deserializer.deserialize(getStudentSideThread().data().in()));
 	}
 
 	@Override
@@ -492,15 +471,13 @@ public class DataCommunicatorClient
 		try
 		{
 			StudentSideThread thread = getStudentSideThread();
-			MultiplexedDataInputStream in = thread.in();
-			MultiplexedDataOutputStream out = thread.out();
 
-			writeThreadCommand(out, command);
-			P params = sendParams.apply(out);
-			out.flush();
+			writeThreadCommand(thread.control().out(), command);
+			P params = sendParams.apply(thread.control().out());
+			thread.control().out().flush();
 
-			handleStudentSideResponsesUntilFinished(allowedCallbacks, in, out);
-			return parseResponse.apply(in, params);
+			handleStudentSideResponsesUntilFinished(allowedCallbacks, thread.control().in(), thread.control().out());
+			return parseResponse.apply(thread.control().in(), params);
 		} catch(UnexpectedResponseException e)
 		{
 			return wrapUnexpectedResponseException(e);
@@ -567,24 +544,21 @@ public class DataCommunicatorClient
 		}
 	}
 
-	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand)
+	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand)
 	{
 		executeThreadIndependentCommand(command, sendCommand, in -> null);
 	}
-	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutput> sendCommand,
+	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand,
 			IOFunction<DataInput, R> parseResponse)
 	{
-		synchronized(commandStreamLock)
+		synchronized(commandExchangeLock)
 		{
 			try
 			{
-				MultiplexedDataOutputStream commandOut = multiplexer.getOut(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
-				MultiplexedDataInputStream commandIn = multiplexer.getIn(DataCommunicatorConstants.THREAD_INDEPENDENT_COMMAND_STERAM_ID);
-				commandOut.writeByte(command.encode());
-				sendCommand.accept(commandOut);
-				//TODO this spuriously throws "another thread is currently writing"
-				commandOut.flush();
-				return parseResponse.apply(commandIn);
+				threadIndependentCommandExchange.out().writeByte(command.encode());
+				sendCommand.accept(threadIndependentCommandExchange.out());
+				threadIndependentCommandExchange.out().flush();
+				return parseResponse.apply(threadIndependentCommandExchange.in());
 			} catch(UnexpectedResponseException e)
 			{
 				return wrapUnexpectedResponseException(e);
@@ -619,19 +593,13 @@ public class DataCommunicatorClient
 	//TODO clean up threads which have exited
 	private StudentSideThread createStudentSideThread() throws ClosedException
 	{
-		// This thread's in stream is only usable as soon as the student side created the corresponding output stream.
-		// But the first communication between two threads is always a write by the exercise side,
-		// which will (according to GenericStreamMultiplexer) finish only when read is called on the corresponding input stream.
-		// The student side does this only after creating the output stream, which means this won't cause problems.
-		// (If the student side is malicious and doesn't create the output stream, all it can do is cause UnexpectedResponseExceptions.)
-		MultiplexedDataInputStream in = nextInStream();
-		MultiplexedDataOutputStream out = nextOutStream();
-		executeThreadIndependentCommand(NEW_THREAD, commandOut ->
+		return executeThreadIndependentCommand(NEW_THREAD, commandOut ->
+		{}, commandIn ->
 		{
-			commandOut.writeInt(in.getStreamID());
-			commandOut.writeInt(out.getStreamID());
+			DataExchange cont = createDataExchange();
+			DataExchange data = createDataExchange();
+			return new StudentSideThread(cont, data);
 		});
-		return new StudentSideThread(in, out);
 	}
 
 	private ThreadResponse readThreadResponse(DataInput in) throws IOException
@@ -743,17 +711,13 @@ public class DataCommunicatorClient
 		out.writeLong(refManager.marshalRefForSending(ref));
 	}
 
-	private MultiplexedDataInputStream nextInStream() throws ClosedException
+	private DataExchange createDataExchange() throws IOException
 	{
-		return multiplexer.getIn(nextInStreamID.getAndIncrement());
+		//TODO make wrapBuffered configurable
+		return exchangePool.createNewExchange().wrapBuffered().wrapData();
 	}
 
-	private MultiplexedDataOutputStream nextOutStream() throws ClosedException
-	{
-		return multiplexer.getOut(nextOutStreamID.getAndIncrement());
-	}
-
-	private static record StudentSideThread(MultiplexedDataInputStream in, MultiplexedDataOutputStream out)
+	private static record StudentSideThread(DataExchange control, DataExchange data)
 	{}
 
 	protected static enum AllowedThreadCallbacks

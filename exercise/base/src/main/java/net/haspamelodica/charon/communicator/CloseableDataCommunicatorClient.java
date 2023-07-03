@@ -21,7 +21,7 @@ public class CloseableDataCommunicatorClient implements AutoCloseable
 	public CloseableDataCommunicatorClient(Communication communication)
 	{
 		this.communication = communication;
-		this.client = new UninitializedDataCommunicatorClient(communication.getIn(), communication.getOut());
+		this.client = new UninitializedDataCommunicatorClient(communication.getExchange());
 	}
 
 	public UninitializedStudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,

@@ -6,14 +6,13 @@ import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 
 import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.utils.communication.Communication;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
+import net.haspamelodica.exchanges.Exchange;
 
 public class StudentSideRunner
 {
@@ -32,12 +31,12 @@ public class StudentSideRunner
 
 	public static void run(Communication communication, ClassLoader studentClassesClassloader) throws IOException
 	{
-		run(communication.getIn(), communication.getOut(), communication.getLogging(), studentClassesClassloader);
+		run(communication.getExchange(), communication.getLogging(), studentClassesClassloader);
 	}
 
-	public static void run(InputStream in, OutputStream out, boolean logging, ClassLoader studentClassesClassloader) throws IOException
+	public static void run(Exchange rawExchange, boolean logging, ClassLoader studentClassesClassloader) throws IOException
 	{
-		DataCommunicatorServer server = new DataCommunicatorServer(in, out,
+		DataCommunicatorServer server = new DataCommunicatorServer(rawExchange,
 				wrapTypeCaching(
 						// We don't need ALL_TO_STRING, because we are on the server side:
 						// The only situation where an object is logged is in ClientSideTransceiver.

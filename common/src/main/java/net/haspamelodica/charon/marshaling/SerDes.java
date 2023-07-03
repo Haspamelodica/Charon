@@ -15,7 +15,11 @@ import java.io.DataOutput;
  * <p>
  * {@link #deserialize(DataInput)} is recommended to, but not required to, return an immutable object
  * to help catch bugs.
+ * <p>
+ * A {@link SerDes} must not cause callbacks being called.
+ * {@link SerDes}es must not throw exceptions, except IOExceptions caused by the provided DataInput / DataOutputs.
  */
+//TODO make SerDeses causing serializations / callbacks / exceptions possible
 public interface SerDes<T> extends Serializer<T>, Deserializer<T>
 {
 	public Class<T> getHandledClass();

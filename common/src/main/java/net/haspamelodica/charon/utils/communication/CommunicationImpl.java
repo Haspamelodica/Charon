@@ -11,11 +11,12 @@ import java.nio.file.Path;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import net.haspamelodica.exchanges.Exchange;
+
 public class CommunicationImpl implements Communication
 {
-	private final boolean		logging;
-	private final InputStream	in;
-	private final OutputStream	out;
+	private final boolean	logging;
+	private final Exchange	exchange;
 
 	private final Semaphore communicationInitialized;
 
@@ -25,14 +26,11 @@ public class CommunicationImpl implements Communication
 		this.communicationInitialized = params.timeout().isPresent() ? new Semaphore(0) : null;
 
 		startTimeoutThread(params);
-		InputOutputStreamPair inoutPair = openCommunication(params);
+		this.exchange = openCommunication(params);
 		stopTimeout();
-
-		this.in = inoutPair.in();
-		this.out = inoutPair.out();
 	}
 
-	private InputOutputStreamPair openCommunication(CommunicationParams params) throws IOException, InterruptedException
+	private Exchange openCommunication(CommunicationParams params) throws IOException, InterruptedException
 	{
 		//TODO replace with pattern matching switch once we update to Java 18
 		if(params.mode() instanceof CommunicationParams.Mode.Listen mode)
@@ -47,7 +45,7 @@ public class CommunicationImpl implements Communication
 			throw new IllegalArgumentException("Unknown mode: " + params.mode());
 	}
 
-	private InputOutputStreamPair openListen(CommunicationParams.Mode.Listen mode) throws IOException
+	private Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException
 	{
 		// yes, open ServerSocket in try-with-resource: close it after accept succeeded; accepted connection will live on.
 		try(ServerSocket server = new ServerSocket())
@@ -57,17 +55,17 @@ public class CommunicationImpl implements Communication
 					: new InetSocketAddress(mode.host().get(), mode.port()));
 			Socket sock = server.accept();
 
-			return new InputOutputStreamPair(sock.getInputStream(), sock.getOutputStream());
+			return new Exchange(sock.getInputStream(), sock.getOutputStream());
 		}
 	}
 
-	private InputOutputStreamPair openSocket(CommunicationParams.Mode.Socket mode) throws IOException
+	private Exchange openSocket(CommunicationParams.Mode.Socket mode) throws IOException
 	{
 		Socket sock = new Socket(mode.host(), mode.port());
 
-		return new InputOutputStreamPair(sock.getInputStream(), sock.getOutputStream());
+		return new Exchange(sock.getInputStream(), sock.getOutputStream());
 	}
-	private InputOutputStreamPair openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
+	private Exchange openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
 	{
 		InputStream in;
 		OutputStream out;
@@ -81,11 +79,11 @@ public class CommunicationImpl implements Communication
 			in = openInput(mode.infile());
 		}
 
-		return new InputOutputStreamPair(in, out);
+		return new Exchange(in, out);
 	}
-	private InputOutputStreamPair openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
+	private Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
 	{
-		return new InputOutputStreamPair(System.in, System.out);
+		return new Exchange(System.in, System.out);
 	}
 
 	// These two methods are needed because of a bug in the JDK:
@@ -165,28 +163,14 @@ public class CommunicationImpl implements Communication
 		return logging;
 	}
 	@Override
-	public InputStream getIn()
+	public Exchange getExchange()
 	{
-		return in;
-	}
-	@Override
-	public OutputStream getOut()
-	{
-		return out;
+		return exchange;
 	}
 
 	@Override
 	public void close() throws IOException
 	{
-		try
-		{
-			in.close();
-		} finally
-		{
-			out.close();
-		}
+		exchange.close();
 	}
-
-	private static final record InputOutputStreamPair(InputStream in, OutputStream out)
-	{}
 }

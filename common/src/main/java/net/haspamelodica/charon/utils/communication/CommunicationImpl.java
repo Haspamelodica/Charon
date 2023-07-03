@@ -26,7 +26,8 @@ public class CommunicationImpl implements Communication
 		this.communicationInitialized = params.timeout().isPresent() ? new Semaphore(0) : null;
 
 		startTimeoutThread(params);
-		this.exchange = openCommunication(params);
+		//TODO make wrapBuffered configurable
+		this.exchange = openCommunication(params).wrapBuffered();
 		stopTimeout();
 	}
 

@@ -190,7 +190,7 @@ public class CharonExtension implements ParameterResolver
 				return CloseableStudentSide.wrapIgnoringClose(new StudentSideImpl<>(
 						maybeWrapTypeCaching(TYPECACHING,
 								maybeWrapLoggingIntClient(LOGGING, loggingParams,
-										maybeWrapReftrans(REFTRANS, false, u -> nextId.incrementAndGet(), u -> nextId.incrementAndGet(),
+										maybeWrapObjectReftrans(REFTRANS, false, u -> nextId.incrementAndGet(), u -> nextId.incrementAndGet(),
 												createDirectCommClient(studentClassesClassloader))))));
 
 			UninitializedDataCommunicatorClient pipedClient =
@@ -271,14 +271,13 @@ public class CharonExtension implements ParameterResolver
 		return wrapTypeCaching(comm);
 	}
 
-	private <REF>
-			UninitializedStudentSideCommunicator<REF, ?, ?, ?, ?, ?,
-					ClientSideTransceiver<REF>, InternalCallbackManager<REF>>
-			maybeWrapReftrans(boolean reftrans, boolean storeRefsIdentityBased,
-					Function<UntranslatedRef<?, ?>, REF> createForwardRef,
-					Function<UntranslatedRef<?, ?>, REF> createBackwardRef,
-					UninitializedStudentSideCommunicator<REF, ?, ?, ?, ?, ?,
-							ClientSideTransceiver<REF>, InternalCallbackManager<REF>> comm)
+	private UninitializedStudentSideCommunicator<Object, ?, ?, ?, ?, ?,
+			ClientSideTransceiver<Object>, InternalCallbackManager<Object>>
+			maybeWrapObjectReftrans(boolean reftrans, boolean storeRefsIdentityBased,
+					Function<UntranslatedRef<?, ?>, Object> createForwardRef,
+					Function<UntranslatedRef<?, ?>, Object> createBackwardRef,
+					UninitializedStudentSideCommunicator<Object, ?, ?, ?, ?, ?,
+							ClientSideTransceiver<Object>, InternalCallbackManager<Object>> comm)
 	{
 		if(!reftrans)
 			return comm;

@@ -388,6 +388,7 @@ public class DataCommunicatorClient
 		return executeRefCommand(SEND, ALLOW_CALLBACKS, out ->
 		{
 			writeRef(out, serdesRef);
+			out.flush();
 			DataOutputStream serdesOut = getStudentSideThread().data().out();
 			serializer.serialize(serdesOut, obj);
 			serdesOut.flush();

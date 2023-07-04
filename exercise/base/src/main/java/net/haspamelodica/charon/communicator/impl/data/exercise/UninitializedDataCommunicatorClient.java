@@ -1,8 +1,5 @@
 package net.haspamelodica.charon.communicator.impl.data.exercise;
 
-import java.io.InputStream;
-import java.io.OutputStream;
-
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;

@@ -5,6 +5,8 @@ import static net.haspamelodica.charon.communicator.ClientSideCommunicatorUtils.
 import static net.haspamelodica.charon.communicator.ClientSideSameJVMCommunicatorUtils.createDirectCommClient;
 import static net.haspamelodica.charon.communicator.CommunicatorUtils.withReftransParamsFunctional;
 import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCaching;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
+import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -33,15 +35,21 @@ import net.haspamelodica.charon.CloseableStudentSide;
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.communicator.CallbackManager;
 import net.haspamelodica.charon.communicator.ClientSideTransceiver;
 import net.haspamelodica.charon.communicator.InternalCallbackManager;
+import net.haspamelodica.charon.communicator.Transceiver;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
+import net.haspamelodica.charon.communicator.impl.data.exercise.UninitializedDataCommunicatorClient;
+import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorServer;
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef;
 import net.haspamelodica.charon.exceptions.CharonException;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
+import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.util.AutoClosablePair;
 
 /**
  * A JUnit 5 {@link ParameterResolver} and {@link InvocationInterceptor} extensionimport static CommunicatorUtils
@@ -55,6 +63,9 @@ public class CharonExtension implements ParameterResolver
 	private static final boolean	TYPECACHING	= true;
 	private static final boolean	LOGGING		= false;
 	private static final boolean	REFTRANS	= false;
+	private static final boolean	PIPE		= false;
+
+	private static final boolean ALLOW_REF_TO_STRING = REFTRANS || PIPE;
 
 	public static final String	CONFIGURATION_PARAMETER_NAME_BASE	= "net.haspamelodica.charon.";
 	public static final String	COMMUNICATIONARGS_PARAM_NAME		= CONFIGURATION_PARAMETER_NAME_BASE + "communicationargs";
@@ -171,15 +182,33 @@ public class CharonExtension implements ParameterResolver
 					.orElse(null);
 
 			AtomicLong nextId = new AtomicLong();
-			CommunicationLoggerParams loggingParams = REFTRANS
+			CommunicationLoggerParams loggingParams = ALLOW_REF_TO_STRING
 					//TODO make ALL_TO_STRING optional
 					? CommunicationLoggerParams.DEFAULT_REF_TO_STRING
 					: CommunicationLoggerParams.DEFAULT;
-			return CloseableStudentSide.wrapIgnoringClose(new StudentSideImpl<>(
+			if(!PIPE)
+				return CloseableStudentSide.wrapIgnoringClose(new StudentSideImpl<>(
+						maybeWrapTypeCaching(TYPECACHING,
+								maybeWrapLoggingIntClient(LOGGING, loggingParams,
+										maybeWrapReftrans(REFTRANS, false, u -> nextId.incrementAndGet(), u -> nextId.incrementAndGet(),
+												createDirectCommClient(studentClassesClassloader))))));
+
+			UninitializedDataCommunicatorClient pipedClient =
+					createPipedClient(studentClassesClassloader);
+
+			if(REFTRANS)
+				return CloseableStudentSide.wrap(new StudentSideImpl<>(
+						maybeWrapTypeCaching(TYPECACHING,
+								maybeWrapLoggingIntClient(LOGGING, loggingParams,
+										wrapReftrans(false, u -> nextId.incrementAndGet(), u -> nextId.incrementAndGet(),
+												pipedClient)))),
+						pipedClient::shutdown);
+
+			return CloseableStudentSide.wrap(new StudentSideImpl<>(
 					maybeWrapTypeCaching(TYPECACHING,
 							maybeWrapLoggingIntClient(LOGGING, loggingParams,
-									maybeWrapReftrans(REFTRANS, false, u -> nextId.incrementAndGet(), u -> nextId.incrementAndGet(),
-											createDirectCommClient(studentClassesClassloader))))));
+									pipedClient))),
+					pipedClient::shutdown);
 		}
 
 		if(communicationArgs.isEmpty())
@@ -206,10 +235,35 @@ public class CharonExtension implements ParameterResolver
 		}
 	}
 
-	private UninitializedStudentSideCommunicator<Object, ?, ?, ?, ?, ?,
-			ClientSideTransceiver<Object>, InternalCallbackManager<Object>> maybeWrapTypeCaching(boolean typecaching,
-					UninitializedStudentSideCommunicator<Object, ?, ?, ?, ?, ?,
-							ClientSideTransceiver<Object>, InternalCallbackManager<Object>> comm)
+	private UninitializedDataCommunicatorClient createPipedClient(ClassLoader studentClassesClassloader)
+	{
+		AutoClosablePair<Exchange, Exchange> pipe = Exchange.openPiped();
+		Thread studentSideThread = new Thread(() ->
+		{
+			DataCommunicatorServer server = new DataCommunicatorServer(pipe.a().wrapBuffered(),
+					wrapReftransExtServer(
+							createDirectCommServer(studentClassesClassloader)));
+			try
+			{
+				server.run();
+			} catch(IOException e)
+			{
+				throw new UncheckedIOException(e);
+			}
+		}, "Charon Student side main");
+		studentSideThread.setDaemon(true);
+		studentSideThread.start();
+
+		return new UninitializedDataCommunicatorClient(pipe.b().wrapBuffered());
+	}
+
+	private <REF,
+			THROWABLEREF extends REF, TYPEREF extends REF, CONSTRUCTORREF extends REF, METHODREF extends REF, FIELDREF extends REF,
+			TC extends Transceiver, CM extends CallbackManager>
+			UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF, TC, CM>
+			maybeWrapTypeCaching(boolean typecaching,
+					UninitializedStudentSideCommunicator<REF, THROWABLEREF, TYPEREF, CONSTRUCTORREF, METHODREF, FIELDREF,
+							TC, CM> comm)
 	{
 		if(!typecaching)
 			return comm;
@@ -217,16 +271,29 @@ public class CharonExtension implements ParameterResolver
 		return wrapTypeCaching(comm);
 	}
 
-	private UninitializedStudentSideCommunicator<Object, ?, ?, ?, ?, ?,
-			ClientSideTransceiver<Object>, InternalCallbackManager<Object>> maybeWrapReftrans(
-					boolean reftrans,
-					boolean storeRefsIdentityBased, Function<UntranslatedRef<?, ?>, Object> createForwardRef,
-					Function<UntranslatedRef<?, ?>, Object> createBackwardRef,
-					UninitializedStudentSideCommunicator<Object,
-							?, ?, ?, ?, ?, ClientSideTransceiver<Object>, InternalCallbackManager<Object>> comm)
+	private <REF>
+			UninitializedStudentSideCommunicator<REF, ?, ?, ?, ?, ?,
+					ClientSideTransceiver<REF>, InternalCallbackManager<REF>>
+			maybeWrapReftrans(boolean reftrans, boolean storeRefsIdentityBased,
+					Function<UntranslatedRef<?, ?>, REF> createForwardRef,
+					Function<UntranslatedRef<?, ?>, REF> createBackwardRef,
+					UninitializedStudentSideCommunicator<REF, ?, ?, ?, ?, ?,
+							ClientSideTransceiver<REF>, InternalCallbackManager<REF>> comm)
 	{
 		if(!reftrans)
 			return comm;
+		return wrapReftrans(storeRefsIdentityBased, createForwardRef, createBackwardRef, comm);
+	}
+
+	private <REF_TO, REF_FROM>
+			UninitializedStudentSideCommunicator<REF_TO, REF_TO, REF_TO, REF_TO, REF_TO, REF_TO,
+					ClientSideTransceiver<REF_TO>, InternalCallbackManager<REF_TO>>
+			wrapReftrans(boolean storeRefsIdentityBased,
+					Function<UntranslatedRef<?, ?>, REF_TO> createForwardRef,
+					Function<UntranslatedRef<?, ?>, REF_TO> createBackwardRef,
+					UninitializedStudentSideCommunicator<REF_FROM, ?, ?, ?, ?, ?,
+							ClientSideTransceiver<REF_FROM>, InternalCallbackManager<REF_FROM>> comm)
+	{
 		return withReftransParamsFunctional(storeRefsIdentityBased, createForwardRef, createBackwardRef,
 				wrapReftransIntClient(
 						comm));

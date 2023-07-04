@@ -25,7 +25,6 @@ import net.haspamelodica.charon.communicator.StudentSideCommunicator;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
-import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils.IOBiConsumer;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
@@ -35,6 +34,7 @@ import net.haspamelodica.charon.communicator.impl.reftranslating.UntranslatedRef
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
+import net.haspamelodica.charon.utils.IOBiConsumer;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.exchanges.DataExchange;
 import net.haspamelodica.exchanges.Exchange;

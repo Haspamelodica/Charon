@@ -2,6 +2,8 @@ package net.haspamelodica.charon;
 
 import java.io.IOException;
 
+import net.haspamelodica.charon.utils.IORunnable;
+
 public interface CloseableStudentSide extends AutoCloseable
 {
 	public StudentSide getStudentSide();
@@ -9,6 +11,12 @@ public interface CloseableStudentSide extends AutoCloseable
 	public void close() throws IOException;
 
 	public static CloseableStudentSide wrapIgnoringClose(StudentSide studentSide)
+	{
+		return wrap(studentSide, () ->
+		{});
+	}
+
+	public static CloseableStudentSide wrap(StudentSide studentSide, IORunnable closeAction)
 	{
 		return new CloseableStudentSide()
 		{
@@ -21,8 +29,9 @@ public interface CloseableStudentSide extends AutoCloseable
 			@Override
 			public void close() throws IOException
 			{
-				//ignore
+				closeAction.run();
 			}
 		};
 	}
+
 }

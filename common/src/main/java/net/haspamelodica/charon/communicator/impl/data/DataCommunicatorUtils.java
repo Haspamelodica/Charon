@@ -8,6 +8,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
+import net.haspamelodica.charon.utils.IOBiConsumer;
+import net.haspamelodica.charon.utils.IOFunction;
+
 public class DataCommunicatorUtils
 {
 	public static <E> int writeList(DataOutput out, List<E> list, IOBiConsumer<DataOutput, E> writeE) throws IOException
@@ -48,17 +51,6 @@ public class DataCommunicatorUtils
 
 		// Can't use List.of or List.copyOf because some elements might be null
 		return Collections.unmodifiableList(list);
-	}
-
-	@FunctionalInterface
-	public static interface IOFunction<P, R>
-	{
-		public R apply(P p) throws IOException;
-	}
-	@FunctionalInterface
-	public static interface IOBiConsumer<A, B>
-	{
-		public void accept(A a, B b) throws IOException;
 	}
 
 	private DataCommunicatorUtils()

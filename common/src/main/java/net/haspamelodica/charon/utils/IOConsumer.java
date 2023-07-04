@@ -1,4 +1,4 @@
-package net.haspamelodica.charon.communicator.impl.data.exercise;
+package net.haspamelodica.charon.utils;
 
 import java.io.IOException;
 

@@ -18,7 +18,7 @@ import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorS
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.exchanges.Exchange;
-import net.haspamelodica.exchanges.util.AutoClosablePair;
+import net.haspamelodica.exchanges.util.AutoCloseablePair;
 
 public class ExampleExerciseClient
 {
@@ -58,7 +58,7 @@ public class ExampleExerciseClient
 
 	private static void runDataSameJVM() throws Exception
 	{
-		try(AutoClosablePair<Exchange, Exchange> exchangePair = Exchange.openPiped())
+		try(AutoCloseablePair<Exchange, Exchange> exchangePair = Exchange.openPiped())
 		{
 			new Thread(() ->
 			{

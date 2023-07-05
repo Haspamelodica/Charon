@@ -49,7 +49,7 @@ import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 import net.haspamelodica.exchanges.Exchange;
-import net.haspamelodica.exchanges.util.AutoClosablePair;
+import net.haspamelodica.exchanges.util.AutoCloseablePair;
 
 /**
  * A JUnit 5 {@link ParameterResolver} and {@link InvocationInterceptor} extensionimport static CommunicatorUtils
@@ -237,7 +237,7 @@ public class CharonExtension implements ParameterResolver
 
 	private UninitializedDataCommunicatorClient createPipedClient(ClassLoader studentClassesClassloader)
 	{
-		AutoClosablePair<Exchange, Exchange> pipe = Exchange.openPiped();
+		AutoCloseablePair<Exchange, Exchange> pipe = Exchange.openPiped();
 		Thread studentSideThread = new Thread(() ->
 		{
 			DataCommunicatorServer server = new DataCommunicatorServer(pipe.a().wrapBuffered(),

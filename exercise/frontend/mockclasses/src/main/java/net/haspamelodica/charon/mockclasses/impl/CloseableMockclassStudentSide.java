@@ -10,7 +10,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 public class CloseableMockclassStudentSide implements AutoCloseable
 {
 	private final CloseableMockclassesClassLoader	closeableClassLoader;
-	private final MockclassStudentSide			mockclassStudentSide;
+	private final MockclassStudentSide				mockclassStudentSide;
 
 	public CloseableMockclassStudentSide(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
 			Class<?>... forceDelegationClasses) throws IOException, InterruptedException, IncorrectUsageException

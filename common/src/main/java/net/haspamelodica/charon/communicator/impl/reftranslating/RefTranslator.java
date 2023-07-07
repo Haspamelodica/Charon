@@ -75,7 +75,7 @@ public class RefTranslator<REF_TO, REF_FROM>
 	{
 		forwardRefs.put(refTo, refFrom);
 	}
-	
+
 	public void setBackwardRefTranslation(REF_FROM refFrom, REF_TO refTo)
 	{
 		backwardRefs.put(refTo, refFrom);

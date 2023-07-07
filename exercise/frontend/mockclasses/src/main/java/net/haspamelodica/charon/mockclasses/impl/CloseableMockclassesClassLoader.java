@@ -30,7 +30,7 @@ import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 public class CloseableMockclassesClassLoader implements AutoCloseable
 {
 	private final CloseableDataCommunicatorClient	communicator;
-	private final ClassLoader					classloader;
+	private final ClassLoader						classloader;
 
 	public CloseableMockclassesClassLoader(ClassLoader parent, DynamicInterfaceProvider interfaceProvider, String[] communicatorArgs,
 			Class<?>... forceDelegationClasses)

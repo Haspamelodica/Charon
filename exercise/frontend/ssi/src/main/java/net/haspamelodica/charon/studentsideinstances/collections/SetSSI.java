@@ -25,7 +25,8 @@ public interface SetSSI<E extends StudentSideInstance> extends CollectionSSI<E>
 		@StudentSidePrototypeMethodKind(STATIC_METHOD)
 		public <E extends StudentSideInstance> SetSSI<E> of(E e1);
 
-		@StudentSidePrototypeMethodKind(STATIC_METHOD)
-		public <E extends StudentSideInstance> SetSSI<E> of(@SuppressWarnings("unchecked") E... elements);
+		//TODO this does not work
+		//@StudentSidePrototypeMethodKind(STATIC_METHOD)
+		//public <E extends StudentSideInstance> SetSSI<E> of(@SuppressWarnings("unchecked") E... elements);
 	}
 }

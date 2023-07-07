@@ -5,19 +5,19 @@ import net.haspamelodica.charon.communicator.InternalCallbackManager;
 import net.haspamelodica.charon.communicator.StudentSideCommunicatorCallbacks;
 import net.haspamelodica.charon.communicator.UninitializedStudentSideCommunicator;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
-import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.ExchangePool;
 
 public class UninitializedDataCommunicatorClient
 		implements UninitializedStudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,
 				ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>
 {
-	private final Exchange rawExchange;
+	private final ExchangePool exchangePool;
 
 	private DataCommunicatorClient client;
 
-	public UninitializedDataCommunicatorClient(Exchange rawExchange)
+	public UninitializedDataCommunicatorClient(ExchangePool exchangePool)
 	{
-		this.rawExchange = rawExchange;
+		this.exchangePool = exchangePool;
 	}
 
 	@Override
@@ -26,7 +26,7 @@ public class UninitializedDataCommunicatorClient
 		if(client != null)
 			throw new IllegalStateException("Client already initialized");
 
-		client = new DataCommunicatorClient(rawExchange, callbacks);
+		client = new DataCommunicatorClient(exchangePool, callbacks);
 		return client;
 	}
 

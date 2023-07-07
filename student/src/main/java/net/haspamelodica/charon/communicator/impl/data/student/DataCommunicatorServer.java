@@ -37,10 +37,8 @@ import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
 import net.haspamelodica.charon.utils.IOBiConsumer;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.exchanges.DataExchange;
-import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
 import net.haspamelodica.exchanges.multiplexed.ClosedException;
-import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class DataCommunicatorServer
 {
@@ -54,11 +52,11 @@ public class DataCommunicatorServer
 	private final ThreadLocal<ExerciseSideThread>		threads;
 	private final AtomicBoolean							running;
 
-	public DataCommunicatorServer(Exchange rawExchange, RefTranslatorCommunicatorSupplier<LongRef,
+	public DataCommunicatorServer(ExchangePool exchangePool, RefTranslatorCommunicatorSupplier<LongRef,
 			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>,
 			RefTranslatorCommunicatorCallbacks<LongRef>> communicatorSupplier)
 	{
-		this.exchangePool = new MultiplexedExchangePool(rawExchange);
+		this.exchangePool = exchangePool;
 		this.refManager = new SimpleLongRefManager(false);
 		this.communicator = communicatorSupplier.createCommunicator(false,
 				new StudentSideCommunicatorCallbacks<>()

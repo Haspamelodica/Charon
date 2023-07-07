@@ -49,6 +49,9 @@ import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.ExchangePool;
+import net.haspamelodica.exchanges.MultiplePipesExchangePool;
+import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 import net.haspamelodica.exchanges.util.AutoCloseablePair;
 
 /**
@@ -60,10 +63,11 @@ import net.haspamelodica.exchanges.util.AutoCloseablePair;
 public class CharonExtension implements ParameterResolver
 {
 	//TODO let user choose these
-	private static final boolean	TYPECACHING	= true;
-	private static final boolean	LOGGING		= false;
-	private static final boolean	REFTRANS	= false;
-	private static final boolean	PIPE		= false;
+	private static final boolean	TYPECACHING			= true;
+	private static final boolean	LOGGING				= false;
+	private static final boolean	REFTRANS			= false;
+	private static final boolean	PIPE				= true;
+	private static final boolean	PIPE_MULTIPLEXED	= false;
 
 	private static final boolean ALLOW_REF_TO_STRING = REFTRANS || PIPE;
 
@@ -237,10 +241,24 @@ public class CharonExtension implements ParameterResolver
 
 	private UninitializedDataCommunicatorClient createPipedClient(ClassLoader studentClassesClassloader)
 	{
-		AutoCloseablePair<Exchange, Exchange> pipe = Exchange.openPiped();
+		ExchangePool exchangePoolClient;
+		ExchangePool exchangePoolServer;
+		if(PIPE_MULTIPLEXED)
+		{
+			AutoCloseablePair<Exchange, Exchange> pipe = Exchange.openPiped();
+			exchangePoolClient = new MultiplexedExchangePool(pipe.a().wrapBuffered());
+			exchangePoolServer = new MultiplexedExchangePool(pipe.b().wrapBuffered());
+		} else
+		{
+			@SuppressWarnings("resource")
+			MultiplePipesExchangePool multiplePipesExchangePool = new MultiplePipesExchangePool();
+			exchangePoolClient = multiplePipesExchangePool;
+			exchangePoolServer = multiplePipesExchangePool.getClient();
+		}
+
 		Thread studentSideThread = new Thread(() ->
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(pipe.a().wrapBuffered(),
+			DataCommunicatorServer server = new DataCommunicatorServer(exchangePoolServer,
 					wrapReftransExtServer(
 							createDirectCommServer(studentClassesClassloader)));
 			try
@@ -254,7 +272,7 @@ public class CharonExtension implements ParameterResolver
 		studentSideThread.setDaemon(true);
 		studentSideThread.start();
 
-		return new UninitializedDataCommunicatorClient(pipe.b().wrapBuffered());
+		return new UninitializedDataCommunicatorClient(exchangePoolClient);
 	}
 
 	private <REF,

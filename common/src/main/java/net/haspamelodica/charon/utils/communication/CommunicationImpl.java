@@ -12,11 +12,13 @@ import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
 import net.haspamelodica.exchanges.Exchange;
+import net.haspamelodica.exchanges.ExchangePool;
+import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class CommunicationImpl implements Communication
 {
-	private final boolean	logging;
-	private final Exchange	exchange;
+	private final boolean		logging;
+	private final ExchangePool	exchangePool;
 
 	private final Semaphore communicationInitialized;
 
@@ -26,27 +28,32 @@ public class CommunicationImpl implements Communication
 		this.communicationInitialized = params.timeout().isPresent() ? new Semaphore(0) : null;
 
 		startTimeoutThread(params);
-		//TODO make wrapBuffered configurable
-		this.exchange = openCommunication(params).wrapBuffered();
+		this.exchangePool = openCommunication(params);
 		stopTimeout();
 	}
 
-	private Exchange openCommunication(CommunicationParams params) throws IOException, InterruptedException
+	private static ExchangePool openCommunication(CommunicationParams params) throws IOException, InterruptedException
 	{
 		//TODO replace with pattern matching switch once we update to Java 18
 		if(params.mode() instanceof CommunicationParams.Mode.Listen mode)
-			return openListen(mode);
+			return openSimple(openListen(mode));
 		else if(params.mode() instanceof CommunicationParams.Mode.Socket mode)
-			return openSocket(mode);
+			return openSimple(openSocket(mode));
 		else if(params.mode() instanceof CommunicationParams.Mode.Fifo mode)
-			return openFifo(mode);
+			return openSimple(openFifo(mode));
 		else if(params.mode() instanceof CommunicationParams.Mode.Stdio mode)
-			return openStdio(mode);
+			return openSimple(openStdio(mode));
 		else
 			throw new IllegalArgumentException("Unknown mode: " + params.mode());
 	}
 
-	private Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException
+	private static ExchangePool openSimple(Exchange exchange)
+	{
+		//TODO make wrapBuffered configurable
+		return new MultiplexedExchangePool(exchange.wrapBuffered());
+	}
+
+	private static Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException
 	{
 		// yes, open ServerSocket in try-with-resource: close it after accept succeeded; accepted connection will live on.
 		try(ServerSocket server = new ServerSocket())
@@ -60,13 +67,13 @@ public class CommunicationImpl implements Communication
 		}
 	}
 
-	private Exchange openSocket(CommunicationParams.Mode.Socket mode) throws IOException
+	private static Exchange openSocket(CommunicationParams.Mode.Socket mode) throws IOException
 	{
 		Socket sock = new Socket(mode.host(), mode.port());
 
 		return new Exchange(sock.getInputStream(), sock.getOutputStream());
 	}
-	private Exchange openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
+	private static Exchange openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
 	{
 		InputStream in;
 		OutputStream out;
@@ -82,7 +89,7 @@ public class CommunicationImpl implements Communication
 
 		return new Exchange(in, out);
 	}
-	private Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
+	private static Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
 	{
 		return new Exchange(System.in, System.out);
 	}
@@ -164,14 +171,14 @@ public class CommunicationImpl implements Communication
 		return logging;
 	}
 	@Override
-	public Exchange getExchange()
+	public ExchangePool getExchangePool()
 	{
-		return exchange;
+		return exchangePool;
 	}
 
 	@Override
 	public void close() throws IOException
 	{
-		exchange.close();
+		exchangePool.close();
 	}
 }

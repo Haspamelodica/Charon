@@ -263,7 +263,8 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 	private StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> lookupPrototypeBuilder(UntranslatedTyperef<REF, TYPEREF> untranslatedTyperef)
 	{
 		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> prototypeBuilders = streamPrototypeBuilders(untranslatedTyperef).toList();
-		if(prototypeBuilders.stream().distinct().count() != 1)
+		prototypeBuilders = dedupPrototypeBuilders(prototypeBuilders);
+		if(prototypeBuilders.size() != 1)
 			if(prototypeBuilders.size() == 0)
 				throw new ExerciseCausedException("No prototype for " + untranslatedTyperef.describe().name());
 			else
@@ -294,7 +295,8 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				.<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> map(this::tryLookupPrototypeBuilderFromClass)
 				.filter(Objects::nonNull)
 				.toList();
-		if(prototypeBuilders.stream().distinct().count() != 1)
+		prototypeBuilders = dedupPrototypeBuilders(prototypeBuilders);
+		if(prototypeBuilders.size() != 1)
 			if(prototypeBuilders.size() == 0)
 				throw new ExerciseCausedException("No student side class for " + clazz);
 			else
@@ -302,6 +304,27 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				throw new FrameworkCausedException("Multiple student side classes for " + clazz);
 
 		return prototypeBuilders.get(0).instanceBuilder.studentSideType.name();
+	}
+
+	private List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> dedupPrototypeBuilders(
+			List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> prototypeBuilders)
+	{
+		List<StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?>> modifiableCopy = new ArrayList<>(prototypeBuilders);
+		// index-based iteration to avoid ConcurrentModificationException
+		for(int i = 0; i < modifiableCopy.size(); i ++)
+		{
+			Class<?> instanceClassAtI = modifiableCopy.get(i).instanceClass;
+			for(int j = i + 1; j < modifiableCopy.size(); j ++)
+				if(instanceClassAtI.isAssignableFrom(modifiableCopy.get(j).instanceClass))
+				{
+					// The prototype builder at j is a subclass of i, so we can throw away i.
+					modifiableCopy.remove(i);
+					i --;
+					break;
+				}
+		}
+
+		return List.copyOf(modifiableCopy);
 	}
 
 	private CallbackMethod<Method> lookupCallbackInstanceMethod(TYPEREF receiverStaticType, String name, TYPEREF returnType, List<TYPEREF> params,
@@ -388,6 +411,7 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 			return new CallbackOperationOutcome.Result<>(callbackMethod.invoke(receiver, args.toArray()));
 		} catch(IllegalAccessException e)
 		{
+			//TODO this happens when a public method is overridden by a private callback class
 			throw new ExerciseCausedException("Charon doesn't have access to callback method: " + callbackMethod, e);
 		} catch(InvocationTargetException e)
 		{

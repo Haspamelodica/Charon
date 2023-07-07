@@ -72,10 +72,8 @@ import net.haspamelodica.charon.utils.IOConsumer;
 import net.haspamelodica.charon.utils.IOFunction;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.exchanges.DataExchange;
-import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
 import net.haspamelodica.exchanges.multiplexed.ClosedException;
-import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 import net.haspamelodica.exchanges.multiplexed.UnexpectedResponseException;
 
 public class DataCommunicatorClient
@@ -99,10 +97,10 @@ public class DataCommunicatorClient
 	private final DataExchange						threadIndependentCommandExchange;
 	private final ThreadLocal<StudentSideThread>	threads;
 
-	public DataCommunicatorClient(Exchange rawExchange, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
+	public DataCommunicatorClient(ExchangePool exchangePool, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
 	{
+		this.exchangePool = exchangePool;
 		this.callbacks = callbacks;
-		this.exchangePool = new MultiplexedExchangePool(rawExchange);
 
 		this.refManager = new SimpleLongRefManager(true);
 		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();

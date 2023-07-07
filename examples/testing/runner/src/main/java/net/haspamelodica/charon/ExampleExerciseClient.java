@@ -18,7 +18,8 @@ import net.haspamelodica.charon.communicator.impl.data.student.DataCommunicatorS
 import net.haspamelodica.charon.communicator.impl.logging.CommunicationLoggerParams;
 import net.haspamelodica.charon.impl.StudentSideImpl;
 import net.haspamelodica.exchanges.Exchange;
-import net.haspamelodica.exchanges.util.AutoCloseablePair;
+import net.haspamelodica.exchanges.MultiplePipesExchangePool;
+import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class ExampleExerciseClient
 {
@@ -58,13 +59,13 @@ public class ExampleExerciseClient
 
 	private static void runDataSameJVM() throws Exception
 	{
-		try(AutoCloseablePair<Exchange, Exchange> exchangePair = Exchange.openPiped())
+		try(MultiplePipesExchangePool exchangePool = new MultiplePipesExchangePool())
 		{
 			new Thread(() ->
 			{
 				try
 				{
-					DataCommunicatorServer server = new DataCommunicatorServer(exchangePair.a(),
+					DataCommunicatorServer server = new DataCommunicatorServer(exchangePool,
 							wrapTypeCaching(
 									maybeWrapLoggingExtServer(LOGGING, new CommunicationLoggerParams("SERVER: ", true, true),
 											wrapReftransExtServer(
@@ -75,7 +76,7 @@ public class ExampleExerciseClient
 					throw new UncheckedIOException(e);
 				}
 			}).start();
-			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(exchangePair.b());
+			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(exchangePool.getClient());
 			run(new StudentSideImpl<>(
 					wrapTypeCaching(
 							maybeWrapLoggingIntClient(LOGGING, new CommunicationLoggerParams("CLIENT: ", true, true),
@@ -89,7 +90,8 @@ public class ExampleExerciseClient
 		try(Socket sock = new Socket(HOST, PORT))
 		{
 			UninitializedDataCommunicatorClient client = new UninitializedDataCommunicatorClient(
-					new Exchange(sock.getInputStream(), sock.getOutputStream()));
+					new MultiplexedExchangePool(
+							new Exchange(sock.getInputStream(), sock.getOutputStream())));
 			try
 			{
 				run(new StudentSideImpl<>(

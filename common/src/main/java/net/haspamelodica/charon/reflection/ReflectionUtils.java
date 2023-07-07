@@ -134,6 +134,7 @@ public class ReflectionUtils
 			return new OperationOutcome.ConstructorOfAbstractClassCreated<>(clazz, paramTypes);
 		try
 		{
+			//TODO shouldn't we use getDeclaredConstructor instead?
 			return new OperationOutcome.Result<>(clazz.getConstructor(paramTypes.toArray(Class[]::new)));
 		} catch(NoSuchMethodException e)
 		{

@@ -58,16 +58,6 @@ public class DataCommunicatorServer
 			ServerSideTransceiver<LongRef>, ExternalCallbackManager<LongRef>,
 			RefTranslatorCommunicatorCallbacks<LongRef>> communicatorSupplier)
 	{
-		// write magic number for "no compilation error"
-		try
-		{
-			rawExchange.out().write((byte) 's');
-			rawExchange.out().flush();
-		} catch(IOException e)
-		{
-			throw new UncheckedIOException("Error while writing compilation error marker", e);
-		}
-
 		this.exchangePool = new MultiplexedExchangePool(rawExchange);
 		this.refManager = new SimpleLongRefManager(false);
 		this.communicator = communicatorSupplier.createCommunicator(false,

@@ -40,7 +40,6 @@ import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommu
 import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
-import java.io.EOFException;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.util.List;
@@ -61,7 +60,6 @@ import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse;
 import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
-import net.haspamelodica.charon.exceptions.CompilationErrorException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
 import net.haspamelodica.charon.marshaling.Deserializer;
@@ -80,7 +78,6 @@ import net.haspamelodica.exchanges.multiplexed.ClosedException;
 import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 import net.haspamelodica.exchanges.multiplexed.UnexpectedResponseException;
 
-// TODO server, client or both crash on shutdown sometimes
 public class DataCommunicatorClient
 		implements StudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,
 				ClientSideTransceiver<LongRef>, InternalCallbackManager<LongRef>>,
@@ -104,25 +101,6 @@ public class DataCommunicatorClient
 
 	public DataCommunicatorClient(Exchange rawExchange, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
 	{
-		// read magic number
-		try
-		{
-			switch(rawExchange.in().read())
-			{
-				// This will never be written by DataCommunicatorServer, but by CharonCI's run script if it detects a student-side compilation error.
-				case 'c' -> throw new CompilationErrorException("Student side reported a compilation error");
-				case 's' ->
-				{
-					// compilation was successful
-				}
-				case -1 -> throw new EOFException("EOF while reading compilation error marker");
-				default -> throw new CommunicationException("Student side initiated communication with incorrect magic number");
-			};
-		} catch(IOException e)
-		{
-			throw new UncheckedIOException("Error while reading compilation error marker", e);
-		}
-
 		this.callbacks = callbacks;
 		this.exchangePool = new MultiplexedExchangePool(rawExchange);
 

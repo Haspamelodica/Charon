@@ -8,17 +8,21 @@ import static net.haspamelodica.charon.communicator.CommunicatorUtils.wrapTypeCa
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.createDirectCommServer;
 import static net.haspamelodica.charon.communicator.ServerSideCommunicatorUtils.wrapReftransExtServer;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
+import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -318,16 +322,27 @@ public class CharonExtension implements ParameterResolver
 
 	private ClassLoader createStudentClassesClassloader(String studentclasspath)
 	{
-		ClassLoader justStudentClassesLoader;
+		ClassLoader justStudentClassesLoader = new URLClassLoader(
+				Arrays
+						.stream(studentclasspath.split(Pattern.quote(File.pathSeparator)))
+						.map(Path::of)
+						.map(Path::toUri)
+						.map(CharonExtension::toURLWrapMalformedException)
+						.toArray(URL[]::new),
+				null);
+
+		return new PrioritizedClassloader(justStudentClassesLoader, CharonExtension.class.getClassLoader());
+	}
+
+	private static URL toURLWrapMalformedException(URI uri)
+	{
 		try
 		{
-			justStudentClassesLoader = new URLClassLoader(new URL[] {Path.of(studentclasspath).toUri().toURL()}, null);
+			return uri.toURL();
 		} catch(MalformedURLException e)
 		{
 			throw new ParameterResolutionException("Error creating student classes classloader", e);
 		}
-
-		return new PrioritizedClassloader(justStudentClassesLoader, CharonExtension.class.getClassLoader());
 	}
 
 	private boolean parseTruthiness(String string)

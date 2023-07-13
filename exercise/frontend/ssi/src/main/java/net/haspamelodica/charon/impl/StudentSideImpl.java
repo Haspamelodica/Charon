@@ -269,7 +269,8 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				throw new ExerciseCausedException("No prototype for " + untranslatedTyperef.describe().name());
 			else
 				//TODO try to support multiple prototypes
-				throw new FrameworkCausedException("Multiple prototypes for " + untranslatedTyperef.describe().name());
+				throw new FrameworkCausedException("Multiple prototypes for " + untranslatedTyperef.describe().name() + ": "
+						+ prototypeBuilders.stream().map(p -> p.instanceClass).map(Class::getName).collect(Collectors.joining(", ")));
 		StudentSidePrototypeBuilder<REF, TYPEREF, ?, ?, ?, ?, ?> prototypeBuilder = prototypeBuilders.get(0);
 		return prototypeBuilder;
 	}
@@ -301,7 +302,8 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 				throw new ExerciseCausedException("No student side class for " + clazz);
 			else
 				//TODO try to support multiple callback interfaces
-				throw new FrameworkCausedException("Multiple student side classes for " + clazz);
+				throw new FrameworkCausedException("Multiple student side classes for " + clazz + ": "
+						+ prototypeBuilders.stream().map(p -> p.instanceClass).map(Class::getName).collect(Collectors.joining(", ")));
 
 		return prototypeBuilders.get(0).instanceBuilder.studentSideType.name();
 	}
@@ -314,8 +316,10 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 		for(int i = 0; i < modifiableCopy.size(); i ++)
 		{
 			Class<?> instanceClassAtI = modifiableCopy.get(i).instanceClass;
-			for(int j = i + 1; j < modifiableCopy.size(); j ++)
-				if(instanceClassAtI.isAssignableFrom(modifiableCopy.get(j).instanceClass))
+			// We have to check all elements (instead of starting at i+1),
+			// because isAssignableFrom is not symmetric
+			for(int j = 0; j < modifiableCopy.size(); j ++)
+				if(j != i && instanceClassAtI.isAssignableFrom(modifiableCopy.get(j).instanceClass))
 				{
 					// The prototype builder at j is a subclass of i, so we can throw away i.
 					modifiableCopy.remove(i);

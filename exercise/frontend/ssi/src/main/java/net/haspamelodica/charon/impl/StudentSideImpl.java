@@ -380,32 +380,36 @@ public class StudentSideImpl<REF, TYPEREF extends REF> implements StudentSide
 
 		if(candidateCount > 1)
 			throw new ExerciseCausedException("Multiple candidates found"
-					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, returnType, params));
 
 		// There is no candidate which is marked as safe. At this point, it's just about giving the best error message.
 
 		int unsafeCandidatesCount = unsafeCandidates.size();
 		if(unsafeCandidatesCount == 1)
 			// Is this an exercise caused exception or a student side caused exception?
-			throw new StudentSideCausedException("Student side attempted to call a callback method which is not marked as safe for call by student:"
-					+ callbackMethodToString(receiverDynamicType, name, params));
+			throw new StudentSideCausedException("Student side attempted to call a callback method "
+					+ "which is not marked as safe for call by student:"
+					+ callbackMethodToString(receiverDynamicType, name, returnType, params));
 
 		if(unsafeCandidatesCount > 1)
 			throw new ExerciseCausedException("Multiple candidates found, but none marked as safe for call by student,"
-					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+					+ " for callback method " + callbackMethodToString(receiverDynamicType, name, returnType, params));
 
 		if(unserializableCandidates.size() > 0)
 			throw new ExerciseCausedException("No candidate found for callback method except some with unserializable types: "
-					+ callbackMethodToString(receiverDynamicType, name, params));
+					+ callbackMethodToString(receiverDynamicType, name, returnType, params));
 
 		throw new ExerciseCausedException("No candidate found"
-				+ " for callback method " + callbackMethodToString(receiverDynamicType, name, params));
+				+ " for callback method " + callbackMethodToString(receiverDynamicType, name, returnType, params));
 	}
 
-	private String callbackMethodToString(Class<?> receiverDynamicType, String name, List<TYPEREF> params)
+	private String callbackMethodToString(Class<?> receiverDynamicType, String name, TYPEREF returnType, List<TYPEREF> params)
 	{
-		return receiverDynamicType.getName() + "." + name + "("
-				+ params.stream().map(globalMarshalingCommunicator::describeType).map(StudentSideTypeDescription::name).collect(Collectors.joining(", ")) + ")";
+		return globalMarshalingCommunicator.describeType(returnType).name() + " " +
+				receiverDynamicType.getName() + "." + name + "("
+				+ params.stream().map(globalMarshalingCommunicator::describeType)
+						.map(StudentSideTypeDescription::name).collect(Collectors.joining(", "))
+				+ ")";
 	}
 
 	private CallbackOperationOutcome<Object, ThrowableSSI> callCallbackInstanceMethodChecked(Method callbackMethod, Object receiver, List<Object> args)

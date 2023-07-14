@@ -238,8 +238,7 @@ public class CharonExtension implements ParameterResolver
 			throw new RuntimeException("Interrupted while connecting to student side", e);
 		} catch(IncorrectUsageException e)
 		{
-			throw new IllegalArgumentException("Illegal value for " + COMMUNICATIONARGS_PARAM_NAME + ":"
-					+ " Usage: " + CommunicationArgsParser.argsSyntax(), e);
+			throw new ParameterResolutionException("Illegal value for " + COMMUNICATIONARGS_PARAM_NAME, e);
 		}
 	}
 

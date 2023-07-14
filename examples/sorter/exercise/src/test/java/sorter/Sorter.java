@@ -5,10 +5,12 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
 
 @StudentSideInstanceKind(CLASS)
+@PrototypeClass(Sorter.Prototype.class)
 public interface Sorter extends StudentSideInstance
 {
 	public interface Prototype extends StudentSidePrototype<Sorter>

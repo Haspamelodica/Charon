@@ -7,6 +7,7 @@ import static net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKin
 
 import net.haspamelodica.charon.StudentSideInstance;
 import net.haspamelodica.charon.StudentSidePrototype;
+import net.haspamelodica.charon.annotations.PrototypeClass;
 import net.haspamelodica.charon.annotations.StudentSideInstanceKind;
 import net.haspamelodica.charon.annotations.StudentSideInstanceMethodKind;
 import net.haspamelodica.charon.annotations.StudentSidePrototypeMethodKind;
@@ -14,6 +15,7 @@ import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
 
 @StudentSideInstanceKind(CLASS)
+@PrototypeClass(StringArrayList.Prototype.class)
 public interface StringArrayList extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)

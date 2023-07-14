@@ -186,7 +186,7 @@ public class CharonExtension implements ParameterResolver
 						+ "\" enabled, but \"" + COMMUNICATIONARGS_PARAM_NAME + "\" given");
 
 			ClassLoader studentClassesClassloader = studentclasspathArgs
-					.map(studentclasspath -> createStudentClassesClassloader(studentclasspath))
+					.map(this::createStudentClassesClassloader)
 					.orElse(null);
 
 			AtomicLong nextId = new AtomicLong();

@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit;
 
 import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
+import net.haspamelodica.exchanges.FifosExchangePoolClient;
+import net.haspamelodica.exchanges.FifosExchangePoolServer;
 import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class CommunicationImpl implements Communication
@@ -35,22 +37,29 @@ public class CommunicationImpl implements Communication
 	private static ExchangePool openCommunication(CommunicationParams params) throws IOException, InterruptedException
 	{
 		//TODO replace with pattern matching switch once we update to Java 18
-		if(params.mode() instanceof CommunicationParams.Mode.Listen mode)
-			return openSimple(openListen(mode));
+		if(params.mode() instanceof CommunicationParams.Mode.Stdio mode)
+			return openMultiplexed(openStdio(mode));
+		else if(params.mode() instanceof CommunicationParams.Mode.Listen mode)
+			return openMultiplexed(openListen(mode));
 		else if(params.mode() instanceof CommunicationParams.Mode.Socket mode)
-			return openSimple(openSocket(mode));
+			return openMultiplexed(openSocket(mode));
 		else if(params.mode() instanceof CommunicationParams.Mode.Fifo mode)
-			return openSimple(openFifo(mode));
-		else if(params.mode() instanceof CommunicationParams.Mode.Stdio mode)
-			return openSimple(openStdio(mode));
+			return openMultiplexed(openFifo(mode));
+		else if(params.mode() instanceof CommunicationParams.Mode.Fifos mode)
+			return openFifos(mode);
 		else
 			throw new IllegalArgumentException("Unknown mode: " + params.mode());
 	}
 
-	private static ExchangePool openSimple(Exchange exchange)
+	private static ExchangePool openMultiplexed(Exchange exchange)
 	{
 		//TODO make wrapBuffered configurable
 		return new MultiplexedExchangePool(exchange.wrapBuffered());
+	}
+
+	private static Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
+	{
+		return new Exchange(System.in, System.out);
 	}
 
 	private static Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException
@@ -89,11 +98,12 @@ public class CommunicationImpl implements Communication
 
 		return new Exchange(in, out);
 	}
-	private static Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
+	private static ExchangePool openFifos(CommunicationParams.Mode.Fifos mode) throws IOException
 	{
-		return new Exchange(System.in, System.out);
+		return mode.server()
+				? new FifosExchangePoolServer(mode.fifosdir(), mode.controlfifo())
+				: new FifosExchangePoolClient(mode.fifosdir(), mode.controlfifo());
 	}
-
 	// These two methods are needed because of a bug in the JDK:
 	// https://bugs.openjdk.org/browse/JDK-8233451
 	private static InputStream openInput(Path path) throws IOException

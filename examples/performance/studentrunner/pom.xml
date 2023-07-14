@@ -1,0 +1,40 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<groupId>net.haspamelodica.charon</groupId>
+	<artifactId>examples.performance.studentrunner</artifactId>
+	<version>0.0.1-SNAPSHOT</version>
+	<name>charon.examples.performance.studentrunner</name>
+	<description>Runner for the student side of the Performance example</description>
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+	</properties>
+	<dependencies>
+		<dependency>
+			<groupId>net.haspamelodica.charon</groupId>
+			<artifactId>student</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+		<dependency>
+			<groupId>net.haspamelodica.charon</groupId>
+			<artifactId>examples.performance.student</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
+	</dependencies>
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<version>3.11.0</version>
+				<configuration>
+					<source>19</source>
+					<target>19</target>
+					<release>19</release>
+				</configuration>
+			</plugin>
+		</plugins>
+	</build>
+</project>

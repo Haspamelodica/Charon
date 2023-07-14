@@ -84,61 +84,13 @@ public class CommunicationImpl implements Communication
 	}
 	private static Exchange openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
 	{
-		InputStream in;
-		OutputStream out;
-		if(mode.inFirst())
-		{
-			in = openInput(mode.infile());
-			out = openOutput(mode.outfile());
-		} else
-		{
-			out = openOutput(mode.outfile());
-			in = openInput(mode.infile());
-		}
-
-		return new Exchange(in, out);
+		return Exchange.openFifos(mode.inFirst(), mode.infile(), mode.outfile());
 	}
 	private static ExchangePool openFifos(CommunicationParams.Mode.Fifos mode) throws IOException
 	{
 		return mode.server()
 				? new FifosExchangePoolServer(mode.fifosdir(), mode.controlfifo())
 				: new FifosExchangePoolClient(mode.fifosdir(), mode.controlfifo());
-	}
-	// These two methods are needed because of a bug in the JDK:
-	// https://bugs.openjdk.org/browse/JDK-8233451
-	private static InputStream openInput(Path path) throws IOException
-	{
-		InputStream realIn = Files.newInputStream(path);
-		return new InputStream()
-		{
-			@Override
-			public int read(byte[] b, int off, int len) throws IOException
-			{
-				return realIn.read(b, off, len);
-			}
-			@Override
-			public int read() throws IOException
-			{
-				return realIn.read();
-			}
-		};
-	}
-	private static OutputStream openOutput(Path path) throws IOException
-	{
-		OutputStream realOut = Files.newOutputStream(path);
-		return new OutputStream()
-		{
-			@Override
-			public void write(byte[] b, int off, int len) throws IOException
-			{
-				realOut.write(b, off, len);
-			}
-			@Override
-			public void write(int b) throws IOException
-			{
-				realOut.write(b);
-			}
-		};
 	}
 
 	private void startTimeoutThread(CommunicationParams params)

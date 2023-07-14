@@ -13,6 +13,9 @@ import perf.CallCounter;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestPerformance
 {
+	private static final double	WARMUP_RUNTIME_SECONDS	= 10;
+	private static final double	RUNTIME_SECONDS			= 10;
+
 	private final CallCounter.Prototype CallCounter;
 
 	public TestPerformance(CallCounter.Prototype CallCounter)
@@ -22,79 +25,81 @@ public class TestPerformance
 
 	@Test
 	@Order(1)
-	public void warmup()
+	public void testPerformanceRegular()
 	{
-		double secondsToRunFor = 1;
-
-		CallCounter counter = CallCounter.new_();
-		long start = System.nanoTime();
-		long nanosToRunFor = (long) (secondsToRunFor * 1000 * 1000 * 1000);
-		while(System.nanoTime() - start < nanosToRunFor)
-			counter.call();
-
-		start = System.nanoTime();
-		while(System.nanoTime() - start < nanosToRunFor)
-			counter.call(
-					42, 1337, 1, 2,
-					0, -1, Long.MAX_VALUE, Long.MIN_VALUE,
-					1234, 4321, 5678, 8765,
-					987654321, 123456789, -987654321, -123456789);
-
-		CallCounter.callForNSeconds(new CallbackImpl(), secondsToRunFor);
-		CallCounter.callForNSecondsWithUnchangingUnusedParams(new CallbackImpl(), secondsToRunFor);
+		{
+			CallCounter counter = CallCounter.new_();
+			long start = System.nanoTime();
+			long nanosToRunFor = (long) (WARMUP_RUNTIME_SECONDS * 1000 * 1000 * 1000);
+			while(System.nanoTime() - start < nanosToRunFor)
+				counter.call();
+		}
+		{
+			CallCounter counter = CallCounter.new_();
+			long start = System.nanoTime();
+			long nanosToRunFor = (long) (RUNTIME_SECONDS * 1000 * 1000 * 1000);
+			while(System.nanoTime() - start < nanosToRunFor)
+				counter.call();
+			System.out.println("Regular   : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
+		}
 	}
 
 	@Test
 	@Order(2)
-	public void testPerformanceRegular()
+	public void testPerformanceCallback()
 	{
-		double secondsToRunFor = 1;
-
-		CallCounter counter = CallCounter.new_();
-		long start = System.nanoTime();
-		long nanosToRunFor = (long) (secondsToRunFor * 1000 * 1000 * 1000);
-		while(System.nanoTime() - start < nanosToRunFor)
-			counter.call();
-		System.out.println("Regular   : " + counter.getCallCount() / secondsToRunFor + " calls per second");
+		{
+			CallbackImpl callback = new CallbackImpl();
+			CallCounter.callForNSeconds(callback, WARMUP_RUNTIME_SECONDS);
+		}
+		{
+			CallbackImpl callback = new CallbackImpl();
+			CallCounter.callForNSeconds(callback, RUNTIME_SECONDS);
+			System.out.println("Callback  : " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
+		}
 	}
 
 	@Test
 	@Order(3)
-	public void testPerformanceCallback()
+	public void testPerformanceRegularParams()
 	{
-		double secondsToRunFor = 1;
-
-		CallbackImpl callback = new CallbackImpl();
-		CallCounter.callForNSeconds(callback, secondsToRunFor);
-		System.out.println("Callback  : " + callback.getCallCount() / secondsToRunFor + " calls per second");
+		{
+			CallCounter counter = CallCounter.new_();
+			long start = System.nanoTime();
+			long nanosToRunFor = (long) (WARMUP_RUNTIME_SECONDS * 1000 * 1000 * 1000);
+			while(System.nanoTime() - start < nanosToRunFor)
+				counter.call(
+						42, 1337, 1, 2,
+						0, -1, Long.MAX_VALUE, Long.MIN_VALUE,
+						1234, 4321, 5678, 8765,
+						987654321, 123456789, -987654321, -123456789);
+		}
+		{
+			CallCounter counter = CallCounter.new_();
+			long start = System.nanoTime();
+			long nanosToRunFor = (long) (RUNTIME_SECONDS * 1000 * 1000 * 1000);
+			while(System.nanoTime() - start < nanosToRunFor)
+				counter.call(
+						42, 1337, 1, 2,
+						0, -1, Long.MAX_VALUE, Long.MIN_VALUE,
+						1234, 4321, 5678, 8765,
+						987654321, 123456789, -987654321, -123456789);
+			System.out.println("Regular p : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
+		}
 	}
 
 	@Test
 	@Order(4)
-	public void testPerformanceRegularParams()
-	{
-		double secondsToRunFor = 1;
-
-		CallCounter counter = CallCounter.new_();
-		long start = System.nanoTime();
-		long nanosToRunFor = (long) (secondsToRunFor * 1000 * 1000 * 1000);
-		while(System.nanoTime() - start < nanosToRunFor)
-			counter.call(
-					42, 1337, 1, 2,
-					0, -1, Long.MAX_VALUE, Long.MIN_VALUE,
-					1234, 4321, 5678, 8765,
-					987654321, 123456789, -987654321, -123456789);
-		System.out.println("Regular p : " + counter.getCallCount() / secondsToRunFor + " calls per second");
-	}
-
-	@Test
-	@Order(5)
 	public void testPerformanceCallbackParams()
 	{
-		double secondsToRunFor = 1;
-
-		CallbackImpl callback = new CallbackImpl();
-		CallCounter.callForNSecondsWithUnchangingUnusedParams(callback, secondsToRunFor);
-		System.out.println("Callback p: " + callback.getCallCount() / secondsToRunFor + " calls per second");
+		{
+			CallbackImpl callback = new CallbackImpl();
+			CallCounter.callForNSecondsWithUnchangingUnusedParams(callback, WARMUP_RUNTIME_SECONDS);
+		}
+		{
+			CallbackImpl callback = new CallbackImpl();
+			CallCounter.callForNSecondsWithUnchangingUnusedParams(callback, RUNTIME_SECONDS);
+			System.out.println("Callback p: " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
+		}
 	}
 }

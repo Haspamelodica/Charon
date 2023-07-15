@@ -261,11 +261,11 @@ public class CharonExtension implements ParameterResolver
 
 		Thread studentSideThread = new Thread(() ->
 		{
-			DataCommunicatorServer server = new DataCommunicatorServer(exchangePoolServer,
-					wrapReftransExtServer(
-							createDirectCommServer(studentClassesClassloader)));
 			try
 			{
+				DataCommunicatorServer server = new DataCommunicatorServer(exchangePoolServer,
+						wrapReftransExtServer(
+								createDirectCommServer(studentClassesClassloader)));
 				server.run();
 			} catch(IOException e)
 			{

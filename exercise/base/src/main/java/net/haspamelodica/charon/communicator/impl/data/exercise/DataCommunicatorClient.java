@@ -38,6 +38,7 @@ import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommu
 import static net.haspamelodica.charon.communicator.impl.data.exercise.DataCommunicatorClient.AllowedThreadCallbacks.DISALLOW_CALLBACKS;
 
 import java.io.DataInput;
+import java.io.DataInputStream;
 import java.io.DataOutput;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -45,6 +46,7 @@ import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicReference;
 
 import net.haspamelodica.charon.CallbackOperationOutcome;
 import net.haspamelodica.charon.OperationOutcome;
@@ -57,11 +59,12 @@ import net.haspamelodica.charon.communicator.StudentSideTypeDescription;
 import net.haspamelodica.charon.communicator.impl.data.DataCommunicatorUtils;
 import net.haspamelodica.charon.communicator.impl.data.ThreadCommand;
 import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentCommand;
-import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentResponse;
+import net.haspamelodica.charon.communicator.impl.data.ThreadIndependentRequest;
 import net.haspamelodica.charon.communicator.impl.data.ThreadResponse;
 import net.haspamelodica.charon.exceptions.CommunicationException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
 import net.haspamelodica.charon.exceptions.IllegalBehaviourException;
+import net.haspamelodica.charon.exceptions.StudentSideCausedException;
 import net.haspamelodica.charon.marshaling.Deserializer;
 import net.haspamelodica.charon.marshaling.Serializer;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
@@ -93,9 +96,13 @@ public class DataCommunicatorClient
 	private final UnidirectionalMap<LongRef, Integer>	constructorParamCounts;
 	private final UnidirectionalMap<LongRef, Integer>	methodParamCounts;
 
-	private final Object							commandExchangeLock;
-	private final DataExchange						threadIndependentCommandExchange;
-	private final ThreadLocal<StudentSideThread>	threads;
+	private final Object		threadIndependentCommandLock;
+	private final DataExchange	threadIndependentExchange;
+	private final Thread		threadIndependentRequestHandler;
+
+	private final AtomicReference<RuntimeException> studentSideCrashReason;
+
+	private final ThreadLocal<StudentSideThread> threads;
 
 	public DataCommunicatorClient(ExchangePool exchangePool, StudentSideCommunicatorCallbacks<LongRef, LongRef, LongRef> callbacks)
 	{
@@ -106,33 +113,91 @@ public class DataCommunicatorClient
 		this.constructorParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
 		this.methodParamCounts = UnidirectionalMap.builder().concurrent().weakKeys().build();
 
-		this.threads = new ThreadLocal<>();
-		this.commandExchangeLock = new Object();
+		this.threadIndependentCommandLock = new Object();
 		try
 		{
-			this.threadIndependentCommandExchange = createDataExchange();
+			this.threadIndependentExchange = createDataExchange();
 		} catch(IOException e)
 		{
-			throw new UncheckedIOException("Error while creating thread-independent command exchange", e);
+			throw new UncheckedIOException("Error while creating thread-independent exchange", e);
+		}
+		this.threadIndependentRequestHandler = new Thread(this::threadIndependentRequestHandler, "ThreadIndependentRequestHandler");
+		threadIndependentRequestHandler.setDaemon(true);
+		this.studentSideCrashReason = new AtomicReference<>();
+
+		this.threads = new ThreadLocal<>();
+
+		threadIndependentRequestHandler.start();
+	}
+
+	private void threadIndependentRequestHandler()
+	{
+		try
+		{
+			DataInputStream threadIndependentRequestIn = threadIndependentExchange.in();
+			for(;;)
+				switch(ThreadIndependentRequest.decode(threadIndependentRequestIn.readByte()))
+				{
+					case SHUTDOWN_FINISHED ->
+					{
+						return;
+					}
+					case CRASHED ->
+					{
+						String studentSideMessage = threadIndependentExchange.in().readUTF();
+						studentSideCrashReason.set(new FrameworkCausedException("The student side reported a crash: " + studentSideMessage));
+						return;
+					}
+					case OUT_OF_MEMORY ->
+					{
+						try
+						{
+							//TODO debug
+							Thread.sleep(500);
+						} catch(InterruptedException e)
+						{
+							// TODO Auto-generated catch block
+							e.printStackTrace();
+						}
+						studentSideCrashReason.set(new StudentSideCausedException("The student side reported being out of memory"));
+						return;
+					}
+				}
+		} catch(IOException e)
+		{
+			studentSideCrashReason.set(wrapIOException(e));
+		} finally
+		{
+			try
+			{
+				// This will cause all remaining exercise side threads currently waiting on the student side to crash,
+				// which is desired.
+				exchangePool.close();
+			} catch(IOException e)
+			{
+				UncheckedIOException wrappedE = new UncheckedIOException("Error while shutting down", e);
+				RuntimeException oldCrashReason = studentSideCrashReason.get();
+				if(oldCrashReason == null)
+					studentSideCrashReason.set(wrappedE);
+				else
+					oldCrashReason.addSuppressed(wrappedE);
+			}
 		}
 	}
 
 	public void shutdown()
 	{
 		executeThreadIndependentCommand(SHUTDOWN, commandOut ->
-		{}, commandIn ->
-		{
-			if(ThreadIndependentResponse.decode(commandIn.readByte()) != ThreadIndependentResponse.SHUTDOWN_FINISHED)
-				throw new IllegalBehaviourException("Student side didn't respond with SHUTDOWN_FINISHED to SHUTDOWN");
-			return null;
-		});
+		{});
 		try
 		{
-			exchangePool.close();
-		} catch(IOException e)
+			threadIndependentRequestHandler.join();
+		} catch(InterruptedException e)
 		{
-			throw new UncheckedIOException("Error while shutting down", e);
+			Thread.currentThread().interrupt();
+			throw new RuntimeException("Interrupted while shutting down", e);
 		}
+		// No need to close exchangePool; threadIndependentRequestHandler will do that for us.
 	}
 
 	@Override
@@ -526,25 +591,19 @@ public class DataCommunicatorClient
 
 	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand)
 	{
-		executeThreadIndependentCommand(command, sendCommand, in -> null);
-	}
-	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand,
-			IOFunction<DataInput, R> parseResponse)
-	{
-		synchronized(commandExchangeLock)
+		synchronized(threadIndependentCommandLock)
 		{
 			try
 			{
-				threadIndependentCommandExchange.out().writeByte(command.encode());
-				sendCommand.accept(threadIndependentCommandExchange.out());
-				threadIndependentCommandExchange.out().flush();
-				return parseResponse.apply(threadIndependentCommandExchange.in());
+				threadIndependentExchange.out().writeByte(command.encode());
+				sendCommand.accept(threadIndependentExchange.out());
+				threadIndependentExchange.out().flush();
 			} catch(UnexpectedResponseException e)
 			{
-				return wrapUnexpectedResponseException(e);
+				wrapUnexpectedResponseException(e);
 			} catch(IOException e)
 			{
-				return wrapIOException(e);
+				wrapIOException(e);
 			}
 		}
 	}
@@ -555,6 +614,9 @@ public class DataCommunicatorClient
 	}
 	private <R> R wrapIOException(IOException e)
 	{
+		RuntimeException studentSideCrashReason = this.studentSideCrashReason.get();
+		if(studentSideCrashReason != null)
+			throw studentSideCrashReason;
 		throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
 	}
 
@@ -573,13 +635,17 @@ public class DataCommunicatorClient
 	//TODO clean up threads which have exited
 	private StudentSideThread createStudentSideThread() throws ClosedException
 	{
-		return executeThreadIndependentCommand(NEW_THREAD, commandOut ->
-		{}, commandIn ->
+		executeThreadIndependentCommand(NEW_THREAD, commandOut ->
+		{});
+		try
 		{
 			DataExchange cont = createDataExchange();
 			DataExchange data = createDataExchange();
 			return new StudentSideThread(cont, data);
-		});
+		} catch(IOException e)
+		{
+			return wrapIOException(e);
+		}
 	}
 
 	private ThreadResponse readThreadResponse(DataInput in) throws IOException

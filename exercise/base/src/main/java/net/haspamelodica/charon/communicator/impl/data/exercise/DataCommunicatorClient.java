@@ -159,7 +159,7 @@ public class DataCommunicatorClient
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
-						studentSideCrashReason.set(new StudentSideCausedException("The student side reported being out of memory"));
+						studentSideCrashReason.set(new StudentSideCausedException("The student side reported being out of memory; no subsequent communication will succeed"));
 						return;
 					}
 				}
@@ -621,7 +621,7 @@ public class DataCommunicatorClient
 		RuntimeException studentSideCrashReason = this.studentSideCrashReason.get();
 		if(studentSideCrashReason != null)
 			return studentSideCrashReason;
-		return new CommunicationException("Communication with the student side failed; maybe there was a timeout, or the student called System.exit(0), or Charon crashed", e);
+		return new CommunicationException("Communication with the student side failed; maybe there was a timeout, or the student called System.exit(), or Charon crashed", e);
 	}
 
 	private StudentSideThread getStudentSideThread() throws ClosedException

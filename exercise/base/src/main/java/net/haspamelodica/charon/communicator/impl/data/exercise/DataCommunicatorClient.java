@@ -525,10 +525,10 @@ public class DataCommunicatorClient
 			return parseResponse.apply(thread.control().in(), params);
 		} catch(UnexpectedResponseException e)
 		{
-			return wrapUnexpectedResponseException(e);
+			return throwWrappedUnexpectedResponseException(e);
 		} catch(IOException e)
 		{
-			return wrapIOException(e);
+			return throwWrappedIOException(e);
 		}
 	}
 
@@ -600,24 +600,28 @@ public class DataCommunicatorClient
 				threadIndependentExchange.out().flush();
 			} catch(UnexpectedResponseException e)
 			{
-				wrapUnexpectedResponseException(e);
+				throwWrappedUnexpectedResponseException(e);
 			} catch(IOException e)
 			{
-				wrapIOException(e);
+				throwWrappedIOException(e);
 			}
 		}
 	}
 
-	private <R> R wrapUnexpectedResponseException(UnexpectedResponseException e)
+	private <R> R throwWrappedUnexpectedResponseException(UnexpectedResponseException e)
 	{
 		throw new IllegalBehaviourException(e);
 	}
-	private <R> R wrapIOException(IOException e)
+	private <R> R throwWrappedIOException(IOException e)
+	{
+		throw wrapIOException(e);
+	}
+	private RuntimeException wrapIOException(IOException e)
 	{
 		RuntimeException studentSideCrashReason = this.studentSideCrashReason.get();
 		if(studentSideCrashReason != null)
-			throw studentSideCrashReason;
-		throw new CommunicationException("Communication with the student side failed; maybe there was a timeout, or the student called System.exit(0), or Charon crashed", e);
+			return studentSideCrashReason;
+		return new CommunicationException("Communication with the student side failed; maybe there was a timeout, or the student called System.exit(0), or Charon crashed", e);
 	}
 
 	private StudentSideThread getStudentSideThread() throws ClosedException
@@ -644,7 +648,7 @@ public class DataCommunicatorClient
 			return new StudentSideThread(cont, data);
 		} catch(IOException e)
 		{
-			return wrapIOException(e);
+			return throwWrappedIOException(e);
 		}
 	}
 

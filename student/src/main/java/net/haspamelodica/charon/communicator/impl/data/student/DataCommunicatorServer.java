@@ -160,12 +160,11 @@ public class DataCommunicatorServer
 	{
 		try
 		{
-			// Don't wrap in synchronized; it's not a big problem if multiple threads do this at the same time,
+			// Don't wrap in synchronized; it's not a big problem if this happens while the student side is shutting down,
 			// and a synchronized block may cause some allocations.
 			// Also, this entire method can't be reliable either way; if an OOME has occurred, we can't be sure of anything.
-			if(!running.get())
+			if(!running.compareAndSet(false, true))
 				return;
-			running.set(false);
 
 			// In most cases when an OOME occurs, one thread is allocating the bulk of all objects.
 			// However, it's possible that another concurrent thread

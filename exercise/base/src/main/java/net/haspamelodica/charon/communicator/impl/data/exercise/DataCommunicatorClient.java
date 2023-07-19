@@ -617,7 +617,7 @@ public class DataCommunicatorClient
 		RuntimeException studentSideCrashReason = this.studentSideCrashReason.get();
 		if(studentSideCrashReason != null)
 			throw studentSideCrashReason;
-		throw new CommunicationException("Communication with the student side failed; maybe student called System.exit(0) or crashed", e);
+		throw new CommunicationException("Communication with the student side failed; maybe there was a timeout, or the student called System.exit(0), or Charon crashed", e);
 	}
 
 	private StudentSideThread getStudentSideThread() throws ClosedException

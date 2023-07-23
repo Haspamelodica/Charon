@@ -1,13 +1,9 @@
 package net.haspamelodica.charon.utils.communication;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
@@ -71,6 +67,7 @@ public class CommunicationImpl implements Communication
 					? new InetSocketAddress(mode.port())
 					: new InetSocketAddress(mode.host().get(), mode.port()));
 			Socket sock = server.accept();
+			sock.setTcpNoDelay(true);
 
 			return new Exchange(sock.getInputStream(), sock.getOutputStream());
 		}
@@ -79,6 +76,7 @@ public class CommunicationImpl implements Communication
 	private static Exchange openSocket(CommunicationParams.Mode.Socket mode) throws IOException
 	{
 		Socket sock = new Socket(mode.host(), mode.port());
+		sock.setTcpNoDelay(true);
 
 		return new Exchange(sock.getInputStream(), sock.getOutputStream());
 	}

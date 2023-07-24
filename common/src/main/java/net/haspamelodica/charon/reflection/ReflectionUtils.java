@@ -261,6 +261,10 @@ public class ReflectionUtils
 		}
 	}
 
+	//TODO in all lookup methods, search for similar members as well and include these in the error message, if any.
+	//TODO Handlers translating errors here to OperationOutcome should include the error message,
+	// at least for field type / return type / static-ness mismatches.
+	
 	private static Field lookupField(Class<?> clazz, boolean isStatic, String name, Class<?> fieldType) throws NoSuchFieldException
 	{
 		Field field = clazz.getDeclaredField(name);

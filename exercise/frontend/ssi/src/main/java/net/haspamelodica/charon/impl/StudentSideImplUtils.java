@@ -14,6 +14,7 @@ import net.haspamelodica.charon.annotations.OverrideStudentSideNameByClass;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.exceptions.CharonException;
 import net.haspamelodica.charon.exceptions.FrameworkCausedException;
+import net.haspamelodica.charon.exceptions.HierarchyMismatchException;
 import net.haspamelodica.charon.exceptions.InconsistentHierarchyException;
 import net.haspamelodica.charon.marshaling.SerDes;
 
@@ -31,11 +32,14 @@ public class StudentSideImplUtils
 	public static <K extends Annotation> MethodHandler handlerFor(Method method, Class<K> kindClass,
 			StudentSideHandlerGenerator<MethodHandler, K> generateStudentSideHandler)
 	{
-		return handlerFor(method, kindClass, defaultHandler(method), generateStudentSideHandler);
+		return handlerFor(method, kindClass, defaultHandler(method), e -> (proxy, args) ->
+		{
+			throw e;
+		}, generateStudentSideHandler);
 	}
 
 	public static <R, K extends Annotation> R handlerFor(Method method, Class<K> kindClass, R defaultHandler,
-			StudentSideHandlerGenerator<R, K> generateStudentSideHandler)
+			Function<HierarchyMismatchException, R> throwingHandler, StudentSideHandlerGenerator<R, K> generateStudentSideHandler)
 	{
 		K kind = method.getAnnotation(kindClass);
 
@@ -48,8 +52,19 @@ public class StudentSideImplUtils
 			try
 			{
 				return generateStudentSideHandler.generate(kind, ssn.studentSideName(), ssn.isOverridden());
+			} catch(HierarchyMismatchException e)
+			{
+				// This is an error of the student, not the exercise creator.
+				// So, don't fail-fast, and instead throw only when the method we're creating the handler for is called,
+				// to make sure only the tests fail which actually need this method.
+				return throwingHandler.apply(e);
 			} catch(CharonException e)
 			{
+				//TODO don't throw now; instead, return a handler throwing this.
+				// Also, improve the message. For example, if the method isn't found,
+				// say something like "Attempted to call a student-side method which doesn't exists: XYZ"
+				//TODO depending on the exception, maybe don't expose the exercise-side method object.
+				// Might be confusing for students.
 				throw e.withContext("Error while creating method handler for " + method);
 			}
 		} else

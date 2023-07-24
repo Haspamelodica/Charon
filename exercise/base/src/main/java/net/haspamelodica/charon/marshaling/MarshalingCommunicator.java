@@ -125,6 +125,12 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 			}
 
 			@Override
+			public String typerefToString(TYPEREF typeref)
+			{
+				return describeType(typeref).name();
+			}
+
+			@Override
 			public SST checkRepresentsStudentSideThrowableAndCastOrNull(Object representationObject)
 			{
 				return callbacks.checkRepresentsStudentSideThrowableAndCastOrNull(representationObject);
@@ -157,7 +163,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 	public TYPEREF getTypeByNameAndVerify(String typeName)
 	{
-		TYPEREF result = Marshaler.handleOperationOutcomeVoid(GET_TYPE_BY_NAME, communicator.getTypeByName(typeName));
+		TYPEREF result = marshaler.handleOperationOutcomeVoid(GET_TYPE_BY_NAME, communicator.getTypeByName(typeName));
 
 		String actualName = describeType(result).name();
 		if(!actualName.equals(typeName))
@@ -235,20 +241,20 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 	public CONSTRUCTORREF lookupConstructor(Class<?> type, List<Class<?>> params)
 	{
-		return Marshaler.handleOperationOutcomeVoid(LOOKUP_CONSTRUCTOR, communicator.lookupConstructor(
+		return marshaler.handleOperationOutcomeVoid(LOOKUP_CONSTRUCTOR, communicator.lookupConstructor(
 				lookupCorrespondingStudentSideTypeOrThrow(type), lookupCorrespondingStudentSideTypesOrThrow(params)));
 	}
 
 	public METHODREF lookupMethod(Class<?> type, String name, Class<?> returnType, List<Class<?>> params, boolean isStatic)
 	{
-		return Marshaler.handleOperationOutcomeVoid(LOOKUP_METHOD, communicator.lookupMethod(
+		return marshaler.handleOperationOutcomeVoid(LOOKUP_METHOD, communicator.lookupMethod(
 				lookupCorrespondingStudentSideTypeOrThrow(type), name,
 				lookupCorrespondingStudentSideTypeOrThrow(returnType), lookupCorrespondingStudentSideTypesOrThrow(params), isStatic));
 	}
 
 	public FIELDREF lookupField(Class<?> type, String name, Class<?> fieldType, boolean isStatic)
 	{
-		return Marshaler.handleOperationOutcomeVoid(LOOKUP_FIELD, communicator.lookupField(
+		return marshaler.handleOperationOutcomeVoid(LOOKUP_FIELD, communicator.lookupField(
 				lookupCorrespondingStudentSideTypeOrThrow(type), name,
 				lookupCorrespondingStudentSideTypeOrThrow(fieldType), isStatic));
 	}
@@ -298,7 +304,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 		OperationOutcome<Void, Void, TYPEREF> outcome = communicator.setStaticField(field, valRef);
 
-		Marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
+		marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
 	}
 
 	public <T> T callInstanceMethod(METHODREF method, Class<?> type, Class<T> returnType,
@@ -335,7 +341,7 @@ public class MarshalingCommunicator<REF, TYPEREF extends REF, CONSTRUCTORREF ext
 
 		OperationOutcome<Void, Void, TYPEREF> outcome = communicator.setInstanceField(field, receiverRef, valRef);
 
-		Marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
+		marshaler.handleOperationOutcomeVoid(SET_FIELD, outcome);
 	}
 
 	public <T> T sendAndReceive(Class<T> type, Object receiver)

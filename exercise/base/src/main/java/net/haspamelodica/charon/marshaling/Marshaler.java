@@ -117,7 +117,7 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 
 	public <T> T receiveOrThrowVoid(OperationKind operationKind, Class<T> clazz, OperationOutcome<REF, Void, TYPEREF> outcome)
 	{
-		return receive(clazz, handleOperationOutcomeVoid(operationKind, outcome));
+		return receive(clazz, handleOperationOutcomeVoid(operationKind, outcome, callbacks::typerefToString));
 	}
 
 	public <T> T receiveOrThrow(OperationKind operationKind, Class<T> clazz, OperationOutcome<REF, ? extends REF, TYPEREF> outcome) throws SSX
@@ -132,7 +132,7 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		// Probably a bug in the Eclipse compiler.
 		// Workaround: Specify the type arguments to the method explicitly.
 		return Marshaler.<SSX, RESULTREF, THROWABLEREF, TYPEREF> handleOperationOutcome(operationKind, outcome,
-				thrown -> throwSSX(callbacks, thrown));
+				callbacks::typerefToString, thrown -> throwSSX(callbacks, thrown));
 	}
 
 	private <R, THROWABLEREF extends REF, SST> R throwSSX(MarshalerCallbacks<REF, TYPEREF, SST, SSX> callbacks,
@@ -258,11 +258,11 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		{
 			OperationOutcome<Constructor<?>, Void, Class<?>> localSerdesConstructorLookupOutcome =
 					ReflectionUtils.lookupConstructor(c, List.of());
-			Constructor<?> localSerdesConstructor =
-					handleOperationOutcomeVoid(OperationKind.LOOKUP_CONSTRUCTOR, localSerdesConstructorLookupOutcome);
+			Constructor<?> localSerdesConstructor = handleOperationOutcomeVoid(OperationKind.LOOKUP_CONSTRUCTOR,
+					localSerdesConstructorLookupOutcome, Class::getName);
 			OperationOutcome<Object, Throwable, Class<?>> localSerdesOutcome =
 					ReflectionUtils.callConstructor(localSerdesConstructor, List.of());
-			SerDes<?> serdes = (SerDes<?>) handleOperationOutcome(OperationKind.CALL_CONSTRUCTOR, localSerdesOutcome,
+			SerDes<?> serdes = (SerDes<?>) handleOperationOutcome(OperationKind.CALL_CONSTRUCTOR, localSerdesOutcome, Class::getName,
 					thrown -> new ExerciseCausedException("Error while creating SerDes for class " + c, thrown.thrownThrowable()));
 
 			LazyValue<REF> serdesRef = new LazyValue<REF>(() -> createStudentSerdes(c, communicator));
@@ -276,7 +276,8 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		TYPEREF serdesTyperef;
 		try
 		{
-			serdesTyperef = handleOperationOutcomeVoid(OperationKind.GET_TYPE_BY_NAME, communicator.getTypeByName(classToName(c)));
+			serdesTyperef = handleOperationOutcomeVoid(OperationKind.GET_TYPE_BY_NAME,
+					communicator.getTypeByName(classToName(c)), callbacks::typerefToString);
 		} catch(CharonException e)
 		{
 			// This can only be CLASS_NOT_FOUND
@@ -286,7 +287,7 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		try
 		{
 			serdesConstructorref = handleOperationOutcomeVoid(OperationKind.LOOKUP_CONSTRUCTOR,
-					communicator.lookupConstructor(serdesTyperef, List.of()));
+					communicator.lookupConstructor(serdesTyperef, List.of()), callbacks::typerefToString);
 		} catch(CharonException e)
 		{
 			throw new StudentSideCausedException("Error while looking up student-side constructor of SerDes " + c, e);
@@ -300,17 +301,30 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 		}
 	}
 
-	public static <RESULTREF, TYPEREF> RESULTREF handleOperationOutcomeVoid(
+	public <RESULTREF> RESULTREF handleOperationOutcomeVoid(
 			OperationKind operationKind, OperationOutcome<RESULTREF, Void, TYPEREF> outcome)
 	{
-		return handleOperationOutcome(operationKind, outcome, thrown ->
+		return handleOperationOutcomeVoid(operationKind, outcome, callbacks::typerefToString);
+	}
+	public static <RESULTREF, TYPEREF> RESULTREF handleOperationOutcomeVoid(
+			OperationKind operationKind, OperationOutcome<RESULTREF, Void, TYPEREF> outcome,
+			Function<TYPEREF, String> typerefToString)
+	{
+		return handleOperationOutcome(operationKind, outcome, typerefToString, thrown ->
 		{
 			throw new FrameworkCausedException(operationKind + " outcome was of kind " + OperationOutcome.Kind.THROWN);
 		});
 	}
 
+	public <X extends Exception, RESULTREF, THROWABLEREF> RESULTREF handleOperationOutcome(OperationKind operationKind,
+			OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF> outcome,
+			Function<OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>, X> wrapThrown) throws X
+	{
+		return handleOperationOutcome(operationKind, outcome, callbacks::typerefToString, wrapThrown);
+	}
 	public static <X extends Exception, RESULTREF, THROWABLEREF, TYPEREF> RESULTREF handleOperationOutcome(OperationKind operationKind,
 			OperationOutcome<RESULTREF, THROWABLEREF, TYPEREF> outcome,
+			Function<TYPEREF, String> typerefToString,
 			Function<OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>, X> wrapThrown) throws X
 	{
 		operationKind.checkOutcomeAllowed(outcome);
@@ -319,15 +333,10 @@ public class Marshaler<REF, TYPEREF extends REF, SSX extends StudentSideCausedEx
 			case RESULT -> ((OperationOutcome.Result<RESULTREF, THROWABLEREF, TYPEREF>) outcome).returnValue();
 			case SUCCESS_WITHOUT_RESULT -> null;
 			case THROWN -> throw wrapThrown.apply((OperationOutcome.Thrown<RESULTREF, THROWABLEREF, TYPEREF>) outcome);
-			// TODO better error messages for the cases below; for this, extract some toString code from CommunicationLogger to OperationOutcome
-			case CLASS_NOT_FOUND -> throw new HierarchyMismatchException("class not found: " + outcome);
-			case FIELD_NOT_FOUND -> throw new HierarchyMismatchException("field not found: " + outcome);
-			case METHOD_NOT_FOUND -> throw new HierarchyMismatchException("method not found: " + outcome);
-			case CONSTRUCTOR_NOT_FOUND -> throw new HierarchyMismatchException("constructor not found: " + outcome);
-			case CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED -> throw new HierarchyMismatchException("constructor of abstract created: " + outcome);
-			case ARRAY_INDEX_OUT_OF_BOUNDS -> throw new ExerciseCausedException("Array index out of bounds: " + outcome);
-			case ARRAY_SIZE_NEGATIVE -> throw new ExerciseCausedException("Array size negative: " + outcome);
-			case ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY -> throw new ExerciseCausedException("Array size negative for multiarray: " + outcome);
+			case CLASS_NOT_FOUND, FIELD_NOT_FOUND, METHOD_NOT_FOUND, CONSTRUCTOR_NOT_FOUND, CONSTRUCTOR_OF_ABSTRACT_CLASS_CREATED ->
+					throw new HierarchyMismatchException(outcome.toString(null, null, typerefToString));
+			case ARRAY_INDEX_OUT_OF_BOUNDS, ARRAY_SIZE_NEGATIVE, ARRAY_SIZE_NEGATIVE_IN_MULTI_ARRAY ->
+					throw new ExerciseCausedException(outcome.toString(null, null, typerefToString));
 		};
 	}
 

@@ -39,6 +39,7 @@ public interface Maze extends StudentSideInstance
 	}
 
 	@StudentSideInstanceKind(CLASS)
+	@PrototypeClass(MazeBuilder.Prototype.class)
 	public static interface MazeBuilder extends StudentSideInstance
 	{
 		/** You may assume this method is only called once */

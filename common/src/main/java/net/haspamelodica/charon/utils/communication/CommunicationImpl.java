@@ -9,8 +9,8 @@ import java.util.concurrent.TimeUnit;
 
 import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
-import net.haspamelodica.exchanges.FifosExchangePoolClient;
-import net.haspamelodica.exchanges.FifosExchangePoolServer;
+import net.haspamelodica.exchanges.fifos.FifosExchangePoolClient;
+import net.haspamelodica.exchanges.fifos.FifosExchangePoolServer;
 import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class CommunicationImpl implements Communication

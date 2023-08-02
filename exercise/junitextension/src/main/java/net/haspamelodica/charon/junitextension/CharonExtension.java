@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -54,8 +55,8 @@ import net.haspamelodica.charon.utils.communication.CommunicationArgsParser;
 import net.haspamelodica.charon.utils.communication.IncorrectUsageException;
 import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
-import net.haspamelodica.exchanges.MultiplePipesExchangePool;
 import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
+import net.haspamelodica.exchanges.pipes.PipesExchangePool;
 import net.haspamelodica.exchanges.util.AutoCloseablePair;
 
 /**
@@ -254,7 +255,7 @@ public class CharonExtension implements ParameterResolver
 		} else
 		{
 			@SuppressWarnings("resource")
-			MultiplePipesExchangePool multiplePipesExchangePool = new MultiplePipesExchangePool();
+			PipesExchangePool multiplePipesExchangePool = new PipesExchangePool();
 			exchangePoolClient = multiplePipesExchangePool;
 			exchangePoolServer = multiplePipesExchangePool.getClient();
 		}

@@ -8,8 +8,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
-import net.haspamelodica.charon.utils.IOBiConsumer;
-import net.haspamelodica.charon.utils.IOFunction;
+import net.haspamelodica.exchanges.util.IOBiConsumer;
+import net.haspamelodica.exchanges.util.IOFunction;
 
 public class DataCommunicatorUtils
 {

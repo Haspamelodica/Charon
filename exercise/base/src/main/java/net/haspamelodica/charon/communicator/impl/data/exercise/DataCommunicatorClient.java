@@ -70,14 +70,14 @@ import net.haspamelodica.charon.marshaling.Serializer;
 import net.haspamelodica.charon.refs.longref.LongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager;
 import net.haspamelodica.charon.refs.longref.SimpleLongRefManager.LongRef;
-import net.haspamelodica.charon.utils.IOBiFunction;
-import net.haspamelodica.charon.utils.IOConsumer;
-import net.haspamelodica.charon.utils.IOFunction;
 import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.exchanges.DataExchange;
 import net.haspamelodica.exchanges.ExchangePool;
 import net.haspamelodica.exchanges.multiplexed.ClosedException;
 import net.haspamelodica.exchanges.multiplexed.UnexpectedResponseException;
+import net.haspamelodica.exchanges.util.IOBiFunction;
+import net.haspamelodica.exchanges.util.IOConsumer;
+import net.haspamelodica.exchanges.util.IOFunction;
 
 public class DataCommunicatorClient
 		implements StudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,

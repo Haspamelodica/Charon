@@ -15,6 +15,9 @@ import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
 
 public class CommunicationImpl implements Communication
 {
+	//TODO make this configurable
+	private final static boolean EXCHANGE_STATS = false;
+
 	private final boolean		logging;
 	private final ExchangePool	exchangePool;
 
@@ -26,11 +29,12 @@ public class CommunicationImpl implements Communication
 		this.communicationInitialized = params.timeout().isPresent() ? new Semaphore(0) : null;
 
 		startTimeoutThread(params);
-		this.exchangePool = openCommunication(params);
+		ExchangePool unwrappedExchangePool = openCommunication(params);
+		this.exchangePool = EXCHANGE_STATS ? unwrappedExchangePool.wrapStatistics(System.err) : unwrappedExchangePool;
 		stopTimeout();
 	}
 
-	private static ExchangePool openCommunication(CommunicationParams params) throws IOException, InterruptedException
+	private ExchangePool openCommunication(CommunicationParams params) throws IOException, InterruptedException
 	{
 		//TODO replace with pattern matching switch once we update to Java 18
 		if(params.mode() instanceof CommunicationParams.Mode.Stdio mode)
@@ -47,15 +51,18 @@ public class CommunicationImpl implements Communication
 			throw new IllegalArgumentException("Unknown mode: " + params.mode());
 	}
 
-	private static ExchangePool openMultiplexed(Exchange exchange)
+	private ExchangePool openMultiplexed(Exchange exchange)
 	{
 		//TODO make wrapBuffered configurable
-		return new MultiplexedExchangePool(exchange.wrapBuffered());
+		Exchange wrappedExchange = EXCHANGE_STATS
+				? exchange.wrapStatistics(System.err, "raw unbuf").wrapBuffered().wrapStatistics(System.err, "raw   buf")
+				: exchange.wrapBuffered();
+		return new MultiplexedExchangePool(wrappedExchange);
 	}
 
 	private static Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
 	{
-		return new Exchange(System.in, System.out);
+		return Exchange.of(System.in, System.out);
 	}
 
 	private static Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException
@@ -69,7 +76,7 @@ public class CommunicationImpl implements Communication
 			Socket sock = server.accept();
 			sock.setTcpNoDelay(true);
 
-			return new Exchange(sock.getInputStream(), sock.getOutputStream());
+			return Exchange.of(sock.getInputStream(), sock.getOutputStream(), sock::close);
 		}
 	}
 
@@ -78,7 +85,7 @@ public class CommunicationImpl implements Communication
 		Socket sock = new Socket(mode.host(), mode.port());
 		sock.setTcpNoDelay(true);
 
-		return new Exchange(sock.getInputStream(), sock.getOutputStream());
+		return Exchange.of(sock.getInputStream(), sock.getOutputStream(), sock::close);
 	}
 	private static Exchange openFifo(CommunicationParams.Mode.Fifo mode) throws IOException
 	{

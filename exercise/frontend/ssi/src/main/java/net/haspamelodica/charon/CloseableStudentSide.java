@@ -2,7 +2,7 @@ package net.haspamelodica.charon;
 
 import java.io.IOException;
 
-import net.haspamelodica.charon.utils.IORunnable;
+import net.haspamelodica.exchanges.util.IORunnable;
 
 public interface CloseableStudentSide extends AutoCloseable
 {

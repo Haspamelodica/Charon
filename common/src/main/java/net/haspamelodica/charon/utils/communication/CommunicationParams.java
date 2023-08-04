@@ -10,8 +10,10 @@ import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Lis
 import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Socket;
 import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Stdio;
 
-public record CommunicationParams(boolean logging, OptionalInt timeout, CommunicationParams.Mode mode)
+public record CommunicationParams(boolean logging, OptionalInt timeout, Optional<SharedFile> sharedfile, CommunicationParams.Mode mode)
 {
+	public static record SharedFile(Path sharedfile, boolean server)
+	{}
 	public static sealed interface Mode permits Stdio, Listen, Socket, Fifo, Fifos
 	{
 		public static record Stdio() implements Mode

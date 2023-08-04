@@ -4,6 +4,8 @@ import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalInt;
 
+import net.haspamelodica.charon.utils.communication.CommunicationParams.SharedFile;
+
 public class CommunicationArgsParser
 {
 	private final Args args;
@@ -36,8 +38,17 @@ public class CommunicationArgsParser
 		} else
 			timeout = OptionalInt.empty();
 
+		final Optional<SharedFile> sharedfile;
+		if(args.consumeIfEqual("shared"))
+		{
+			Path sharedfilePath = Path.of(args.consume());
+			boolean server = Boolean.valueOf(args.consume());
+			sharedfile = Optional.of(new SharedFile(sharedfilePath, server));
+		} else
+			sharedfile = Optional.empty();
+
 		String mode = args.consume();
-		return new CommunicationParams(logging, timeout, switch(mode)
+		return new CommunicationParams(logging, timeout, sharedfile, switch(mode)
 		{
 			case "stdio" -> parseStdio();
 			case "listen" -> parseListen();
@@ -112,7 +123,7 @@ public class CommunicationArgsParser
 	public static String argsSyntax()
 	{
 		return """
-				[--logging | -l]  { [--timeout | -t ] <timeout> }  {
+				[--logging | -l]  { [--timeout | -t ] <timeout> }  { shared <sharedfile> <is_server> }  {
 						stdio  |
 						listen [<host>] <port>  |
 						socket <host> <port>  |
@@ -125,6 +136,11 @@ public class CommunicationArgsParser
 				-t / --timeout:
 					<timeout> must an integer >= 0.
 					If a non-zero <timeout> is given, waits at most <timeout> millis for communication to initialize.
+				sharedfile:
+					Communication speed is improved by using the given file for shared memory.
+					This file should be in a tmpfs.
+					One side (the server side) needs the argument to <is_server> to be true, the other (the client side) needs false.
+					This is for a similar reason as the fifo: the input- and output streams must be opened in a certain order.
 				stdio:
 					Communication is multiplexed over stdio:
 					Reads input from stdin / System.in and writes output to stdout / System.out.

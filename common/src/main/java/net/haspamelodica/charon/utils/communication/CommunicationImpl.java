@@ -4,14 +4,17 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.Optional;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 
+import net.haspamelodica.charon.utils.communication.CommunicationParams.SharedFile;
 import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
 import net.haspamelodica.exchanges.fifos.FifosExchangePoolClient;
 import net.haspamelodica.exchanges.fifos.FifosExchangePoolServer;
 import net.haspamelodica.exchanges.multiplexed.MultiplexedExchangePool;
+import net.haspamelodica.exchanges.sharedmem.SharedMemoryExchangePool;
 
 public class CommunicationImpl implements Communication
 {
@@ -29,40 +32,51 @@ public class CommunicationImpl implements Communication
 		this.communicationInitialized = params.timeout().isPresent() ? new Semaphore(0) : null;
 
 		startTimeoutThread(params);
-		ExchangePool unwrappedExchangePool = openCommunication(params);
+		ExchangePool unwrappedExchangePool = openCommunication(params.sharedfile(), params.mode());
 		this.exchangePool = EXCHANGE_STATS ? unwrappedExchangePool.wrapStatistics(System.err) : unwrappedExchangePool;
 		stopTimeout();
 	}
 
-	private ExchangePool openCommunication(CommunicationParams params) throws IOException, InterruptedException
+	private ExchangePool openCommunication(Optional<SharedFile> sharedfileOpt, CommunicationParams.Mode mode)
+			throws IOException, InterruptedException
+	{
+		ExchangePool justMode = openCommunicationJustMode(mode);
+		if(sharedfileOpt.isEmpty())
+			return justMode;
+
+		SharedFile sharedfile = sharedfileOpt.get();
+		return new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server());
+	}
+
+	private ExchangePool openCommunicationJustMode(CommunicationParams.Mode mode) throws IOException, InterruptedException
 	{
 		//TODO replace with pattern matching switch once we update to Java 18
-		if(params.mode() instanceof CommunicationParams.Mode.Stdio mode)
-			return openMultiplexed(openStdio(mode));
-		else if(params.mode() instanceof CommunicationParams.Mode.Listen mode)
-			return openMultiplexed(openListen(mode));
-		else if(params.mode() instanceof CommunicationParams.Mode.Socket mode)
-			return openMultiplexed(openSocket(mode));
-		else if(params.mode() instanceof CommunicationParams.Mode.Fifo mode)
-			return openMultiplexed(openFifo(mode));
-		else if(params.mode() instanceof CommunicationParams.Mode.Fifos mode)
-			return openFifos(mode);
+		if(mode instanceof CommunicationParams.Mode.Stdio modeCasted)
+			return openMultiplexed(openStdio(modeCasted));
+		else if(mode instanceof CommunicationParams.Mode.Listen modeCasted)
+			return openMultiplexed(openListen(modeCasted));
+		else if(mode instanceof CommunicationParams.Mode.Socket modeCasted)
+			return openMultiplexed(openSocket(modeCasted));
+		else if(mode instanceof CommunicationParams.Mode.Fifo modeCasted)
+			return openMultiplexed(openFifo(modeCasted));
+		else if(mode instanceof CommunicationParams.Mode.Fifos modeCasted)
+			return openFifos(modeCasted);
 		else
-			throw new IllegalArgumentException("Unknown mode: " + params.mode());
+			throw new IllegalArgumentException("Unknown mode: " + mode);
 	}
 
 	private ExchangePool openMultiplexed(Exchange exchange)
 	{
 		//TODO make wrapBuffered configurable
 		Exchange wrappedExchange = EXCHANGE_STATS
-				? exchange.wrapStatistics(System.err, "raw unbuf").wrapBuffered().wrapStatistics(System.err, "raw   buf")
+				? exchange.wrapStatistics(System.err, "ru").wrapBuffered().wrapStatistics(System.err, "rb")
 				: exchange.wrapBuffered();
 		return new MultiplexedExchangePool(wrappedExchange);
 	}
 
 	private static Exchange openStdio(CommunicationParams.Mode.Stdio mode) throws IOException
 	{
-		return Exchange.of(System.in, System.out);
+		return Exchange.ofNoExtraCloseAction(System.in, System.out);
 	}
 
 	private static Exchange openListen(CommunicationParams.Mode.Listen mode) throws IOException

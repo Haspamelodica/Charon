@@ -13,8 +13,8 @@ import perf.CallCounter;
 @TestMethodOrder(OrderAnnotation.class)
 public class TestPerformance
 {
-	private static final double	WARMUP_RUNTIME_SECONDS	= 1;
-	private static final double	RUNTIME_SECONDS			= 1;
+	private static final double	WARMUP_RUNTIME_SECONDS	= 10;
+	private static final double	RUNTIME_SECONDS			= 10;
 
 	private final CallCounter.Prototype CallCounter;
 

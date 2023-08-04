@@ -40,7 +40,7 @@ import net.haspamelodica.charon.utils.maps.UnidirectionalMap;
 import net.haspamelodica.exchanges.DataExchange;
 import net.haspamelodica.exchanges.Exchange;
 import net.haspamelodica.exchanges.ExchangePool;
-import net.haspamelodica.exchanges.multiplexed.ClosedException;
+import net.haspamelodica.exchanges.util.ClosedException;
 import net.haspamelodica.exchanges.util.IOBiConsumer;
 
 public class DataCommunicatorServer

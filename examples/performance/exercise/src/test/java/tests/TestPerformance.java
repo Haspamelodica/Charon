@@ -18,6 +18,9 @@ public class TestPerformance
 
 	private final CallCounter.Prototype CallCounter;
 
+	// Ugly trick to make this class callable from JUnit and from plain Java.
+	public static boolean outputAsCsv;
+
 	public TestPerformance(CallCounter.Prototype CallCounter)
 	{
 		this.CallCounter = CallCounter;
@@ -40,7 +43,10 @@ public class TestPerformance
 			long nanosToRunFor = (long) (RUNTIME_SECONDS * 1000 * 1000 * 1000);
 			while(System.nanoTime() - start < nanosToRunFor)
 				counter.call();
-			System.out.println("Regular   : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
+			if(outputAsCsv)
+				System.out.print(RUNTIME_SECONDS / counter.getCallCount() + ",");
+			else
+				System.out.println("Regular   : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
 		}
 	}
 
@@ -55,7 +61,10 @@ public class TestPerformance
 		{
 			CallbackImpl callback = new CallbackImpl();
 			CallCounter.callForNSeconds(callback, RUNTIME_SECONDS);
-			System.out.println("Callback  : " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
+			if(outputAsCsv)
+				System.out.print(RUNTIME_SECONDS / callback.getCallCount() + ",");
+			else
+				System.out.println("Callback  : " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
 		}
 	}
 
@@ -84,7 +93,10 @@ public class TestPerformance
 						0, -1, Long.MAX_VALUE, Long.MIN_VALUE,
 						1234, 4321, 5678, 8765,
 						987654321, 123456789, -987654321, -123456789);
-			System.out.println("Regular p : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
+			if(outputAsCsv)
+				System.out.print(RUNTIME_SECONDS / counter.getCallCount() + ",");
+			else
+				System.out.println("Regular p : " + counter.getCallCount() / RUNTIME_SECONDS + " calls per second");
 		}
 	}
 
@@ -99,7 +111,10 @@ public class TestPerformance
 		{
 			CallbackImpl callback = new CallbackImpl();
 			CallCounter.callForNSecondsWithUnchangingUnusedParams(callback, RUNTIME_SECONDS);
-			System.out.println("Callback p: " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
+			if(outputAsCsv)
+				System.out.println(RUNTIME_SECONDS / callback.getCallCount());
+			else
+				System.out.println("Callback p: " + callback.getCallCount() / RUNTIME_SECONDS + " calls per second");
 		}
 	}
 }

@@ -45,7 +45,9 @@ public class CommunicationImpl implements Communication
 			return justMode;
 
 		SharedFile sharedfile = sharedfileOpt.get();
-		return new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server());
+		return sharedfile.bufsize().isPresent()
+				? new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server(), sharedfile.bufsize().getAsInt())
+				: new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server());
 	}
 
 	private ExchangePool openCommunicationJustMode(CommunicationParams.Mode mode) throws IOException, InterruptedException

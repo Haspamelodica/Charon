@@ -5,6 +5,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 
 import net.haspamelodica.charon.utils.communication.CommunicationParams.SharedFile;
+import net.haspamelodica.exchanges.sharedmem.SharedMemoryExchangePool;
 
 public class CommunicationArgsParser
 {
@@ -43,7 +44,12 @@ public class CommunicationArgsParser
 		{
 			Path sharedfilePath = Path.of(args.consume());
 			boolean server = Boolean.valueOf(args.consume());
-			sharedfile = Optional.of(new SharedFile(sharedfilePath, server));
+			OptionalInt bufsize;
+			if(args.consumeIfEqual("-b") || args.consumeIfEqual("--bufsize"))
+				bufsize = OptionalInt.of(args.consumeInteger());
+			else
+				bufsize = OptionalInt.empty();
+			sharedfile = Optional.of(new SharedFile(sharedfilePath, server, bufsize));
 		} else
 			sharedfile = Optional.empty();
 
@@ -123,14 +129,15 @@ public class CommunicationArgsParser
 	public static String argsSyntax()
 	{
 		return """
-				[--logging | -l]  { [--timeout | -t ] <timeout> }  { shared <sharedfile> <is_server> }  {
+				[--logging | -l]  [ (--timeout | -t) <timeout> ]  [ shared <sharedfile> <is_server> [ (--bufsize | -b) <bufsize> ] ]  [
 						stdio  |
 						listen [<host>] <port>  |
 						socket <host> <port>  |
 						fifo { in <infile> out <outfile> | out <outfile> in <infile> }  |
 						fifos <fifosdir> <controlfifo> <is_server>
-					}
+					]
 
+				The order of arguments is important.
 				-l / --logging:
 					Enables logging. Logs will appear on stderr / System.err.
 				-t / --timeout:
@@ -141,6 +148,7 @@ public class CommunicationArgsParser
 					This file should be in a tmpfs.
 					One side (the server side) needs the argument to <is_server> to be true, the other (the client side) needs false.
 					This is for a similar reason as the fifo: the input- and output streams must be opened in a certain order.
+					<bufsize> is the size of the shared buffer, per exchange direction. It defaults to DEFAULT_BUFSIZE.
 				stdio:
 					Communication is multiplexed over stdio:
 					Reads input from stdin / System.in and writes output to stdout / System.out.
@@ -162,6 +170,6 @@ public class CommunicationArgsParser
 					Control information will be exchanged over <controlfifo>.
 					One side (the server side) needs the argument to <is_server> to be true, the other (the client side) needs false.
 					The server side must be able to create fifos in <fifosdir>, the client side must only be able to read them.
-				""";
+				""".replace("DEFAULT_BUFSIZE", Integer.toString(SharedMemoryExchangePool.DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION));
 	}
 }

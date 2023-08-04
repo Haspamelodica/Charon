@@ -71,6 +71,7 @@ public class CharonExtension implements ParameterResolver
 	private static final boolean	LOGGING				= false;
 	private static final boolean	REFTRANS			= false;
 	private static final boolean	PIPE				= true;
+	private static final boolean	PIPE_NOSHAREDMEM	= false;
 	private static final boolean	PIPE_MULTIPLEXED	= false;
 
 	private static final boolean ALLOW_REF_TO_STRING = REFTRANS || PIPE;
@@ -248,13 +249,13 @@ public class CharonExtension implements ParameterResolver
 		ExchangePool exchangePoolServer;
 		if(PIPE_MULTIPLEXED)
 		{
-			AutoCloseablePair<Exchange, Exchange> pipe = Exchange.openPiped();
+			AutoCloseablePair<Exchange, Exchange> pipe = PIPE_NOSHAREDMEM ? Exchange.openPipedNoSharedMemory() : Exchange.openPiped();
 			exchangePoolClient = new MultiplexedExchangePool(pipe.a().wrapBuffered());
 			exchangePoolServer = new MultiplexedExchangePool(pipe.b().wrapBuffered());
 		} else
 		{
 			@SuppressWarnings("resource")
-			PipesExchangePool multiplePipesExchangePool = new PipesExchangePool();
+			PipesExchangePool multiplePipesExchangePool = PIPE_NOSHAREDMEM ? new PipesExchangePool(Exchange::openPipedNoSharedMemory) : new PipesExchangePool();
 			exchangePoolClient = multiplePipesExchangePool;
 			exchangePoolServer = multiplePipesExchangePool.getClient();
 		}

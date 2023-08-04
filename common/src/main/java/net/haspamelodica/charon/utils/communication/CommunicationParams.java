@@ -3,6 +3,7 @@ package net.haspamelodica.charon.utils.communication;
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Fifo;
 import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Fifos;
@@ -13,7 +14,7 @@ import net.haspamelodica.charon.utils.communication.CommunicationParams.Mode.Std
 public record CommunicationParams(boolean logging, OptionalInt timeout,
 		Optional<CommunicationParams.SharedFile> sharedfile, CommunicationParams.Mode mode)
 {
-	public static record SharedFile(Path sharedfile, boolean server, OptionalInt bufsize)
+	public static record SharedFile(Path sharedfile, boolean server, OptionalInt bufsize, OptionalLong busyWaitTimeoutNanos)
 	{}
 	public static sealed interface Mode permits Stdio, Listen, Socket, Fifo, Fifos
 	{

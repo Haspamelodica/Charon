@@ -1,5 +1,8 @@
 package net.haspamelodica.charon.utils.communication;
 
+import static net.haspamelodica.exchanges.sharedmem.SharedMemoryCommon.DEFAULT_BUSY_WAIT_TIMEOUT_NANOS;
+import static net.haspamelodica.exchanges.sharedmem.SharedMemoryExchangePool.DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION;
+
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
@@ -45,9 +48,9 @@ public class CommunicationImpl implements Communication
 			return justMode;
 
 		SharedFile sharedfile = sharedfileOpt.get();
-		return sharedfile.bufsize().isPresent()
-				? new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server(), sharedfile.bufsize().getAsInt())
-				: new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server());
+		return new SharedMemoryExchangePool(justMode, sharedfile.sharedfile(), sharedfile.server(),
+				sharedfile.bufsize().orElse(DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION),
+				sharedfile.busyWaitTimeoutNanos().orElse(DEFAULT_BUSY_WAIT_TIMEOUT_NANOS));
 	}
 
 	private ExchangePool openCommunicationJustMode(CommunicationParams.Mode mode) throws IOException, InterruptedException

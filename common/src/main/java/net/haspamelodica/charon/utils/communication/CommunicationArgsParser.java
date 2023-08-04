@@ -1,11 +1,14 @@
 package net.haspamelodica.charon.utils.communication;
 
+import static net.haspamelodica.exchanges.sharedmem.SharedMemoryCommon.DEFAULT_BUSY_WAIT_TIMEOUT_NANOS;
+import static net.haspamelodica.exchanges.sharedmem.SharedMemoryExchangePool.DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION;
+
 import java.nio.file.Path;
 import java.util.Optional;
 import java.util.OptionalInt;
+import java.util.OptionalLong;
 
 import net.haspamelodica.charon.utils.communication.CommunicationParams.SharedFile;
-import net.haspamelodica.exchanges.sharedmem.SharedMemoryExchangePool;
 
 public class CommunicationArgsParser
 {
@@ -49,7 +52,12 @@ public class CommunicationArgsParser
 				bufsize = OptionalInt.of(args.consumeInteger());
 			else
 				bufsize = OptionalInt.empty();
-			sharedfile = Optional.of(new SharedFile(sharedfilePath, server, bufsize));
+			OptionalLong busyWaitTimeoutNanos;
+			if(args.consumeIfEqual("-w") || args.consumeIfEqual("--busywait"))
+				busyWaitTimeoutNanos = OptionalLong.of(args.consumeLong());
+			else
+				busyWaitTimeoutNanos = OptionalLong.empty();
+			sharedfile = Optional.of(new SharedFile(sharedfilePath, server, bufsize, busyWaitTimeoutNanos));
 		} else
 			sharedfile = Optional.empty();
 
@@ -129,13 +137,15 @@ public class CommunicationArgsParser
 	public static String argsSyntax()
 	{
 		return """
-				[--logging | -l]  [ (--timeout | -t) <timeout> ]  [ shared <sharedfile> <is_server> [ (--bufsize | -b) <bufsize> ] ]  [
+				[--logging | -l]  [ (--timeout | -t) <timeout> ]
+				  	[ shared <sharedfile> <is_server> [ (--bufsize | -b) <bufsize> ] [ (--busywait | -w) <busywait_timeout> ] ]
+				  	(
 						stdio  |
 						listen [<host>] <port>  |
 						socket <host> <port>  |
 						fifo { in <infile> out <outfile> | out <outfile> in <infile> }  |
 						fifos <fifosdir> <controlfifo> <is_server>
-					]
+					)
 
 				The order of arguments is important.
 				-l / --logging:
@@ -149,6 +159,7 @@ public class CommunicationArgsParser
 					One side (the server side) needs the argument to <is_server> to be true, the other (the client side) needs false.
 					This is for a similar reason as the fifo: the input- and output streams must be opened in a certain order.
 					<bufsize> is the size of the shared buffer, per exchange direction. It defaults to DEFAULT_BUFSIZE.
+					<busywait_timeout> is how long one side should busy-wait for the other at most, in nanoseconds. It defaults to DEFAULT_BUSYWAIT.
 				stdio:
 					Communication is multiplexed over stdio:
 					Reads input from stdin / System.in and writes output to stdout / System.out.
@@ -170,6 +181,8 @@ public class CommunicationArgsParser
 					Control information will be exchanged over <controlfifo>.
 					One side (the server side) needs the argument to <is_server> to be true, the other (the client side) needs false.
 					The server side must be able to create fifos in <fifosdir>, the client side must only be able to read them.
-				""".replace("DEFAULT_BUFSIZE", Integer.toString(SharedMemoryExchangePool.DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION));
+				"""
+				.replace("DEFAULT_BUFSIZE", Integer.toString(DEFAULT_BUFSIZE_PER_EXCHANGE_DIRECTION))
+				.replace("DEFAULT_BUSYWAIT", Long.toString(DEFAULT_BUSY_WAIT_TIMEOUT_NANOS));
 	}
 }

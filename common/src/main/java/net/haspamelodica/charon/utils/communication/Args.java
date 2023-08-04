@@ -27,6 +27,17 @@ public class Args
 			return throwUsage("Expected a number: " + string);
 		}
 	}
+	public long consumeLong() throws IncorrectUsageException
+	{
+		String string = consume();
+		try
+		{
+			return Long.parseLong(string);
+		} catch(NumberFormatException e)
+		{
+			return throwUsage("Expected a number: " + string);
+		}
+	}
 
 	public boolean consumeIfEqual(String expected)
 	{

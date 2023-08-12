@@ -11,14 +11,14 @@ This is done by declaring interfaces representing student-side structure.
 
 Once the expected student-side code structure is defined,
 test code has to obtain an instance of
-[`StudentSide`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java),
+[`StudentSide`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java),
 which can then be used as an entry point to interacting with student code.
 
 The following subsections describe these steps in detail,
 using an example exercise where it's the students' job to implement a class representing rational numbers
 and some basic operations on them.
 The full example, along with an example student submission, can be found in this repository under
-[examples/rationals](examples/rationals).
+[examples/rationals](../examples/rationals).
 
 ## Defining expected structure
 
@@ -32,19 +32,19 @@ which should be defined by the exercise creator:
    for example calling an instance method or reading an instance field.
 
    The SSI has to extend
-   [`StudentSideInstance`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java).
+   [`StudentSideInstance`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSideInstance.java).
  - The other is called the "prototype" and represents all static operations,
    for example calling a constructor or writing a static field.
 
    The prototype has to extend
-   [`StudentSidePrototype`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSidePrototype.java).
+   [`StudentSidePrototype`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSidePrototype.java).
    By convention, the prototype interface is an inner interface of the SSI called `Prototype`, but this is not required by Charon.
 
 Each method of these interfaces represents one student-side member (a method, a field, a constructor, ...).
 Annotating it with 
-[`StudentSideInstanceMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSideInstanceMethodKind.java)
+[`StudentSideInstanceMethodKind`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSideInstanceMethodKind.java)
 or
-[`StudentSidePrototypeMethodKind`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSidePrototypeMethodKind.java),
+[`StudentSidePrototypeMethodKind`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/annotations/StudentSidePrototypeMethodKind.java),
 respectively, specifies which kind of member it represents.
 
 All parameter types and the return type of each of these methods have to be either primitive or an SSI.
@@ -101,11 +101,11 @@ public interface RationalNumber extends StudentSideInstance
 
 To obtain instances of SSI and prototype interfaces,
 exercise code has to obtain an instance of
-[`StudentSide`](exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java).
+[`StudentSide`](../exercise/frontend/ssi/src/main/java/net/haspamelodica/charon/StudentSide.java).
 
 This interface represents the entire student JVM to the exercise code.
 If the test code is written using JUnit5, this instance can be obtained by using
-[CharonExtension](exercise/junitextension/src/main/java/net/haspamelodica/charon/junitextension/CharonExtension.java).
+[CharonExtension](../exercise/junitextension/src/main/java/net/haspamelodica/charon/junitextension/CharonExtension.java).
 This will work out-of-the-box with Charon-CI.
 
 <details>

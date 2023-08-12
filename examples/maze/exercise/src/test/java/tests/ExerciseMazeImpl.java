@@ -5,14 +5,14 @@ import net.haspamelodica.charon.annotations.SafeForCallByStudent;
 import net.haspamelodica.charon.annotations.UseSerDes;
 import net.haspamelodica.charon.marshaling.StringSerDes;
 
-public class MazeSolution implements Maze
+public class ExerciseMazeImpl implements Maze
 {
 	private final boolean[][]	maze;
 	private final int			targetX, targetY;
 
 	private int x, y;
 
-	public MazeSolution(boolean[][] maze, int targetX, int targetY, int startX, int startY)
+	public ExerciseMazeImpl(boolean[][] maze, int targetX, int targetY, int startX, int startY)
 	{
 		this.maze = maze;
 		this.targetX = targetX;

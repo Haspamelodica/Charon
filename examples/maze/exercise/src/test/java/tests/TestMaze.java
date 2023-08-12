@@ -42,9 +42,9 @@ public class TestMaze
 	}
 
 	@Test
-	public void testBasicMazeSolverAgainstSolution()
+	public void testBasicMazeSolverAgainstExerciseMazeImpl()
 	{
-		Maze maze = new MazeSolutionBuilder(3, 1).setStart(0, 0).setTarget(2, 0).build();
+		Maze maze = new ExerciseMazeImplBuilder(3, 1).setStart(0, 0).setTarget(2, 0).build();
 		MazeSolverP.solveMaze(maze);
 		assertEquals(true, maze.isSolved());
 	}

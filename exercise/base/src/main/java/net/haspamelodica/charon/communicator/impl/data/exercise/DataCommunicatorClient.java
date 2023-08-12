@@ -557,6 +557,7 @@ public class DataCommunicatorClient
 					LongRef returnType = readRef(in);
 					List<LongRef> params = readRefs(in);
 					LongRef receiverRef = readRef(in);
+					//TODO maybe limit N to 255 since the JVM only allows up to 255 parameters anyway
 					List<LongRef> args = readNRefs(in, params.size());
 
 					//TODO if the result is a hidden error, we want the "outer" operation to always throw that exception.

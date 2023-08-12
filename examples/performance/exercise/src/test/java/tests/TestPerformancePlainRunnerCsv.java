@@ -12,7 +12,9 @@ public class TestPerformancePlainRunnerCsv
 	{
 		try(CloseableDataCommStudentSide studentSide = new CloseableDataCommStudentSide(args))
 		{
-			TestPerformance.outputAsCsv = true;
+			TestPerformance.WARMUP_RUNTIME_SECONDS = 2;
+			TestPerformance.RUNTIME_SECONDS = 2;
+			TestPerformance.OUTPUT_AS_CSV = true;
 			TestPerformance testPerformance = new TestPerformance(studentSide.getStudentSide().createPrototype(CallCounter.Prototype.class));
 			testPerformance.testPerformanceRegular();
 			testPerformance.testPerformanceCallback();

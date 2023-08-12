@@ -19,23 +19,22 @@ import net.haspamelodica.charon.marshaling.StringSerDes;
 public interface Maze extends StudentSideInstance
 {
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
+	public boolean canMove(int dx, int dy);
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
+	public void move(int dx, int dy);
+
+	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	public int distanceToTargetX();
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	public int distanceToTargetY();
 	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
 	public boolean isSolved();
 
-	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
-	public boolean canMove(int dx, int dy);
-	@StudentSideInstanceMethodKind(INSTANCE_METHOD)
-	public void move(int dx, int dy);
-
 	public static interface Prototype extends StudentSidePrototype<Maze>
 	{
 		@StudentSidePrototypeMethodKind(STATIC_METHOD)
 		@UseSerDes(StringSerDes.class)
 		public MazeBuilder builder(int width, int height);
-
 	}
 
 	@StudentSideInstanceKind(CLASS)

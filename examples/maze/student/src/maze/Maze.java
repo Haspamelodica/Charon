@@ -4,15 +4,15 @@ import java.util.Arrays;
 
 public interface Maze
 {
+	public boolean canMove(int dx, int dy);
+	public void move(int dx, int dy);
+
 	public int distanceToTargetX();
 	public int distanceToTargetY();
 	public default boolean isSolved()
 	{
 		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
 	}
-
-	public boolean canMove(int dx, int dy);
-	public void move(int dx, int dy);
 
 	public static MazeBuilder builder(int width, int height)
 	{

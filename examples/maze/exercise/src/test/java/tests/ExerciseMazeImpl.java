@@ -23,6 +23,24 @@ public class ExerciseMazeImpl implements Maze
 
 	@Override
 	@SafeForCallByStudent
+	public void move(int dx, int dy)
+	{
+		if(!canMove(dx, dy))
+			throw new IllegalArgumentException("Can't move by " + dx + ", " + dy);
+	
+		x += dx;
+		y += dy;
+	}
+
+	@Override
+	@SafeForCallByStudent
+	public boolean isSolved()
+	{
+		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
+	}
+
+	@Override
+	@SafeForCallByStudent
 	public int distanceToTargetX()
 	{
 		return targetX - x;
@@ -43,24 +61,6 @@ public class ExerciseMazeImpl implements Maze
 			return false;
 
 		return maze[x + dx][y + dy];
-	}
-
-	@Override
-	@SafeForCallByStudent
-	public void move(int dx, int dy)
-	{
-		if(!canMove(dx, dy))
-			throw new IllegalArgumentException("Can't move by " + dx + ", " + dy);
-
-		x += dx;
-		y += dy;
-	}
-
-	@Override
-	@SafeForCallByStudent
-	public boolean isSolved()
-	{
-		return distanceToTargetX() == 0 && distanceToTargetY() == 0;
 	}
 
 	// If we don't mark toString as callable by student,

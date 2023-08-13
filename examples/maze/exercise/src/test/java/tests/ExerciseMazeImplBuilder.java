@@ -2,8 +2,6 @@ package tests;
 
 import java.util.Arrays;
 
-import maze.Maze;
-
 public class ExerciseMazeImplBuilder
 {
 	private final boolean[][] maze;
@@ -40,7 +38,7 @@ public class ExerciseMazeImplBuilder
 		return this;
 	}
 
-	public Maze build()
+	public ExerciseMazeImpl build()
 	{
 		return new ExerciseMazeImpl(maze, targetX, targetY, startX, startY);
 	}

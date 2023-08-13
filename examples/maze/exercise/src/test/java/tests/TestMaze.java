@@ -3,12 +3,10 @@ package tests;
 import static net.haspamelodica.charon.junitextension.CharonJUnitUtils.assertStudentThrows;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import maze.Maze;
-import maze.Maze.MazeBuilder;
 import maze.MazeSolver;
 import net.haspamelodica.charon.StudentSide;
 import net.haspamelodica.charon.junitextension.CharonExtension;
@@ -16,43 +14,35 @@ import net.haspamelodica.charon.junitextension.CharonExtension;
 @ExtendWith(CharonExtension.class)
 public class TestMaze
 {
-	private static Maze.Prototype		MazeP;
-	private static MazeSolver.Prototype	MazeSolverP;
+	private final Maze.Prototype		Maze;
+	private final MazeSolver.Prototype	MazeSolver;
 
-	@BeforeAll
-	public static void setupPrototypes(StudentSide studentSide)
+	public TestMaze(Maze.Prototype Maze, MazeSolver.Prototype MazeSolver)
 	{
-		MazeP = studentSide.createPrototype(Maze.Prototype.class);
-		studentSide.createPrototype(MazeBuilder.Prototype.class);
-		MazeSolverP = studentSide.createPrototype(MazeSolver.Prototype.class);
-	}
-
-	@Test
-	public void testSolveNPE(StudentSide studentSide)
-	{
-		assertStudentThrows(studentSide, NullPointerExceptionSSI.Prototype.class, () -> MazeSolverP.solveMaze(null));
-	}
-
-	@Test
-	public void testBasicMazeSolverAgainstStudentMaze()
-	{
-		Maze maze = MazeP.builder(3, 1).setStart(0, 0).setTarget(2, 0).build();
-		MazeSolverP.solveMaze(maze);
-		assertEquals(true, maze.isSolved());
+		this.Maze = Maze;
+		this.MazeSolver = MazeSolver;
 	}
 
 	@Test
 	public void testBasicMazeSolverAgainstExerciseMazeImpl()
 	{
-		Maze maze = new ExerciseMazeImplBuilder(3, 1).setStart(0, 0).setTarget(2, 0).build();
-		MazeSolverP.solveMaze(maze);
+		ExerciseMazeImpl maze = new ExerciseMazeImplBuilder(3, 1).setStart(0, 0).setTarget(2, 0).build();
+		MazeSolver.solveMaze(maze);
+		assertEquals(true, maze.isSolved());
+	}
+
+	@Test
+	public void testBasicMazeSolverAgainstStudentMaze()
+	{
+		Maze maze = Maze.builder(3, 1).setStart(0, 0).setTarget(2, 0).build();
+		MazeSolver.solveMaze(maze);
 		assertEquals(true, maze.isSolved());
 	}
 
 	@Test
 	public void testBasicMaze()
 	{
-		Maze maze = MazeP.builder(3, 1).setStart(0, 0).setTarget(2, 0).build();
+		Maze maze = Maze.builder(3, 1).setStart(0, 0).setTarget(2, 0).build();
 
 		assertEquals(false, maze.isSolved());
 		assertEquals(false, maze.canMove(0, 1));
@@ -75,5 +65,11 @@ public class TestMaze
 		assertEquals(false, maze.canMove(0, -1));
 		assertEquals(false, maze.canMove(1, 0));
 		assertEquals(true, maze.canMove(-1, 0));
+	}
+
+	@Test
+	public void testSolveNPE(StudentSide studentSide)
+	{
+		assertStudentThrows(studentSide, NullPointerExceptionSSI.Prototype.class, () -> MazeSolver.solveMaze(null));
 	}
 }

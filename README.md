@@ -56,7 +56,7 @@ so you will have to build that project from source as well to build Charon.
 ### Import and set up launch configurations
 
 For the Rationals example, follow these steps.
-The Maze and Sorter examples work analogously.
+The Maze, Sorter, and Performance examples work analogously.
 
 1. Clone this repository and
    [exchanges](https://github.com/Haspamelodica/net.haspamelodica.exchanges).

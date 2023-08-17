@@ -156,7 +156,7 @@ add the JDK19, and select its checkbox to make it the default JRE.
 Consider switching from sockets to named pipes:
 Create two named pipes (FIFOs) and adjust the communication arguments
 in both the student-side and exercise-side launch configurations accordingly; for this, see
-[CommunicationArgsParser](https://github.com/Haspamelodica/Charon/blob/master/common/src/main/java/net/haspamelodica/charon/utils/communication/CommunicationArgsParser.java#L119-L122),
+[CommunicationArgsParser](https://github.com/Haspamelodica/Charon/blob/master/common/src/main/java/net/haspamelodica/charon/utils/communication/CommunicationArgsParser.java#L173-L177),
 and take inspiration from how Charon-CI invokes tests:
 [exercise side](https://github.com/Haspamelodica/Charon-CI/blob/main/exercise/run_maven.sh#L3),
 [student side](https://github.com/Haspamelodica/Charon-CI/blob/main/student/run.sh#L7).

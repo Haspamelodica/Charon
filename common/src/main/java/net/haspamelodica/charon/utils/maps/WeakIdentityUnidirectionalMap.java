@@ -13,6 +13,15 @@ import java.util.stream.Stream;
 
 import net.haspamelodica.charon.utils.maps.suppliers.UnidirectionalMapWithRemovalIteratorSupplier;
 
+// TODO maybe consider switching to phantom refs:
+// It's possible for an object to become (strongly) reachable after weak refs to it have been cleared,
+// by using finalization.
+// This is true even if the weakly reachable object has no finalizer,
+// by letting another object stronly refer to the weakly reachable object,
+// letting this other object have a finalizer making it strongly reachable again,
+// and then letting the garbage collector finalize that object.
+// Phantom refs would solve this because after the phantom refs to an object are cleared,
+// there's _no_ way to make it reachable again.
 public class WeakIdentityUnidirectionalMap<K, V> extends AbstractUnidirectionalMap<K, V>
 {
 	private final UnidirectionalMapWithRemovalIterator<Integer, List<WeakIdentityEntry<K, V>>> map;

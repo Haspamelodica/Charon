@@ -589,6 +589,7 @@ public class DataCommunicatorServer
 
 	private void respondNewThread(DataInputStream commandIn) throws ClosedException, IOException
 	{
+		// Exercise side cares about making sure this'll link the correct exchanges
 		DataExchange control = createDataExchange();
 		DataExchange data = createDataExchange();
 

@@ -78,6 +78,7 @@ import net.haspamelodica.exchanges.util.ClosedException;
 import net.haspamelodica.exchanges.util.IOBiFunction;
 import net.haspamelodica.exchanges.util.IOConsumer;
 import net.haspamelodica.exchanges.util.IOFunction;
+import net.haspamelodica.exchanges.util.IOSupplier;
 
 public class DataCommunicatorClient
 		implements StudentSideCommunicator<LongRef, LongRef, LongRef, LongRef, LongRef, LongRef,
@@ -592,6 +593,11 @@ public class DataCommunicatorClient
 
 	private void executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand)
 	{
+		executeThreadIndependentCommand(command, sendCommand, () -> null);
+	}
+	private <R> R executeThreadIndependentCommand(ThreadIndependentCommand command, IOConsumer<DataOutputStream> sendCommand,
+			IOSupplier<R> createResultThreadsafe)
+	{
 		synchronized(threadIndependentCommandLock)
 		{
 			try
@@ -599,12 +605,13 @@ public class DataCommunicatorClient
 				threadIndependentExchange.out().writeByte(command.encode());
 				sendCommand.accept(threadIndependentExchange.out());
 				threadIndependentExchange.out().flush();
+				return createResultThreadsafe.get();
 			} catch(UnexpectedResponseException e)
 			{
-				throwWrappedUnexpectedResponseException(e);
+				return throwWrappedUnexpectedResponseException(e);
 			} catch(IOException e)
 			{
-				throwWrappedIOException(e);
+				return throwWrappedIOException(e);
 			}
 		}
 	}
@@ -640,17 +647,19 @@ public class DataCommunicatorClient
 	//TODO clean up threads which have exited
 	private StudentSideThread createStudentSideThread() throws ClosedException
 	{
-		executeThreadIndependentCommand(NEW_THREAD, commandOut ->
-		{});
-		try
+		// Both calls to createDataExchange() need to be inside the synchronized block:
+		// If they weren't, two threads could send the NEW_THREAD command at the same time.
+		// While the student side will only receive the second NEW_THREAD once it has finished the first request,
+		// both executeThreadIndependentCommand can finish before that point
+		// because it won't wait for confirmation.
+		return executeThreadIndependentCommand(NEW_THREAD, commandOut ->
+		{}, () ->
 		{
-			DataExchange cont = createDataExchange();
+			DataExchange control = createDataExchange();
+			//TODO what about nested serializations?
 			DataExchange data = createDataExchange();
-			return new StudentSideThread(cont, data);
-		} catch(IOException e)
-		{
-			return throwWrappedIOException(e);
-		}
+			return new StudentSideThread(control, data);
+		});
 	}
 
 	private ThreadResponse readThreadResponse(DataInput in) throws IOException
